@@ -109,3 +109,5 @@ object Ui:
   def Retry = Rect(cx, 250f, bw, bh)
   def Menu  = Rect(cx, 180f, bw, bh)
   def PlayAgain = Rect(cx, 250f, bw, bh)
+  def Resume = Rect(cx, 250f, bw, bh)
+  def Exit   = Rect(cx, 180f, bw, bh)

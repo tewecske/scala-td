@@ -63,35 +63,52 @@ class TdGame extends ApplicationAdapter:
         else Phase.Victory(level, lives, gold)
 
       case Phase.Playing(w) =>
-        if Gdx.input.isKeyJustPressed(Input.Keys.F) then fast = !fast
+        // While paused nothing steps and only the pause keys / buttons act.
+        if pausePressed then Phase.Paused(w)
+        else
+          if Gdx.input.isKeyJustPressed(Input.Keys.F) then fast = !fast
 
-        if Gdx.input.isKeyJustPressed(Input.Keys.R) then
-          if Config.reload() then notice = Some("config reloaded")
-          else notice = Some("config reload failed")
-          noticeTimer = NoticeTime
+          if Gdx.input.isKeyJustPressed(Input.Keys.R) then
+            if Config.reload() then notice = Some("config reloaded")
+            else notice = Some("config reload failed")
+            noticeTimer = NoticeTime
 
-        Config.game.towers.indices.foreach { i =>
-          if Gdx.input.isKeyJustPressed(Input.Keys.NUM_1 + i) then selected = i
-        }
-        selected = math.min(selected, Config.game.towers.size - 1)
-        val sel   = Config.game.towers(selected)
-        val hover = Some(Grid.cellAt(mx, my)).filter(Grid.inBounds)
-        val cmds  = hover.filter(_ => clicked).map(Command.Build(_, sel.name)).toVector
+          Config.game.towers.indices.foreach { i =>
+            if Gdx.input.isKeyJustPressed(Input.Keys.NUM_1 + i) then selected = i
+          }
+          selected = math.min(selected, Config.game.towers.size - 1)
+          val sel   = Config.game.towers(selected)
+          val hover = Some(Grid.cellAt(mx, my)).filter(Grid.inBounds)
+          val cmds  = hover.filter(_ => clicked).map(Command.Build(_, sel.name)).toVector
 
-        // Fast-forward runs extra whole steps rather than a bigger dt, so the
-        // rules behave identically at any speed.
-        val steps  = if fast then Config.FastForward else 1
-        val first  = Sim.step(w, dt, cmds)
-        val next   = (1 until steps).foldLeft(first)((acc, _) => Sim.step(acc, dt, Vector.empty))
+          // Fast-forward runs extra whole steps rather than a bigger dt, so the
+          // rules behave identically at any speed.
+          val steps  = if fast then Config.FastForward else 1
+          val first  = Sim.step(w, dt, cmds)
+          val next   = (1 until steps).foldLeft(first)((acc, _) => Sim.step(acc, dt, Vector.empty))
 
-        gfx.drawGame(next, hover, fast, sel, notice)
+          gfx.drawGame(next, hover, fast, sel, notice)
 
-        if Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) then Phase.Menu
-        else if next.won then Phase.Victory(next.level, next.lives, next.gold)
-        else if next.isOver then Phase.GameOver(next.level, next.wave)
-        else Phase.Playing(next)
+          if next.won then Phase.Victory(next.level, next.lives, next.gold)
+          else if next.isOver then Phase.GameOver(next.level, next.wave)
+          else Phase.Playing(next)
+
+      case Phase.Paused(w) =>
+        val sel = Config.game.towers(math.min(selected, Config.game.towers.size - 1))
+        gfx.drawPaused(w, fast, sel)
+
+        if pausePressed then Phase.Playing(w)
+        else if clicked && Ui.Resume.contains(mx, my) then Phase.Playing(w)
+        else if clicked && Ui.Exit.contains(mx, my) then Phase.Menu
+        else Phase.Paused(w)
 
   /** Every run starts from a clean World, so nothing leaks across retries. */
   private def newRun(): Phase =
     fast = false
     Phase.Playing(Sim.initial())
+
+  /** ESC toggles pause; P is a redundant alias so the run never aborts by
+    * accident. Abandoning a run now happens through the pause menu's Exit.
+    */
+  private def pausePressed: Boolean =
+    Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) || Gdx.input.isKeyJustPressed(Input.Keys.P)

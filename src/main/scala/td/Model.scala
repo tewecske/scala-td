@@ -111,5 +111,6 @@ enum Command:
 enum Phase:
   case Menu
   case Playing(w: World)
+  case Paused(w: World)
   case GameOver(level: Int, wave: Int)
   case Victory(level: Int, lives: Int, gold: Int)

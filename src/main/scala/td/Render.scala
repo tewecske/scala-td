@@ -78,7 +78,7 @@ class Render:
     centered("TOWER DEFENSE", Config.WorldW / 2, 440f, 3f)
     centered(s"${Config.GridSize} x ${Config.GridSize} · hold the line", Config.WorldW / 2, 390f, 1.2f, Config.DimText)
     buttonLabel(Ui.Play, "PLAY")
-    centered(s"1-$towers to pick a tower · click green to build · F to fast-forward · R to reload config · ESC to quit a run",
+    centered(s"1-$towers to pick a tower · click green to build · F to fast-forward · R to reload config · ESC to pause",
       Config.WorldW / 2, 120f, 1f, Config.DimText)
     batch.end()
 
@@ -132,6 +132,27 @@ class Render:
     batch.begin()
     drawHud(w, fast, selected)
     notice.foreach(n => centered(n, Config.BoardPx + Config.PanelPx / 2, 30f, 1.1f, Config.ShotColor))
+    batch.end()
+
+  /** Frozen game view under a dim overlay plus the pause panel and its buttons. */
+  def drawPaused(w: World, fast: Boolean, selected: TowerSpec): Unit =
+    drawGame(w, None, fast, selected, None)
+
+    val panel = Rect(Config.WorldW / 2 - 170f, 130f, 340f, 350f)
+
+    shapes.begin(ShapeType.Filled)
+    shapes.setColor(0f, 0f, 0f, 0.55f)
+    shapes.rect(0f, 0f, Config.WorldW, Config.WorldH)
+    shapes.setColor(Config.PanelColor)
+    shapes.rect(panel.x, panel.y, panel.w, panel.h)
+    button(Ui.Resume)
+    button(Ui.Exit)
+    shapes.end()
+
+    batch.begin()
+    centered("PAUSED", Config.WorldW / 2, 440f, 3f)
+    buttonLabel(Ui.Resume, "RESUME")
+    buttonLabel(Ui.Exit, "EXIT")
     batch.end()
 
   // -- board pieces ----------------------------------------------------------
@@ -262,4 +283,4 @@ class Render:
     line(if fast then s"F: fast-forward ${Config.FastForward}x ON" else "F: fast-forward", 1.1f,
       if fast then Config.ShotColor else Config.DimText)
     line("R: reload config", 1.1f, Config.DimText)
-    line("ESC: abandon run", 1.1f, Config.DimText)
+    line("ESC / P: pause", 1.1f, Config.DimText)
