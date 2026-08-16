@@ -3,6 +3,7 @@ package td
 /** The entire game rule set, as a pure function of (state, time, input).
   *
   * Nothing here touches libGDX, so the simulation can be stepped headlessly.
+  * Tower/enemy types are spec names resolved against the active config.
   */
 object Sim:
 
@@ -15,7 +16,7 @@ object Sim:
     wave = 0,
     spawnQueue = 0,
     spawnTimer = 0f,
-    breakTimer = Waves.BreakTime, // grace period before the first wave
+    breakTimer = Waves.breakTime, // grace period before the first wave
     nextId = 1L,
     rng = seed
   )
@@ -36,20 +37,20 @@ object Sim:
 
   private def applyCommand(w: World, c: Command): World = c match
     case Command.Build(cell, tpe) =>
-      val affordable = w.gold >= tpe.cost
-      val free       = !w.towers.exists(_.cell == cell)
-      if affordable && free && Grid.isBuildable(cell) then
+      val spec = Config.towerSpec(tpe)
+      if canBuild(w, cell, tpe) then
         w.copy(
           towers = w.towers :+ Tower(cell, 0f, tpe),
-          gold = w.gold - tpe.cost
+          gold = w.gold - spec.cost
         )
       else w
 
   /** Whether a build command would be accepted — used by the renderer to colour
     * the placement preview, so preview and rule can never disagree.
     */
-  def canBuild(w: World, cell: GridPos, tpe: TowerType): Boolean =
-    w.gold >= tpe.cost &&
+  def canBuild(w: World, cell: GridPos, tpe: String): Boolean =
+    val spec = Config.towerSpec(tpe)
+    w.gold >= spec.cost &&
       Grid.isBuildable(cell) &&
       !w.towers.exists(_.cell == cell)
 
@@ -63,11 +64,11 @@ object Sim:
     z = (z ^ (z >>> 31))
     (z, z)
 
-  /** Weighted pick from a (type, weight) table using the seeded rng. Isolated
+  /** Weighted pick from a (spec, weight) table using the seeded rng. Isolated
     * here so a later "levels" task can swap the table without touching anything
     * else.
     */
-  private def pickType(rng: Long, table: Vector[(EnemyType, Int)]): (EnemyType, Long) =
+  private def pickType(rng: Long, table: Vector[(EnemySpec, Int)]): (EnemySpec, Long) =
     val (next, r) = rngNext(rng)
     val total     = table.map(_._2).sum
     val pick      = math.floorMod(r, total.toLong).toInt
@@ -90,15 +91,15 @@ object Sim:
       val t = w.spawnTimer - dt
       if t > 0f then w.copy(spawnTimer = t)
       else
-        val (tpe, rng) = pickType(w.rng, Waves.enemyTypes(w.wave))
-        val hp         = tpe.baseHp * Waves.hpScale(w.wave)
-        val e          = Enemy(
+        val (spec, rng) = pickType(w.rng, Waves.enemyTypes(w.wave))
+        val hp          = spec.baseHp * Waves.hpScale(w.wave)
+        val e           = Enemy(
           id = w.nextId,
           progress = 0f,
           hp = hp,
           maxHp = hp,
-          speed = tpe.baseSpeed,
-          tpe = tpe
+          speed = spec.baseSpeed,
+          tpe = spec.name
         )
         w.copy(
           enemies = w.enemies :+ e,
@@ -124,7 +125,7 @@ object Sim:
           spawnTimer = 0f // first enemy of the wave appears immediately
         )
     else if w.spawnQueue == 0 && w.enemies.isEmpty then
-      w.copy(breakTimer = Waves.BreakTime)
+      w.copy(breakTimer = Waves.breakTime)
     else w
 
   // -- auras ------------------------------------------------------------------
@@ -133,7 +134,7 @@ object Sim:
     * each buff kind counts, so stacking commanders can never balloon speed.
     */
   private def applyAuras(w: World): World =
-    val carriers = w.enemies.filter(_.tpe.aura.isDefined)
+    val carriers = w.enemies.filter(_.spec.aura.isDefined)
     if carriers.isEmpty then w
     else
       w.copy(enemies = w.enemies.map { e =>
@@ -141,7 +142,7 @@ object Sim:
         var armor     = 0f
         carriers.foreach { src =>
           if src.id != e.id then
-            src.tpe.aura.foreach { a =>
+            src.spec.aura.foreach { a =>
               val (sx, sy) = src.pos
               val (ex, ey) = e.pos
               val dx       = sx - ex
@@ -186,7 +187,8 @@ object Sim:
       val cd = t.cooldown - dt
       if cd > 0f then t.copy(cooldown = cd)
       else
-        val range2 = t.tpe.range * t.tpe.range
+        val spec   = t.spec
+        val range2 = spec.range * spec.range
         // Standard tower-defense targeting: whatever is closest to leaking.
         val target = w.enemies
           .filter { e =>
@@ -200,18 +202,18 @@ object Sim:
         target match
           case None => t.copy(cooldown = 0f)
           case Some(e) =>
-            val dest = if t.tpe.kind == DamageKind.Explosion then Some(e.pos) else None
+            val dest = if spec.kind == DamageKind.Explosion then Some(e.pos) else None
             fresh += Projectile(
               t.cell.centerX,
               t.cell.centerY,
               e.id,
-              t.tpe.kind,
-              t.tpe.damage,
-              t.tpe.projectileSpeed,
-              t.tpe.splashRadius,
+              spec.kind,
+              spec.damage,
+              spec.projectileSpeed,
+              spec.splashRadius,
               dest
             )
-            t.copy(cooldown = t.tpe.fireInterval)
+            t.copy(cooldown = spec.fireInterval)
     }
 
     w.copy(towers = towers, shots = w.shots ++ fresh.result())

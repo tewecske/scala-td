@@ -2,74 +2,81 @@ package td
 
 import com.badlogic.gdx.graphics.Color
 
-/** All tuning lives here. Positions everywhere else are in world units, where
-  * one grid cell is [[CellPx]] units wide.
+/** Single source of truth for the active tuning. Every old `val` that other
+  * modules read globally is now a `def` here, resolving against [[game]]. On
+  * reload the backing config is swapped atomically for subsequent steps.
   */
 object Config:
+  @volatile private var current: GameConfig = ConfigLoader.initial()
+
+  /** The active config. Read this (or the accessors below) instead of caching. */
+  def game: GameConfig = current
+
+  /** Reloads from the standard source (working-dir file, else bundled). On
+    * failure the previous config is kept and this returns false.
+    */
+  def reload(): Boolean =
+    ConfigLoader.load() match
+      case Right(cfg) => current = cfg; true
+      case Left(_)    => false
+
+  /** Reload from an explicit path. Same keep-on-failure semantics as [[reload]]. */
+  def load(path: String): Boolean =
+    ConfigLoader.load(path) match
+      case Right(cfg) => current = cfg; true
+      case Left(_)    => false
+
   // -- board -----------------------------------------------------------------
-  val GridSize = 20
-  val CellPx   = 32f
-  val BoardPx  = GridSize * CellPx // 640
-  val PanelPx  = 240f
-  val WorldW   = BoardPx + PanelPx // 880
-  val WorldH   = BoardPx           // 640
+  def GridSize: Int  = current.board.gridSize
+  def CellPx: Float  = current.board.cellPx
+  def BoardPx: Float = GridSize * CellPx
+  def PanelPx: Float = current.board.panelPx
+  def WorldW: Float  = BoardPx + PanelPx
+  def WorldH: Float  = BoardPx
 
   // -- economy ---------------------------------------------------------------
-  val StartGold  = 120
-  val StartLives = 20
-  val KillReward = 8
+  def StartGold: Int  = current.economy.startGold
+  def StartLives: Int = current.economy.startLives
+  def KillReward: Int = current.economy.killReward
 
   // -- combat ----------------------------------------------------------------
-  // Per-tower tuning (cost, range, damage, fire interval, projectile speed)
-  // lives in the TowerType enum; these are the shared status-effect knobs.
-  val HitRadius    = 6f
-  val BurnDps      = 6f
-  val BurnDuration = 3f
-  val SlowFactor   = 0.5f
-  val SlowDuration = 2f
+  def HitRadius: Float    = current.combat.hitRadius
+  def BurnDps: Float      = current.combat.burnDps
+  def BurnDuration: Float = current.combat.burnDuration
+  def SlowFactor: Float   = current.combat.slowFactor
+  def SlowDuration: Float = current.combat.slowDuration
+  def MaxStepDt: Float    = current.combat.maxStepDt
+  def FastForward: Int    = current.combat.fastForward
 
-  /** Frames longer than this are clamped so enemies can never tunnel past a
-    * tower after a stall (window drag, GC pause).
-    */
-  val MaxStepDt = 0.05f
-
-  /** Multiplier applied while fast-forward is toggled on. */
-  val FastForward = 3
+  // -- specs ------------------------------------------------------------------
+  def towerSpec(name: String): TowerSpec =
+    current.towers.find(_.name == name).getOrElse(sys.error(s"unknown tower '$name'"))
+  def enemySpec(name: String): EnemySpec =
+    current.enemies.find(_.name == name).getOrElse(sys.error(s"unknown enemy '$name'"))
 
   // -- colors ----------------------------------------------------------------
-  val Background = new Color(0.09f, 0.10f, 0.13f, 1f)
-  val PathColor  = new Color(0.44f, 0.41f, 0.37f, 1f)
-  val BuildColor = new Color(0.15f, 0.26f, 0.19f, 1f)
-  val GridLine   = new Color(0f, 0f, 0f, 0.25f)
-  val TowerColor       = new Color(0.35f, 0.60f, 0.95f, 1f)
-  val TowerFireColor   = new Color(0.95f, 0.45f, 0.15f, 1f)
-  val TowerFrostColor  = new Color(0.45f, 0.85f, 0.95f, 1f)
-  val TowerSplashColor = new Color(0.70f, 0.45f, 0.95f, 1f)
-  val TowerBoomColor   = new Color(0.80f, 0.25f, 0.20f, 1f)
-  val EnemyColor            = new Color(0.88f, 0.28f, 0.28f, 1f)
-  val EnemySwiftColor       = new Color(0.95f, 0.85f, 0.25f, 1f)
-  val EnemyBruteColor       = new Color(0.55f, 0.16f, 0.18f, 1f)
-  val EnemyEmberColor       = new Color(1.00f, 0.55f, 0.15f, 1f)
-  val EnemyFrostlingColor   = new Color(0.50f, 0.85f, 0.90f, 1f)
-  val EnemyCommanderColor   = new Color(0.90f, 0.40f, 0.90f, 1f)
-  val EnemyShieldbearerColor = new Color(0.55f, 0.65f, 0.80f, 1f)
-  val ShotColor  = new Color(0.98f, 0.85f, 0.30f, 1f)
-  val ShotFireColor    = new Color(0.98f, 0.55f, 0.20f, 1f)
-  val ShotFrostColor   = new Color(0.55f, 0.90f, 1f, 1f)
-  val ShotSplashColor  = new Color(0.80f, 0.60f, 1f, 1f)
-  val ShotBoomColor    = new Color(1f, 0.35f, 0.20f, 1f)
-  val BurnTint         = new Color(1f, 0.45f, 0.10f, 1f)
-  val SlowTint         = new Color(0.45f, 0.85f, 1f, 1f)
-  val BuffTint         = new Color(0.40f, 0.95f, 0.45f, 1f)
-  val PanelColor = new Color(0.13f, 0.14f, 0.18f, 1f)
-  val HoverOk    = new Color(0.55f, 0.85f, 0.55f, 0.45f)
-  val HoverBad   = new Color(0.85f, 0.30f, 0.30f, 0.40f)
-  val RangeColor = new Color(0.35f, 0.60f, 0.95f, 0.55f)
-  val ButtonFill = new Color(0.22f, 0.30f, 0.42f, 1f)
-  val HpBarBack  = new Color(0.10f, 0.10f, 0.10f, 1f)
-  val HpBarFill  = new Color(0.35f, 0.85f, 0.40f, 1f)
-  val TextColor  = new Color(0.92f, 0.92f, 0.90f, 1f)
-  val DimText    = new Color(0.62f, 0.64f, 0.70f, 1f)
+  def Background: Color   = current.colors.background
+  def PathColor: Color    = current.colors.path
+  def BuildColor: Color   = current.colors.build
+  def GridLine: Color     = current.colors.gridLine
+  def EnemyColor: Color   = current.colors.enemy
+  def ShotColor: Color    = current.colors.shot
+  def ShotFireColor: Color    = current.colors.shotFire
+  def ShotFrostColor: Color   = current.colors.shotFrost
+  def ShotSplashColor: Color  = current.colors.shotSplash
+  def ShotBoomColor: Color    = current.colors.shotBoom
+  def BurnTint: Color     = current.colors.burnTint
+  def SlowTint: Color     = current.colors.slowTint
+  def BuffTint: Color     = current.colors.buffTint
+  def PanelColor: Color   = current.colors.panel
+  def HoverOk: Color      = current.colors.hoverOk
+  def HoverBad: Color     = current.colors.hoverBad
+  def RangeColor: Color   = current.colors.range
+  def ButtonFill: Color   = current.colors.buttonFill
+  def HpBarBack: Color    = current.colors.hpBarBack
+  def HpBarFill: Color    = current.colors.hpBarFill
+  def TextColor: Color    = current.colors.text
+  def DimText: Color      = current.colors.dimText
 
 /** Axis-aligned rectangle in world units, y-up like the rest of libGDX. */
 case class Rect(x: Float, y: Float, w: Float, h: Float):
@@ -82,10 +89,10 @@ case class Rect(x: Float, y: Float, w: Float, h: Float):
   * you see is always the thing you hit.
   */
 object Ui:
-  private val bw = 220f
-  private val bh = 52f
-  private val cx = Config.WorldW / 2 - bw / 2
+  private def bw = 220f
+  private def bh = 52f
+  private def cx = Config.WorldW / 2 - bw / 2
 
-  val Play  = Rect(cx, 240f, bw, bh)
-  val Retry = Rect(cx, 250f, bw, bh)
-  val Menu  = Rect(cx, 180f, bw, bh)
+  def Play  = Rect(cx, 240f, bw, bh)
+  def Retry = Rect(cx, 250f, bw, bh)
+  def Menu  = Rect(cx, 180f, bw, bh)

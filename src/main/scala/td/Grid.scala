@@ -4,39 +4,61 @@ case class GridPos(x: Int, y: Int):
   def centerX: Float = (x + 0.5f) * Config.CellPx
   def centerY: Float = (y + 0.5f) * Config.CellPx
 
-/** The 20x20 board and the fixed enemy route across it.
+/** The board and the fixed enemy route across it.
   *
-  * The route is authored as a handful of corner waypoints; both the set of path
-  * cells (used for build rules and drawing) and the polyline enemies walk along
-  * are derived from it, so there is a single source of truth for "where the
-  * path is".
+  * The route is authored as a handful of corner waypoints ([[GameConfig.route]]);
+  * both the set of path cells (used for build rules and drawing) and the
+  * polyline enemies walk along are derived from it, so there is a single source
+  * of truth for "where the path is". Derived data is cached and rebuilt whenever
+  * the active config changes, so a reload re-derives the grid from the new route.
   */
 object Grid:
-  val Size = Config.GridSize
 
-  /** Corners of the serpentine, entering on the left and exiting on the right. */
-  val waypoints: Vector[GridPos] = Vector(
-    GridPos(0, 17),
-    GridPos(17, 17),
-    GridPos(17, 13),
-    GridPos(2, 13),
-    GridPos(2, 9),
-    GridPos(17, 9),
-    GridPos(17, 5),
-    GridPos(2, 5),
-    GridPos(2, 1),
-    GridPos(19, 1)
+  private case class Derived(
+      size: Int,
+      pathCells: Set[GridPos],
+      points: Vector[(Float, Float)],
+      cumulative: Vector[Float],
+      length: Float
   )
+
+  @volatile private var cachedFor: GameConfig | Null = null
+  @volatile private var cached: Derived | Null       = null
+
+  private def derived: Derived =
+    val cfg = Config.game
+    if (cachedFor eq cfg) && cached != null then cached.nn
+    else
+      val d = build(cfg)
+      cachedFor = cfg
+      cached = d
+      d
+
+  private def build(cfg: GameConfig): Derived =
+    val wp = cfg.route.waypoints
+    val pathCells = wp.indices
+      .dropRight(1)
+      .flatMap(i => cellsBetween(wp(i), wp(i + 1)))
+      .toSet
+    val points = wp.map(p => (p.centerX, p.centerY))
+    val cumulative = points.indices
+      .dropRight(1)
+      .map { i =>
+        val (ax, ay) = points(i)
+        val (bx, by) = points(i + 1)
+        math.hypot(bx - ax, by - ay).toFloat
+      }
+      .scanLeft(0f)(_ + _)
+      .toVector
+    Derived(cfg.board.gridSize, pathCells, points, cumulative, cumulative.last)
+
+  def Size: Int = derived.size
 
   def inBounds(p: GridPos): Boolean =
     p.x >= 0 && p.x < Size && p.y >= 0 && p.y < Size
 
   /** Every cell the route passes through, expanded from the waypoint corners. */
-  val pathCells: Set[GridPos] =
-    waypoints.indices
-      .dropRight(1)
-      .flatMap(i => cellsBetween(waypoints(i), waypoints(i + 1)))
-      .toSet
+  def pathCells: Set[GridPos] = derived.pathCells
 
   private def cellsBetween(a: GridPos, b: GridPos): Vector[GridPos] =
     if a.x == b.x then
@@ -50,30 +72,18 @@ object Grid:
 
   // -- the walkable polyline, in world units ---------------------------------
 
-  private val points: Vector[(Float, Float)] =
-    waypoints.map(p => (p.centerX, p.centerY))
-
-  /** Distance along the route at which each waypoint sits. */
-  private val cumulative: Vector[Float] =
-    points.indices
-      .dropRight(1)
-      .map { i =>
-        val (ax, ay) = points(i)
-        val (bx, by) = points(i + 1)
-        math.hypot(bx - ax, by - ay).toFloat
-      }
-      .toVector
-      .scanLeft(0f)(_ + _)
-
   /** Total route length in world units. */
-  val length: Float = cumulative.last
+  def length: Float = derived.length
 
   /** World position of a walker that has travelled `progress` units along the
     * route. Clamped at both ends.
     */
   def positionAt(progress: Float): (Float, Float) =
+    val d = derived
+    val points = d.points
+    val cumulative = d.cumulative
     if progress <= 0f then points.head
-    else if progress >= length then points.last
+    else if progress >= d.length then points.last
     else
       // Last waypoint at or before `progress`; the segment starts there.
       val i = cumulative.lastIndexWhere(_ <= progress).max(0).min(points.size - 2)

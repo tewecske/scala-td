@@ -17,10 +17,14 @@ object Main:
   * All the rules live in [[Sim]]; this class only decides which screen is up.
   */
 class TdGame extends ApplicationAdapter:
+  private val NoticeTime = 2f
+
   private var gfx: Render      = scala.compiletime.uninitialized
   private var phase: Phase     = Phase.Menu
   private var fast: Boolean    = false
   private var selected: Int    = 0
+  private var notice: Option[String] = None
+  private var noticeTimer: Float     = 0f
 
   override def create(): Unit =
     gfx = new Render
@@ -37,6 +41,10 @@ class TdGame extends ApplicationAdapter:
     val clicked = Gdx.input.justTouched()
     val (mx, my) = gfx.toWorld(Gdx.input.getX, Gdx.input.getY)
 
+    if notice.isDefined then
+      noticeTimer -= dt
+      if noticeTimer <= 0f then notice = None
+
     phase = phase match
       case Phase.Menu =>
         gfx.drawMenu()
@@ -51,12 +59,18 @@ class TdGame extends ApplicationAdapter:
       case Phase.Playing(w) =>
         if Gdx.input.isKeyJustPressed(Input.Keys.F) then fast = !fast
 
-        TowerType.values.indices.foreach { i =>
+        if Gdx.input.isKeyJustPressed(Input.Keys.R) then
+          if Config.reload() then notice = Some("config reloaded")
+          else notice = Some("config reload failed")
+          noticeTimer = NoticeTime
+
+        Config.game.towers.indices.foreach { i =>
           if Gdx.input.isKeyJustPressed(Input.Keys.NUM_1 + i) then selected = i
         }
-        val sel  = TowerType.values(selected)
+        selected = math.min(selected, Config.game.towers.size - 1)
+        val sel   = Config.game.towers(selected)
         val hover = Some(Grid.cellAt(mx, my)).filter(Grid.inBounds)
-        val cmds  = hover.filter(_ => clicked).map(Command.Build(_, sel)).toVector
+        val cmds  = hover.filter(_ => clicked).map(Command.Build(_, sel.name)).toVector
 
         // Fast-forward runs extra whole steps rather than a bigger dt, so the
         // rules behave identically at any speed.
@@ -64,7 +78,7 @@ class TdGame extends ApplicationAdapter:
         val first  = Sim.step(w, dt, cmds)
         val next   = (1 until steps).foldLeft(first)((acc, _) => Sim.step(acc, dt, Vector.empty))
 
-        gfx.drawGame(next, hover, fast, sel)
+        gfx.drawGame(next, hover, fast, sel, notice)
 
         if Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) then Phase.Menu
         else if next.isOver then Phase.GameOver(next.wave)
