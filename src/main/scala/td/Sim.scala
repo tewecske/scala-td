@@ -3,26 +3,28 @@ package td
 /** The entire game rule set, as a pure function of (state, time, input).
   *
   * Nothing here touches libGDX, so the simulation can be stepped headlessly.
-  * Tower/enemy types are spec names resolved against the active config.
+  * Tower/enemy types are spec names resolved against the active config. Wave
+  * composition is explicit (per-type counts), so spawning is deterministic and
+  * needs no rng.
   */
 object Sim:
 
-  def initial(seed: Long = 1L): World = World(
+  def initial(): World = World(
+    level = 0,
     towers = Vector.empty,
     enemies = Vector.empty,
     shots = Vector.empty,
     gold = Config.StartGold,
     lives = Config.StartLives,
     wave = 0,
-    spawnQueue = 0,
+    spawnQueue = Vector.empty,
     spawnTimer = 0f,
-    breakTimer = Waves.breakTime, // grace period before the first wave
-    nextId = 1L,
-    rng = seed
+    breakTimer = Waves.breakTime, // grace period before the level's first wave
+    nextId = 1L
   )
 
   def step(w0: World, dt: Float, cmds: Vector[Command]): World =
-    if w0.isOver then w0
+    if w0.isOver || w0.won then w0
     else
       val withCmds = cmds.foldLeft(w0)(applyCommand)
       val spawned  = spawn(withCmds, dt)
@@ -51,82 +53,86 @@ object Sim:
   def canBuild(w: World, cell: GridPos, tpe: String): Boolean =
     val spec = Config.towerSpec(tpe)
     w.gold >= spec.cost &&
-      Grid.isBuildable(cell) &&
+      Grid.isBuildable(cell, w.level) &&
       !w.towers.exists(_.cell == cell)
 
   // -- wave pacing -----------------------------------------------------------
 
-  /** SplitMix64: small, pure, deterministic. Returns (next state, value). */
-  private def rngNext(rng: Long): (Long, Long) =
-    var z = rng + 0x9E3779B97F4A7C15L
-    z = (z ^ (z >>> 30)) * 0xBF58476D1CE4E5B9L
-    z = (z ^ (z >>> 27)) * 0x94D049BB133111EBL
-    z = (z ^ (z >>> 31))
-    (z, z)
-
-  /** Weighted pick from a (spec, weight) table using the seeded rng. Isolated
-    * here so a later "levels" task can swap the table without touching anything
-    * else.
-    */
-  private def pickType(rng: Long, table: Vector[(EnemySpec, Int)]): (EnemySpec, Long) =
-    val (next, r) = rngNext(rng)
-    val total     = table.map(_._2).sum
-    val pick      = math.floorMod(r, total.toLong).toInt
-    var acc       = pick
-    var chosen    = table.head._1
-    var i         = 0
-    while i < table.size do
-      val (t, w) = table(i)
-      if acc < w then
-        chosen = t
-        i = table.size
-      else
-        acc -= w
-        i += 1
-    (chosen, next)
-
   private def spawn(w: World, dt: Float): World =
-    if w.inBreak || w.spawnQueue <= 0 then w
+    if w.inBreak || w.spawnQueue.isEmpty then w
     else
       val t = w.spawnTimer - dt
       if t > 0f then w.copy(spawnTimer = t)
       else
-        val (spec, rng) = pickType(w.rng, Waves.enemyTypes(w.wave))
-        val hp          = spec.baseHp * Waves.hpScale(w.wave)
-        val e           = Enemy(
+        val name     = w.spawnQueue.head
+        val spec     = Config.enemySpec(name)
+        val hp       = spec.baseHp * Waves.spec(w.level, w.wave).hpScale
+        val e        = Enemy(
           id = w.nextId,
           progress = 0f,
           hp = hp,
           maxHp = hp,
           speed = spec.baseSpeed,
-          tpe = spec.name
+          tpe = spec.name,
+          level = w.level
         )
         w.copy(
           enemies = w.enemies :+ e,
-          spawnQueue = w.spawnQueue - 1,
-          spawnTimer = Waves.spawnInterval(w.wave),
-          nextId = w.nextId + 1,
-          rng = rng
+          spawnQueue = w.spawnQueue.tail,
+          spawnTimer = Waves.spec(w.level, w.wave).spawnInterval,
+          nextId = w.nextId + 1
         )
 
   /** Counts down the break and starts the next wave; once a wave is fully
-    * spawned and cleared, opens the next break.
+    * spawned and cleared, opens the next break or — when it was the level's last
+    * wave — completes the level.
     */
   private def advanceWave(w: World, dt: Float): World =
     if w.inBreak then
       val t = w.breakTimer - dt
       if t > 0f then w.copy(breakTimer = t)
-      else
-        val next = w.wave + 1
-        w.copy(
-          breakTimer = 0f,
-          wave = next,
-          spawnQueue = Waves.count(next),
-          spawnTimer = 0f // first enemy of the wave appears immediately
-        )
-    else if w.spawnQueue == 0 && w.enemies.isEmpty then
-      w.copy(breakTimer = Waves.breakTime)
+      else startWave(w)
+    else if w.spawnQueue.isEmpty && w.enemies.isEmpty then
+      if w.wave >= Waves.waveCount(w.level) then completeLevel(w)
+      else w.copy(breakTimer = Waves.breakTime)
     else w
+
+  private def startWave(w: World): World =
+    val next = w.wave + 1
+    val spec = Waves.spec(w.level, next)
+    w.copy(
+      breakTimer = 0f,
+      wave = next,
+      spawnQueue = Waves.spawnOrder(spec),
+      spawnTimer = 0f // first enemy of the wave appears immediately
+    )
+
+  /** End-of-level transition. Towers/enemies/shots are cleared for the next
+    * route, but gold and lives carry over (plus a small bonus). Winning the last
+    * level sets [[World.won]] and freezes the sim.
+    */
+  private def completeLevel(w: World): World =
+    val next = w.level + 1
+    if next >= Config.levelCount then
+      w.copy(
+        won = true,
+        enemies = Vector.empty,
+        shots = Vector.empty,
+        spawnQueue = Vector.empty,
+        breakTimer = 0f
+      )
+    else
+      w.copy(
+        level = next,
+        wave = 0,
+        towers = Vector.empty,
+        enemies = Vector.empty,
+        shots = Vector.empty,
+        spawnQueue = Vector.empty,
+        spawnTimer = 0f,
+        breakTimer = Waves.breakTime,
+        gold = w.gold + Config.LevelBonus
+      )
 
   // -- auras ------------------------------------------------------------------
 
@@ -176,7 +182,7 @@ object Sim:
 
   private def moveEnemies(w: World, dt: Float): World =
     val advanced        = w.enemies.map(e => e.copy(progress = e.progress + e.effectiveSpeed * dt))
-    val (leaked, still) = advanced.partition(_.progress >= Grid.length)
+    val (leaked, still) = advanced.partition(e => e.progress >= Grid.length(e.level))
     if leaked.isEmpty then w.copy(enemies = still)
     else w.copy(enemies = still, lives = math.max(0, w.lives - leaked.size))
 

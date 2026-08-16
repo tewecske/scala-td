@@ -70,26 +70,20 @@ object ConfigLoader:
     val cellPx  = f(obj(root, "board"), "cellPx")
     val towers  = arr(root, "towers").map(parseTower(_, cellPx))
     val enemies = arr(root, "enemies").map(parseEnemy(_, cellPx))
-    val waves   = parseWaves(obj(root, "waves"))
     val colors  = parseColors(obj(root, "colors"))
-    val route   = parseRoute(obj(root, "route"))
 
     requireUnique(towers.map(_.name), "tower")
     requireUnique(enemies.map(_.name), "enemy")
-    val known = enemies.map(_.name).toSet
-    waves.composition.foreach { entry =>
-      entry.weights.foreach { (name, _) =>
-        if !known.contains(name) then
-          throw IllegalArgumentException(s"wave composition references unknown enemy '$name'")
-      }
-    }
+    val known  = enemies.map(_.name).toSet
+    val levels = parseLevels(root, known)
+    if levels.isEmpty then throw IllegalArgumentException("at least one level is required")
 
     val board = obj(root, "board")
     val econ  = obj(root, "economy")
     val cmbt  = obj(root, "combat")
     GameConfig(
       board = BoardConfig(i(board, "gridSize"), cellPx, f(board, "panelPx")),
-      economy = EconomyConfig(i(econ, "startGold"), i(econ, "startLives"), i(econ, "killReward")),
+      economy = EconomyConfig(i(econ, "startGold"), i(econ, "startLives"), i(econ, "killReward"), i(econ, "levelBonus")),
       combat = CombatConfig(
         f(cmbt, "maxStepDt"),
         i(cmbt, "fastForward"),
@@ -97,12 +91,12 @@ object ConfigLoader:
         f(cmbt, "burnDps"),
         f(cmbt, "burnDuration"),
         f(cmbt, "slowFactor"),
-        f(cmbt, "slowDuration")
+        f(cmbt, "slowDuration"),
+        f(cmbt, "breakTime")
       ),
       towers = towers,
       enemies = enemies,
-      waves = waves,
-      route = route,
+      levels = levels,
       colors = colors
     )
 
@@ -148,26 +142,33 @@ object ConfigLoader:
       aura = aura
     )
 
-  private def parseWaves(v: JsonValue): WaveConfig =
-    val composition = arr(v, "composition").map { entry =>
-      val w = obj(entry, "weights")
-      val weights = (0 until w.size).map { idx =>
-        val child = w.get(idx)
-        child.name -> child.asInt()
-      }.toVector
-      CompositionEntry(i(entry, "fromWave"), weights)
+  private def parseLevels(root: JsonValue, known: Set[String]): Vector[LevelConfig] =
+    arr(root, "levels").map { v =>
+      val name  = s(v, "name")
+      val route = parseRoute(obj(v, "route"))
+      val waves = arr(v, "waves").map(parseWave(_, known))
+      if route.waypoints.isEmpty then
+        throw IllegalArgumentException(s"level '$name' has an empty route")
+      if waves.isEmpty then
+        throw IllegalArgumentException(s"level '$name' has no waves")
+      LevelConfig(name, waves, route)
     }
-    WaveConfig(
-      breakTime = f(v, "breakTime"),
-      hpScaleBase = f(v, "hpScaleBase"),
-      hpScaleExp = f(v, "hpScaleExp"),
-      countBase = i(v, "countBase"),
-      countPerWave = i(v, "countPerWave"),
-      spawnIntervalStart = f(v, "spawnIntervalStart"),
-      spawnIntervalDecay = f(v, "spawnIntervalDecay"),
-      spawnIntervalMin = f(v, "spawnIntervalMin"),
-      composition = composition
-    )
+
+  private def parseWave(v: JsonValue, known: Set[String]): WaveSpec =
+    val comp = obj(v, "composition")
+    val composition = (0 until comp.size).map { idx =>
+      val child = comp.get(idx)
+      child.name -> child.asInt()
+    }.toVector
+    composition.foreach { (name, _) =>
+      if !known.contains(name) then
+        throw IllegalArgumentException(s"wave composition references unknown enemy '$name'")
+    }
+    val count = i(v, "count")
+    val total = composition.map(_._2).sum
+    if count != total then
+      throw IllegalArgumentException(s"wave count $count does not match composition total $total")
+    WaveSpec(count, f(v, "spawnInterval"), f(v, "hpScale"), composition)
 
   private def parseRoute(v: JsonValue): Route =
     val waypoints = arr(v, "waypoints").map { p =>

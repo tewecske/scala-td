@@ -34,8 +34,10 @@ enum DamageKind:
 
 /** An enemy is located by how far it has walked along the route, not by a tile.
   * That makes movement smooth, "furthest along" targeting a `maxBy`, and a leak
-  * simply `progress >= Grid.length`. The type is a spec name, resolved against
-  * the active config so a reload re-tunes enemies already on the field.
+  * simply `progress >= Grid.length(level)`. The type is a spec name, resolved
+  * against the active config so a reload re-tunes enemies already on the field.
+  * [[level]] pins the enemy to the route it was spawned on (routes differ per
+  * level).
   */
 case class Enemy(
     id: Long,
@@ -44,6 +46,7 @@ case class Enemy(
     maxHp: Float,
     speed: Float,
     tpe: String,
+    level: Int,
     slowUntil: Float = 0f,
     slowFactor: Float = 1f,
     burnDps: Float = 0f,
@@ -52,7 +55,7 @@ case class Enemy(
     armor: Float = 0f
 ):
   def spec: EnemySpec      = Config.enemySpec(tpe)
-  def pos: (Float, Float)  = Grid.positionAt(progress)
+  def pos: (Float, Float)  = Grid.positionAt(progress, level)
   def slowed: Boolean      = slowUntil > 0f
   def burning: Boolean     = burnUntil > 0f
   def buffed: Boolean      = speedMult > 1f || armor > 0f
@@ -82,17 +85,18 @@ case class Projectile(
   * seeded.
   */
 case class World(
+    level: Int,
     towers: Vector[Tower],
     enemies: Vector[Enemy],
     shots: Vector[Projectile],
     gold: Int,
     lives: Int,
     wave: Int,
-    spawnQueue: Int,
+    spawnQueue: Vector[String],
     spawnTimer: Float,
     breakTimer: Float,
     nextId: Long,
-    rng: Long
+    won: Boolean = false
 ):
   def isOver: Boolean   = lives <= 0
   def inBreak: Boolean  = breakTimer > 0f
@@ -107,4 +111,5 @@ enum Command:
 enum Phase:
   case Menu
   case Playing(w: World)
-  case GameOver(waveReached: Int)
+  case GameOver(level: Int, wave: Int)
+  case Victory(level: Int, lives: Int, gold: Int)

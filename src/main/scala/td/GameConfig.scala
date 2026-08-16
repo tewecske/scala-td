@@ -19,8 +19,8 @@ case class TowerSpec(
 )
 
 /** An enemy archetype's tuning. `baseHp`/`baseSpeed` are the wave-1 baselines
-  * (hp is scaled by [[Waves.hpScale]]); resistances and the optional aura come
-  * straight from here.
+  * (hp is scaled by the owning wave's [[WaveSpec.hpScale]]); resistances and the
+  * optional aura come straight from here.
   */
 case class EnemySpec(
     name: String,
@@ -34,7 +34,7 @@ case class EnemySpec(
 
 case class BoardConfig(gridSize: Int, cellPx: Float, panelPx: Float)
 
-case class EconomyConfig(startGold: Int, startLives: Int, killReward: Int)
+case class EconomyConfig(startGold: Int, startLives: Int, killReward: Int, levelBonus: Int)
 
 case class CombatConfig(
     maxStepDt: Float,
@@ -43,25 +43,23 @@ case class CombatConfig(
     burnDps: Float,
     burnDuration: Float,
     slowFactor: Float,
-    slowDuration: Float
+    slowDuration: Float,
+    breakTime: Float
 )
 
-/** From [[fromWave]] onward, these enemy types (by name) join the spawn table
-  * with the given relative weights. Later entries pile onto earlier ones.
+/** One wave of a level: a fixed enemy mix and its pacing. [[composition]] lists
+  * exact per-type counts (enemy NAME -> count); the sim expands it into a
+  * concrete spawn order by repeating each type `count` times, in listed order.
   */
-case class CompositionEntry(fromWave: Int, weights: Vector[(String, Int)])
-
-case class WaveConfig(
-    breakTime: Float,
-    hpScaleBase: Float,
-    hpScaleExp: Float,
-    countBase: Int,
-    countPerWave: Int,
-    spawnIntervalStart: Float,
-    spawnIntervalDecay: Float,
-    spawnIntervalMin: Float,
-    composition: Vector[CompositionEntry]
+case class WaveSpec(
+    count: Int,
+    spawnInterval: Float,
+    hpScale: Float,
+    composition: Vector[(String, Int)]
 )
+
+/** One level: a named route plus its own explicit wave table. */
+case class LevelConfig(name: String, waves: Vector[WaveSpec], route: Route)
 
 /** The walkable route, authored as corner waypoints. Path cells and the
   * polyline enemies walk are derived from these by [[Grid]].
@@ -101,7 +99,6 @@ case class GameConfig(
     combat: CombatConfig,
     towers: Vector[TowerSpec],
     enemies: Vector[EnemySpec],
-    waves: WaveConfig,
-    route: Route,
+    levels: Vector[LevelConfig],
     colors: Colors
 )

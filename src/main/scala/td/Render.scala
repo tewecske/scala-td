@@ -82,7 +82,7 @@ class Render:
       Config.WorldW / 2, 120f, 1f, Config.DimText)
     batch.end()
 
-  def drawGameOver(wave: Int): Unit =
+  def drawGameOver(level: Int, wave: Int): Unit =
     begin()
     shapes.begin(ShapeType.Filled)
     button(Ui.Retry)
@@ -91,8 +91,23 @@ class Render:
 
     batch.begin()
     centered("GAME OVER", Config.WorldW / 2, 460f, 3f, Config.EnemyColor)
-    centered(s"you reached wave $wave", Config.WorldW / 2, 400f, 1.4f, Config.DimText)
+    centered(s"you reached level ${level + 1} · wave $wave", Config.WorldW / 2, 400f, 1.4f, Config.DimText)
     buttonLabel(Ui.Retry, "RETRY")
+    buttonLabel(Ui.Menu, "MENU")
+    batch.end()
+
+  def drawVictory(level: Int, lives: Int, gold: Int): Unit =
+    begin()
+    shapes.begin(ShapeType.Filled)
+    button(Ui.PlayAgain)
+    button(Ui.Menu)
+    shapes.end()
+
+    batch.begin()
+    centered("VICTORY", Config.WorldW / 2, 460f, 3f, Config.BuffTint)
+    centered(s"all ${level + 1} levels cleared", Config.WorldW / 2, 400f, 1.4f, Config.DimText)
+    centered(s"$lives lives remaining · $gold gold", Config.WorldW / 2, 365f, 1.2f, Config.DimText)
+    buttonLabel(Ui.PlayAgain, "PLAY AGAIN")
     buttonLabel(Ui.Menu, "MENU")
     batch.end()
 
@@ -100,7 +115,7 @@ class Render:
     begin()
 
     shapes.begin(ShapeType.Filled)
-    drawBoard()
+    drawBoard(w.level)
     drawTowers(w)
     drawEnemies(w)
     drawShots(w)
@@ -124,13 +139,14 @@ class Render:
   /** Cells are drawn inset by one unit, which leaves the dark background
     * showing through as grid lines for free.
     */
-  private def drawBoard(): Unit =
+  private def drawBoard(level: Int): Unit =
+    val path = Grid.pathCells(level)
     for
       gx <- 0 until Config.GridSize
       gy <- 0 until Config.GridSize
     do
       val cell = GridPos(gx, gy)
-      shapes.setColor(if Grid.pathCells.contains(cell) then Config.PathColor else Config.BuildColor)
+      shapes.setColor(if path.contains(cell) then Config.PathColor else Config.BuildColor)
       shapes.rect(gx * Config.CellPx + 1f, gy * Config.CellPx + 1f, Config.CellPx - 2f, Config.CellPx - 2f)
 
   private def drawTowers(w: World): Unit =
@@ -204,7 +220,7 @@ class Render:
       shapes.setColor(t.spec.color)
       shapes.circle(t.cell.centerX, t.cell.centerY, t.spec.range)
     }
-    hover.filter(Grid.isBuildable).foreach { c =>
+    hover.filter(c => Grid.isBuildable(c, w.level)).foreach { c =>
       shapes.setColor(selected.color)
       shapes.circle(c.centerX, c.centerY, selected.range)
     }
@@ -218,16 +234,18 @@ class Render:
 
     line(s"GOLD   ${w.gold}", 1.5f, Config.ShotColor)
     line(s"LIVES  ${w.lives}", 1.5f, Config.EnemyColor)
-    line(s"WAVE   ${w.wave}", 1.5f, Config.TextColor)
+    line(s"LEVEL  ${w.level + 1} / ${Config.levelCount}  ${Config.levelAt(w.level).name}", 1.3f, Config.TextColor)
+    line(s"WAVE   ${w.wave} / ${Waves.waveCount(w.level)}", 1.5f, Config.TextColor)
     y -= 12f
 
     if w.inBreak then
       line(f"next wave in ${w.breakTimer}%.1fs", 1.1f, Config.DimText)
     else
-      line(s"left to spawn: ${w.spawnQueue}", 1.1f, Config.DimText)
+      line(s"left to spawn: ${w.spawnQueue.size}", 1.1f, Config.DimText)
       line(s"on the field: ${w.enemies.size}", 1.1f, Config.DimText)
 
-    val kinds = Waves.enemyTypes(w.wave).map((s, _) => s.name).mkString(", ")
+    val waveNum = if w.inBreak then math.min(w.wave + 1, Waves.waveCount(w.level)) else w.wave
+    val kinds = Waves.spec(w.level, waveNum).composition.map(_._1).mkString(", ")
     line(s"types: $kinds", 1.0f, Config.DimText)
 
     y -= 20f

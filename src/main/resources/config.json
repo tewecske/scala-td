@@ -1,6 +1,6 @@
 {
   "board": { "gridSize": 20, "cellPx": 32.0, "panelPx": 240.0 },
-  "economy": { "startGold": 120, "startLives": 20, "killReward": 8 },
+  "economy": { "startGold": 120, "startLives": 20, "killReward": 8, "levelBonus": 50 },
   "combat": {
     "maxStepDt": 0.05,
     "fastForward": 3,
@@ -8,7 +8,8 @@
     "burnDps": 6.0,
     "burnDuration": 3.0,
     "slowFactor": 0.5,
-    "slowDuration": 2.0
+    "slowDuration": 2.0,
+    "breakTime": 4.0
   },
   "towers": [
     { "name": "Basic",   "cost": 50,  "color": "#5999F2", "range": 3.2, "fireInterval": 0.55, "damage": 12.0, "projectileSpeed": 420.0, "kind": "Kinetic",   "splashRadius": 0.0 },
@@ -35,22 +36,41 @@
       "resist": { "kinetic": 0.2, "fire": 0.0, "slow": 0.0, "splash": 0.0, "explosion": 0.0 },
       "aura": { "kind": "Armor", "radius": 2.0, "magnitude": 0.3 } }
   ],
-  "waves": {
-    "breakTime": 4.0,
-    "hpScaleBase": 1.17,
-    "hpScaleExp": 1.0,
-    "countBase": 5,
-    "countPerWave": 2,
-    "spawnIntervalStart": 0.85,
-    "spawnIntervalDecay": 0.02,
-    "spawnIntervalMin": 0.32,
-    "composition": [
-      { "fromWave": 1, "weights": { "Grunt": 8, "Swift": 3 } },
-      { "fromWave": 3, "weights": { "Ember": 3, "Frostling": 3, "Brute": 2 } },
-      { "fromWave": 6, "weights": { "Commander": 2, "Shieldbearer": 2 } }
-    ]
-  },
-  "route": { "waypoints": [[0, 17], [17, 17], [17, 13], [2, 13], [2, 9], [17, 9], [17, 5], [2, 5], [2, 1], [19, 1]] },
+  "levels": [
+    {
+      "name": "Verdant Valley",
+      "route": { "waypoints": [[0, 17], [17, 17], [17, 13], [2, 13], [2, 9], [17, 9], [17, 5], [2, 5], [2, 1], [19, 1]] },
+      "waves": [
+        { "count": 8,  "spawnInterval": 0.85, "hpScale": 1.0,  "composition": { "Grunt": 6, "Swift": 2 } },
+        { "count": 10, "spawnInterval": 0.80, "hpScale": 1.1,  "composition": { "Grunt": 7, "Swift": 3 } },
+        { "count": 12, "spawnInterval": 0.75, "hpScale": 1.25, "composition": { "Grunt": 6, "Swift": 2, "Ember": 2, "Frostling": 2 } },
+        { "count": 14, "spawnInterval": 0.70, "hpScale": 1.4,  "composition": { "Grunt": 8, "Swift": 2, "Ember": 2, "Frostling": 2 } }
+      ]
+    },
+    {
+      "name": "Ashen Ridge",
+      "route": { "waypoints": [[0, 1], [0, 9], [8, 9], [8, 17], [16, 17], [16, 3], [19, 3]] },
+      "waves": [
+        { "count": 10, "spawnInterval": 0.80, "hpScale": 1.2, "composition": { "Grunt": 6, "Ember": 4 } },
+        { "count": 12, "spawnInterval": 0.75, "hpScale": 1.4, "composition": { "Swift": 4, "Ember": 4, "Frostling": 4 } },
+        { "count": 14, "spawnInterval": 0.70, "hpScale": 1.6, "composition": { "Grunt": 6, "Brute": 2, "Ember": 4, "Frostling": 2 } },
+        { "count": 16, "spawnInterval": 0.65, "hpScale": 1.8, "composition": { "Brute": 4, "Ember": 4, "Commander": 2, "Frostling": 4, "Swift": 2 } },
+        { "count": 18, "spawnInterval": 0.60, "hpScale": 2.0, "composition": { "Brute": 4, "Commander": 3, "Shieldbearer": 3, "Ember": 4, "Swift": 4 } }
+      ]
+    },
+    {
+      "name": "The Citadel",
+      "route": { "waypoints": [[19, 0], [19, 10], [2, 10], [2, 2], [17, 2], [17, 6], [6, 6], [6, 14], [19, 14]] },
+      "waves": [
+        { "count": 12, "spawnInterval": 0.75, "hpScale": 1.5, "composition": { "Grunt": 6, "Frostling": 6 } },
+        { "count": 14, "spawnInterval": 0.70, "hpScale": 1.8, "composition": { "Brute": 3, "Ember": 5, "Swift": 6 } },
+        { "count": 16, "spawnInterval": 0.65, "hpScale": 2.1, "composition": { "Commander": 3, "Brute": 4, "Shieldbearer": 3, "Grunt": 6 } },
+        { "count": 18, "spawnInterval": 0.60, "hpScale": 2.5, "composition": { "Commander": 4, "Shieldbearer": 4, "Brute": 5, "Ember": 5 } },
+        { "count": 20, "spawnInterval": 0.55, "hpScale": 2.9, "composition": { "Commander": 5, "Shieldbearer": 5, "Brute": 5, "Frostling": 5 } },
+        { "count": 22, "spawnInterval": 0.50, "hpScale": 3.3, "composition": { "Commander": 6, "Shieldbearer": 6, "Brute": 6, "Ember": 4 } }
+      ]
+    }
+  ],
   "colors": {
     "background": "#171A21",
     "path": "#70695E",

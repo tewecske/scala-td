@@ -4,13 +4,14 @@ case class GridPos(x: Int, y: Int):
   def centerX: Float = (x + 0.5f) * Config.CellPx
   def centerY: Float = (y + 0.5f) * Config.CellPx
 
-/** The board and the fixed enemy route across it.
+/** The board and the per-level enemy routes across it.
   *
-  * The route is authored as a handful of corner waypoints ([[GameConfig.route]]);
-  * both the set of path cells (used for build rules and drawing) and the
-  * polyline enemies walk along are derived from it, so there is a single source
-  * of truth for "where the path is". Derived data is cached and rebuilt whenever
-  * the active config changes, so a reload re-derives the grid from the new route.
+  * Each route is authored as a handful of corner waypoints (one per
+  * [[LevelConfig]]); both the set of path cells (used for build rules and
+  * drawing) and the polyline enemies walk along are derived from it, so there
+  * is a single source of truth for "where the path is". Derived data is cached
+  * per (config, level) and rebuilt whenever either changes, so a reload or a
+  * level transition re-derives the grid from the right route.
   */
 object Grid:
 
@@ -22,20 +23,33 @@ object Grid:
       length: Float
   )
 
-  @volatile private var cachedFor: GameConfig | Null = null
-  @volatile private var cached: Derived | Null       = null
+  @volatile private var cachedSizeFor: GameConfig | Null = null
+  @volatile private var cachedSize: Int                  = 0
 
-  private def derived: Derived =
+  @volatile private var cachedRouteFor: (GameConfig, Int) | Null = null
+  @volatile private var cachedRoute: Derived | Null              = null
+
+  private def size: Int =
     val cfg = Config.game
-    if (cachedFor eq cfg) && cached != null then cached.nn
+    if (cachedSizeFor eq cfg) then cachedSize
     else
-      val d = build(cfg)
-      cachedFor = cfg
-      cached = d
+      val s = cfg.board.gridSize
+      cachedSizeFor = cfg
+      cachedSize = s
+      s
+
+  private def routeDerived(level: Int): Derived =
+    val cfg = Config.game
+    val key = (cfg, level)
+    if (cachedRouteFor eq key) && cachedRoute != null then cachedRoute.nn
+    else
+      val d = build(cfg, level)
+      cachedRouteFor = key
+      cachedRoute = d
       d
 
-  private def build(cfg: GameConfig): Derived =
-    val wp = cfg.route.waypoints
+  private def build(cfg: GameConfig, level: Int): Derived =
+    val wp = Config.levelAt(level).route.waypoints
     val pathCells = wp.indices
       .dropRight(1)
       .flatMap(i => cellsBetween(wp(i), wp(i + 1)))
@@ -52,13 +66,15 @@ object Grid:
       .toVector
     Derived(cfg.board.gridSize, pathCells, points, cumulative, cumulative.last)
 
-  def Size: Int = derived.size
+  def Size: Int = size
 
   def inBounds(p: GridPos): Boolean =
     p.x >= 0 && p.x < Size && p.y >= 0 && p.y < Size
 
-  /** Every cell the route passes through, expanded from the waypoint corners. */
-  def pathCells: Set[GridPos] = derived.pathCells
+  /** Every cell the current level's route passes through, expanded from the
+    * waypoint corners.
+    */
+  def pathCells(level: Int): Set[GridPos] = routeDerived(level).pathCells
 
   private def cellsBetween(a: GridPos, b: GridPos): Vector[GridPos] =
     if a.x == b.x then
@@ -68,18 +84,19 @@ object Grid:
       val (lo, hi) = (math.min(a.x, b.x), math.max(a.x, b.x))
       (lo to hi).toVector.map(GridPos(_, a.y))
 
-  def isBuildable(p: GridPos): Boolean = inBounds(p) && !pathCells.contains(p)
+  def isBuildable(p: GridPos, level: Int): Boolean =
+    inBounds(p) && !pathCells(level).contains(p)
 
   // -- the walkable polyline, in world units ---------------------------------
 
-  /** Total route length in world units. */
-  def length: Float = derived.length
+  /** Total route length of the current level, in world units. */
+  def length(level: Int): Float = routeDerived(level).length
 
   /** World position of a walker that has travelled `progress` units along the
-    * route. Clamped at both ends.
+    * level's route. Clamped at both ends.
     */
-  def positionAt(progress: Float): (Float, Float) =
-    val d = derived
+  def positionAt(progress: Float, level: Int): (Float, Float) =
+    val d = routeDerived(level)
     val points = d.points
     val cumulative = d.cumulative
     if progress <= 0f then points.head

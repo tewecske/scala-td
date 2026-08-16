@@ -50,11 +50,17 @@ class TdGame extends ApplicationAdapter:
         gfx.drawMenu()
         if clicked && Ui.Play.contains(mx, my) then newRun() else Phase.Menu
 
-      case Phase.GameOver(wave) =>
-        gfx.drawGameOver(wave)
+      case Phase.GameOver(level, wave) =>
+        gfx.drawGameOver(level, wave)
         if clicked && Ui.Retry.contains(mx, my) then newRun()
         else if clicked && Ui.Menu.contains(mx, my) then Phase.Menu
-        else Phase.GameOver(wave)
+        else Phase.GameOver(level, wave)
+
+      case Phase.Victory(level, lives, gold) =>
+        gfx.drawVictory(level, lives, gold)
+        if clicked && Ui.PlayAgain.contains(mx, my) then newRun()
+        else if clicked && Ui.Menu.contains(mx, my) then Phase.Menu
+        else Phase.Victory(level, lives, gold)
 
       case Phase.Playing(w) =>
         if Gdx.input.isKeyJustPressed(Input.Keys.F) then fast = !fast
@@ -81,10 +87,11 @@ class TdGame extends ApplicationAdapter:
         gfx.drawGame(next, hover, fast, sel, notice)
 
         if Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) then Phase.Menu
-        else if next.isOver then Phase.GameOver(next.wave)
+        else if next.won then Phase.Victory(next.level, next.lives, next.gold)
+        else if next.isOver then Phase.GameOver(next.level, next.wave)
         else Phase.Playing(next)
 
   /** Every run starts from a clean World, so nothing leaks across retries. */
   private def newRun(): Phase =
     fast = false
-    Phase.Playing(Sim.initial(System.nanoTime()))
+    Phase.Playing(Sim.initial())

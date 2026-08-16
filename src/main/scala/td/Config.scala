@@ -38,6 +38,7 @@ object Config:
   def StartGold: Int  = current.economy.startGold
   def StartLives: Int = current.economy.startLives
   def KillReward: Int = current.economy.killReward
+  def LevelBonus: Int = current.economy.levelBonus
 
   // -- combat ----------------------------------------------------------------
   def HitRadius: Float    = current.combat.hitRadius
@@ -47,12 +48,23 @@ object Config:
   def SlowDuration: Float = current.combat.slowDuration
   def MaxStepDt: Float    = current.combat.maxStepDt
   def FastForward: Int    = current.combat.fastForward
+  def BreakTime: Float    = current.combat.breakTime
 
   // -- specs ------------------------------------------------------------------
   def towerSpec(name: String): TowerSpec =
     current.towers.find(_.name == name).getOrElse(sys.error(s"unknown tower '$name'"))
   def enemySpec(name: String): EnemySpec =
     current.enemies.find(_.name == name).getOrElse(sys.error(s"unknown enemy '$name'"))
+
+  // -- levels -----------------------------------------------------------------
+  def levels: Vector[LevelConfig] = current.levels
+  def levelCount: Int             = current.levels.size
+
+  /** Clamped level lookup so the sim can never index out of bounds on a reload
+    * or a config that shrank mid-run.
+    */
+  def levelAt(idx: Int): LevelConfig =
+    current.levels(math.max(0, math.min(idx, current.levels.size - 1)))
 
   // -- colors ----------------------------------------------------------------
   def Background: Color   = current.colors.background
@@ -96,3 +108,4 @@ object Ui:
   def Play  = Rect(cx, 240f, bw, bh)
   def Retry = Rect(cx, 250f, bw, bh)
   def Menu  = Rect(cx, 180f, bw, bh)
+  def PlayAgain = Rect(cx, 250f, bw, bh)
