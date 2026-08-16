@@ -110,6 +110,7 @@ class Render:
 
     shapes.begin(ShapeType.Line)
     drawRanges(w, hover, selected)
+    drawAuras(w)
     shapes.end()
 
     batch.begin()
@@ -142,8 +143,8 @@ class Render:
     }
 
   private def drawEnemies(w: World): Unit =
-    val size = 16f
     w.enemies.foreach { e =>
+      val size = e.tpe.size
       val (ex, ey) = e.pos
       if e.slowed then
         shapes.setColor(Config.SlowTint)
@@ -151,8 +152,11 @@ class Render:
       if e.burning then
         shapes.setColor(Config.BurnTint)
         shapes.rect(ex - size / 2 - 1.5f, ey - size / 2 - 1.5f, size + 3f, size + 3f)
-      shapes.setColor(Config.EnemyColor)
+      shapes.setColor(e.tpe.color)
       shapes.rect(ex - size / 2, ey - size / 2, size, size)
+      if e.buffed then
+        shapes.setColor(Config.BuffTint)
+        shapes.rect(ex - size / 2 - 3f, ey - size / 2 - 3f, 5f, 5f)
 
       // hp bar floating above the square
       val barW = 20f
@@ -161,6 +165,16 @@ class Render:
       shapes.rect(ex - barW / 2, ey + size / 2 + 3f, barW, 3f)
       shapes.setColor(Config.HpBarFill)
       shapes.rect(ex - barW / 2, ey + size / 2 + 3f, barW * frac, 3f)
+    }
+
+  /** Ring around each aura carrier so its buff radius is legible. */
+  private def drawAuras(w: World): Unit =
+    w.enemies.foreach { e =>
+      e.tpe.aura.foreach { a =>
+        val (ex, ey) = e.pos
+        shapes.setColor(e.tpe.color)
+        shapes.circle(ex, ey, a.radius)
+      }
     }
 
   private def shotColor(kind: DamageKind): Color = kind match
@@ -210,6 +224,9 @@ class Render:
     else
       line(s"left to spawn: ${w.spawnQueue}", 1.1f, Config.DimText)
       line(s"on the field: ${w.enemies.size}", 1.1f, Config.DimText)
+
+    val kinds = Waves.enemyTypes(w.wave).map((t, _) => t.name).mkString(", ")
+    line(s"types: $kinds", 1.0f, Config.DimText)
 
     y -= 20f
     line("build [1..5]", 1.0f, Config.DimText)

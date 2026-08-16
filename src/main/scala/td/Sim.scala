@@ -25,7 +25,8 @@ object Sim:
     else
       val withCmds = cmds.foldLeft(w0)(applyCommand)
       val spawned  = spawn(withCmds, dt)
-      val effected = tickEffects(spawned, dt)
+      val auras    = applyAuras(spawned)
+      val effected = tickEffects(auras, dt)
       val moved    = moveEnemies(effected, dt)
       val fired    = fireTowers(moved, dt)
       val resolved = moveProjectiles(fired, dt)
@@ -54,24 +55,57 @@ object Sim:
 
   // -- wave pacing -----------------------------------------------------------
 
+  /** SplitMix64: small, pure, deterministic. Returns (next state, value). */
+  private def rngNext(rng: Long): (Long, Long) =
+    var z = rng + 0x9E3779B97F4A7C15L
+    z = (z ^ (z >>> 30)) * 0xBF58476D1CE4E5B9L
+    z = (z ^ (z >>> 27)) * 0x94D049BB133111EBL
+    z = (z ^ (z >>> 31))
+    (z, z)
+
+  /** Weighted pick from a (type, weight) table using the seeded rng. Isolated
+    * here so a later "levels" task can swap the table without touching anything
+    * else.
+    */
+  private def pickType(rng: Long, table: Vector[(EnemyType, Int)]): (EnemyType, Long) =
+    val (next, r) = rngNext(rng)
+    val total     = table.map(_._2).sum
+    val pick      = math.floorMod(r, total.toLong).toInt
+    var acc       = pick
+    var chosen    = table.head._1
+    var i         = 0
+    while i < table.size do
+      val (t, w) = table(i)
+      if acc < w then
+        chosen = t
+        i = table.size
+      else
+        acc -= w
+        i += 1
+    (chosen, next)
+
   private def spawn(w: World, dt: Float): World =
     if w.inBreak || w.spawnQueue <= 0 then w
     else
       val t = w.spawnTimer - dt
       if t > 0f then w.copy(spawnTimer = t)
       else
-        val e = Enemy(
+        val (tpe, rng) = pickType(w.rng, Waves.enemyTypes(w.wave))
+        val hp         = tpe.baseHp * Waves.hpScale(w.wave)
+        val e          = Enemy(
           id = w.nextId,
           progress = 0f,
-          hp = Waves.hp(w.wave),
-          maxHp = Waves.hp(w.wave),
-          speed = Waves.speed(w.wave)
+          hp = hp,
+          maxHp = hp,
+          speed = tpe.baseSpeed,
+          tpe = tpe
         )
         w.copy(
           enemies = w.enemies :+ e,
           spawnQueue = w.spawnQueue - 1,
           spawnTimer = Waves.spawnInterval(w.wave),
-          nextId = w.nextId + 1
+          nextId = w.nextId + 1,
+          rng = rng
         )
 
   /** Counts down the break and starts the next wave; once a wave is fully
@@ -92,6 +126,34 @@ object Sim:
     else if w.spawnQueue == 0 && w.enemies.isEmpty then
       w.copy(breakTimer = Waves.BreakTime)
     else w
+
+  // -- auras ------------------------------------------------------------------
+
+  /** Buffs each enemy from nearby aura carriers. Only the strongest source of
+    * each buff kind counts, so stacking commanders can never balloon speed.
+    */
+  private def applyAuras(w: World): World =
+    val carriers = w.enemies.filter(_.tpe.aura.isDefined)
+    if carriers.isEmpty then w
+    else
+      w.copy(enemies = w.enemies.map { e =>
+        var speedMult = 1f
+        var armor     = 0f
+        carriers.foreach { src =>
+          if src.id != e.id then
+            src.tpe.aura.foreach { a =>
+              val (sx, sy) = src.pos
+              val (ex, ey) = e.pos
+              val dx       = sx - ex
+              val dy       = sy - ey
+              if dx * dx + dy * dy <= a.radius * a.radius then
+                a.kind match
+                  case AuraKind.SpeedBoost => speedMult = math.max(speedMult, 1f + a.magnitude)
+                  case AuraKind.Armor      => armor = math.max(armor, a.magnitude)
+            }
+        }
+        e.copy(speedMult = speedMult, armor = armor)
+      })
 
   // -- movement --------------------------------------------------------------
 
@@ -154,8 +216,10 @@ object Sim:
 
     w.copy(towers = towers, shots = w.shots ++ fresh.result())
 
-  /** One landing shot's worth of effect on a single enemy. */
-  private case class Hit(id: Long, damage: Float, burn: Option[(Float, Float)], slow: Option[(Float, Float)])
+  /** One landing shot's worth of effect on a single enemy. Resistances are not
+    * applied here — each target reads its own resist/armor when the hit lands.
+    */
+  private case class Hit(id: Long, kind: DamageKind, damage: Float, burn: Option[(Float, Float)], slow: Option[(Float, Float)])
 
   /** Moves each shot, converts the ones that land into hits, applies them, then
     * cashes in whatever died. Explosion shots detonate at their fixed point even
@@ -193,15 +257,24 @@ object Sim:
       hitsById.get(e.id) match
         case None => e
         case Some(es) =>
-          val total = es.map(_.damage).sum
-          es.foldLeft(e.copy(hp = e.hp - total)) { (acc, h) =>
-            val burned = h.burn.fold(acc) { case (dps, dur) =>
-              acc.copy(burnDps = math.max(acc.burnDps, dps), burnUntil = math.max(acc.burnUntil, dur))
+          es.foldLeft(e) { (acc, h) =>
+            val dmg = math.max(0f, h.damage * (1f - e.resist(h.kind)) * (1f - e.armor))
+            var cur = acc.copy(hp = acc.hp - dmg)
+            h.burn.foreach { case (dps, dur) =>
+              val fr = e.resist(DamageKind.Fire)
+              val du = dur * (1f - fr)
+              if du > 0f then
+                cur = cur.copy(burnDps = math.max(cur.burnDps, dps * (1f - fr)), burnUntil = math.max(cur.burnUntil, du))
             }
-            h.slow.fold(burned) { case (factor, dur) =>
-              val f = if burned.slowed then math.min(burned.slowFactor, factor) else factor
-              burned.copy(slowFactor = f, slowUntil = math.max(burned.slowUntil, dur))
+            h.slow.foreach { case (factor, dur) =>
+              val sr = e.resist(DamageKind.Slow)
+              val du = dur * (1f - sr)
+              if du > 0f then
+                val f  = 1f - (1f - factor) * (1f - sr)
+                val ff = if cur.slowed then math.min(cur.slowFactor, f) else f
+                cur = cur.copy(slowFactor = ff, slowUntil = math.max(cur.slowUntil, du))
             }
+            cur
           }
     }
     val (dead, alive) = damaged.partition(_.hp <= 0f)
@@ -227,9 +300,9 @@ object Sim:
 
     targets.map { e =>
       p.kind match
-        case DamageKind.Kinetic   => Hit(e.id, p.damage, None, None)
-        case DamageKind.Fire      => Hit(e.id, p.damage, Some((Config.BurnDps, Config.BurnDuration)), None)
-        case DamageKind.Slow      => Hit(e.id, p.damage, None, Some((Config.SlowFactor, Config.SlowDuration)))
-        case DamageKind.Splash    => Hit(e.id, p.damage, None, None)
-        case DamageKind.Explosion => Hit(e.id, p.damage, None, None)
+        case DamageKind.Kinetic   => Hit(e.id, DamageKind.Kinetic, p.damage, None, None)
+        case DamageKind.Fire      => Hit(e.id, DamageKind.Fire, p.damage, Some((Config.BurnDps, Config.BurnDuration)), None)
+        case DamageKind.Slow      => Hit(e.id, DamageKind.Slow, p.damage, None, Some((Config.SlowFactor, Config.SlowDuration)))
+        case DamageKind.Splash    => Hit(e.id, DamageKind.Splash, p.damage, None, None)
+        case DamageKind.Explosion => Hit(e.id, DamageKind.Explosion, p.damage, None, None)
     }

@@ -2,6 +2,53 @@ package td
 
 import com.badlogic.gdx.graphics.Color
 
+/** How much of each damage kind a type shrugs off. Each value is the fraction
+  * removed, so 0f means no resistance and 1f means immune.
+  */
+case class Resistances(
+    kinetic: Float = 0f,
+    fire: Float = 0f,
+    slow: Float = 0f,
+    splash: Float = 0f,
+    explosion: Float = 0f
+):
+  def apply(kind: DamageKind): Float = kind match
+    case DamageKind.Kinetic   => kinetic
+    case DamageKind.Fire      => fire
+    case DamageKind.Slow      => slow
+    case DamageKind.Splash    => splash
+    case DamageKind.Explosion => explosion
+
+enum AuraKind:
+  case SpeedBoost, Armor
+
+/** A passive radiating from a buffing enemy to nearby allies. [[magnitude]] is
+  * a +fraction for speed (0.25 = +25%) or a damage-reduction fraction for armor
+  * (0.3 = 30% less incoming damage).
+  */
+case class Aura(kind: AuraKind, radius: Float, magnitude: Float)
+
+/** The fixed profile of an enemy archetype. hp/speed are the wave-1 baselines
+  * (hp is scaled by [[Waves.hpScale]]); resistances and the optional aura come
+  * straight from here.
+  */
+enum EnemyType(
+    val name: String,
+    val baseHp: Float,
+    val baseSpeed: Float,
+    val color: Color,
+    val size: Float,
+    val resist: Resistances,
+    val aura: Option[Aura]
+):
+  case Grunt   extends EnemyType("Grunt", 22f, 42f, Config.EnemyColor, 16f, Resistances(), None)
+  case Swift   extends EnemyType("Swift", 10f, 70f, Config.EnemySwiftColor, 12f, Resistances(), None)
+  case Brute   extends EnemyType("Brute", 90f, 24f, Config.EnemyBruteColor, 26f, Resistances(kinetic = 0.35f), None)
+  case Ember   extends EnemyType("Ember", 26f, 40f, Config.EnemyEmberColor, 16f, Resistances(fire = 0.6f), None)
+  case Frostling extends EnemyType("Frostling", 24f, 42f, Config.EnemyFrostlingColor, 16f, Resistances(slow = 0.7f), None)
+  case Commander extends EnemyType("Commander", 60f, 30f, Config.EnemyCommanderColor, 18f, Resistances(), Some(Aura(AuraKind.SpeedBoost, 2.5f * Config.CellPx, 0.25f)))
+  case Shieldbearer extends EnemyType("Shieldbearer", 55f, 32f, Config.EnemyShieldbearerColor, 18f, Resistances(kinetic = 0.2f), Some(Aura(AuraKind.Armor, 2.0f * Config.CellPx, 0.3f)))
+
 /** An enemy is located by how far it has walked along the route, not by a tile.
   * That makes movement smooth, "furthest along" targeting a `maxBy`, and a leak
   * simply `progress >= Grid.length`.
@@ -12,15 +59,20 @@ case class Enemy(
     hp: Float,
     maxHp: Float,
     speed: Float,
+    tpe: EnemyType,
     slowUntil: Float = 0f,
     slowFactor: Float = 1f,
     burnDps: Float = 0f,
-    burnUntil: Float = 0f
+    burnUntil: Float = 0f,
+    speedMult: Float = 1f,
+    armor: Float = 0f
 ):
   def pos: (Float, Float) = Grid.positionAt(progress)
   def slowed: Boolean     = slowUntil > 0f
   def burning: Boolean    = burnUntil > 0f
-  def effectiveSpeed: Float = if slowed then speed * slowFactor else speed
+  def buffed: Boolean     = speedMult > 1f || armor > 0f
+  def resist: Resistances = tpe.resist
+  def effectiveSpeed: Float = (if slowed then speed * slowFactor else speed) * speedMult
 
 case class Tower(cell: GridPos, cooldown: Float, tpe: TowerType)
 
