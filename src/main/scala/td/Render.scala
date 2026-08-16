@@ -77,7 +77,7 @@ class Render:
     centered("TOWER DEFENSE", Config.WorldW / 2, 440f, 3f)
     centered("20 x 20 · hold the line", Config.WorldW / 2, 390f, 1.2f, Config.DimText)
     buttonLabel(Ui.Play, "PLAY")
-    centered("click a green tile to build · F to fast-forward · ESC to quit a run",
+    centered("1-5 to pick a tower · click green to build · F to fast-forward · ESC to quit a run",
       Config.WorldW / 2, 120f, 1f, Config.DimText)
     batch.end()
 
@@ -95,7 +95,7 @@ class Render:
     buttonLabel(Ui.Menu, "MENU")
     batch.end()
 
-  def drawGame(w: World, hover: Option[GridPos], fast: Boolean): Unit =
+  def drawGame(w: World, hover: Option[GridPos], fast: Boolean, selected: TowerType): Unit =
     begin()
 
     shapes.begin(ShapeType.Filled)
@@ -103,17 +103,17 @@ class Render:
     drawTowers(w)
     drawEnemies(w)
     drawShots(w)
-    drawHover(w, hover)
+    drawHover(w, hover, selected)
     shapes.setColor(Config.PanelColor)
     shapes.rect(Config.BoardPx, 0f, Config.PanelPx, Config.WorldH)
     shapes.end()
 
     shapes.begin(ShapeType.Line)
-    drawRanges(w, hover)
+    drawRanges(w, hover, selected)
     shapes.end()
 
     batch.begin()
-    drawHud(w, fast)
+    drawHud(w, fast, selected)
     batch.end()
 
   // -- board pieces ----------------------------------------------------------
@@ -131,8 +131,8 @@ class Render:
       shapes.rect(gx * Config.CellPx + 1f, gy * Config.CellPx + 1f, Config.CellPx - 2f, Config.CellPx - 2f)
 
   private def drawTowers(w: World): Unit =
-    shapes.setColor(Config.TowerColor)
     w.towers.foreach { t =>
+      shapes.setColor(t.tpe.color)
       shapes.rect(
         t.cell.x * Config.CellPx + 5f,
         t.cell.y * Config.CellPx + 5f,
@@ -145,6 +145,12 @@ class Render:
     val size = 16f
     w.enemies.foreach { e =>
       val (ex, ey) = e.pos
+      if e.slowed then
+        shapes.setColor(Config.SlowTint)
+        shapes.rect(ex - size / 2 - 3f, ey - size / 2 - 3f, size + 6f, size + 6f)
+      if e.burning then
+        shapes.setColor(Config.BurnTint)
+        shapes.rect(ex - size / 2 - 1.5f, ey - size / 2 - 1.5f, size + 3f, size + 3f)
       shapes.setColor(Config.EnemyColor)
       shapes.rect(ex - size / 2, ey - size / 2, size, size)
 
@@ -157,25 +163,37 @@ class Render:
       shapes.rect(ex - barW / 2, ey + size / 2 + 3f, barW * frac, 3f)
     }
 
-  private def drawShots(w: World): Unit =
-    shapes.setColor(Config.ShotColor)
-    w.shots.foreach(p => shapes.rect(p.x - 3f, p.y - 3f, 6f, 6f))
+  private def shotColor(kind: DamageKind): Color = kind match
+    case DamageKind.Kinetic   => Config.ShotColor
+    case DamageKind.Fire      => Config.ShotFireColor
+    case DamageKind.Slow      => Config.ShotFrostColor
+    case DamageKind.Splash    => Config.ShotSplashColor
+    case DamageKind.Explosion => Config.ShotBoomColor
 
-  private def drawHover(w: World, hover: Option[GridPos]): Unit =
+  private def drawShots(w: World): Unit =
+    w.shots.foreach { p =>
+      shapes.setColor(shotColor(p.kind))
+      shapes.rect(p.x - 3f, p.y - 3f, 6f, 6f)
+    }
+
+  private def drawHover(w: World, hover: Option[GridPos], selected: TowerType): Unit =
     hover.foreach { cell =>
-      shapes.setColor(if Sim.canBuild(w, cell) then Config.HoverOk else Config.HoverBad)
+      shapes.setColor(if Sim.canBuild(w, cell, selected) then Config.HoverOk else Config.HoverBad)
       shapes.rect(cell.x * Config.CellPx, cell.y * Config.CellPx, Config.CellPx, Config.CellPx)
     }
 
   /** Range ring on the hovered cell, plus every tower already placed. */
-  private def drawRanges(w: World, hover: Option[GridPos]): Unit =
-    shapes.setColor(Config.RangeColor)
-    w.towers.foreach(t => shapes.circle(t.cell.centerX, t.cell.centerY, Config.TowerRange))
+  private def drawRanges(w: World, hover: Option[GridPos], selected: TowerType): Unit =
+    w.towers.foreach { t =>
+      shapes.setColor(t.tpe.color)
+      shapes.circle(t.cell.centerX, t.cell.centerY, t.tpe.range)
+    }
     hover.filter(Grid.isBuildable).foreach { c =>
-      shapes.circle(c.centerX, c.centerY, Config.TowerRange)
+      shapes.setColor(selected.color)
+      shapes.circle(c.centerX, c.centerY, selected.range)
     }
 
-  private def drawHud(w: World, fast: Boolean): Unit =
+  private def drawHud(w: World, fast: Boolean, selected: TowerType): Unit =
     val x = Config.BoardPx + 20f
     var y = Config.WorldH - 30f
     def line(s: String, scale: Float = 1.2f, c: Color = Config.TextColor): Unit =
@@ -194,10 +212,13 @@ class Render:
       line(s"on the field: ${w.enemies.size}", 1.1f, Config.DimText)
 
     y -= 20f
-    line(s"tower: ${Config.TowerCost}g", 1.1f, Config.DimText)
-    line(if w.gold >= Config.TowerCost then "click green to build" else "not enough gold",
-      1.1f,
-      if w.gold >= Config.TowerCost then Config.DimText else Config.EnemyColor)
+    line("build [1..5]", 1.0f, Config.DimText)
+    TowerType.values.foreach { t =>
+      val isSel  = t == selected
+      val afford = w.gold >= t.cost
+      val c      = if isSel then t.color else if afford then Config.TextColor else Config.DimText
+      line(f"${TowerType.values.indexOf(t) + 1} ${t.name}%-8s ${t.cost}%3dg", 1.1f, c)
+    }
 
     y = 70f
     line(if fast then s"F: fast-forward ${Config.FastForward}x ON" else "F: fast-forward", 1.1f,

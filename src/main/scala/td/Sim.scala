@@ -25,7 +25,8 @@ object Sim:
     else
       val withCmds = cmds.foldLeft(w0)(applyCommand)
       val spawned  = spawn(withCmds, dt)
-      val moved    = moveEnemies(spawned, dt)
+      val effected = tickEffects(spawned, dt)
+      val moved    = moveEnemies(effected, dt)
       val fired    = fireTowers(moved, dt)
       val resolved = moveProjectiles(fired, dt)
       advanceWave(resolved, dt)
@@ -33,21 +34,21 @@ object Sim:
   // -- input -----------------------------------------------------------------
 
   private def applyCommand(w: World, c: Command): World = c match
-    case Command.Build(cell) =>
-      val affordable = w.gold >= Config.TowerCost
+    case Command.Build(cell, tpe) =>
+      val affordable = w.gold >= tpe.cost
       val free       = !w.towers.exists(_.cell == cell)
       if affordable && free && Grid.isBuildable(cell) then
         w.copy(
-          towers = w.towers :+ Tower(cell, 0f),
-          gold = w.gold - Config.TowerCost
+          towers = w.towers :+ Tower(cell, 0f, tpe),
+          gold = w.gold - tpe.cost
         )
       else w
 
   /** Whether a build command would be accepted — used by the renderer to colour
     * the placement preview, so preview and rule can never disagree.
     */
-  def canBuild(w: World, cell: GridPos): Boolean =
-    w.gold >= Config.TowerCost &&
+  def canBuild(w: World, cell: GridPos, tpe: TowerType): Boolean =
+    w.gold >= tpe.cost &&
       Grid.isBuildable(cell) &&
       !w.towers.exists(_.cell == cell)
 
@@ -94,20 +95,36 @@ object Sim:
 
   // -- movement --------------------------------------------------------------
 
+  /** Burns tick down hp; slow timers count down. Any enemy that burns to death
+    * is cashed in here.
+    */
+  private def tickEffects(w: World, dt: Float): World =
+    if w.enemies.isEmpty then w
+    else
+      val updated = w.enemies.map { e =>
+        val burned =
+          if e.burning then e.copy(hp = e.hp - e.burnDps * dt, burnUntil = e.burnUntil - dt)
+          else e
+        if burned.slowed then burned.copy(slowUntil = burned.slowUntil - dt) else burned
+      }
+      val (dead, alive) = updated.partition(_.hp <= 0f)
+      if dead.isEmpty then w.copy(enemies = alive)
+      else w.copy(enemies = alive, gold = w.gold + dead.size * Config.KillReward)
+
   private def moveEnemies(w: World, dt: Float): World =
-    val advanced        = w.enemies.map(e => e.copy(progress = e.progress + e.speed * dt))
+    val advanced        = w.enemies.map(e => e.copy(progress = e.progress + e.effectiveSpeed * dt))
     val (leaked, still) = advanced.partition(_.progress >= Grid.length)
     if leaked.isEmpty then w.copy(enemies = still)
     else w.copy(enemies = still, lives = math.max(0, w.lives - leaked.size))
 
   private def fireTowers(w: World, dt: Float): World =
-    val range2 = Config.TowerRange * Config.TowerRange
-    val fresh  = Vector.newBuilder[Projectile]
+    val fresh = Vector.newBuilder[Projectile]
 
     val towers = w.towers.map { t =>
       val cd = t.cooldown - dt
       if cd > 0f then t.copy(cooldown = cd)
       else
+        val range2 = t.tpe.range * t.tpe.range
         // Standard tower-defense targeting: whatever is closest to leaking.
         val target = w.enemies
           .filter { e =>
@@ -121,37 +138,98 @@ object Sim:
         target match
           case None => t.copy(cooldown = 0f)
           case Some(e) =>
-            fresh += Projectile(t.cell.centerX, t.cell.centerY, e.id, Config.TowerDamage)
-            t.copy(cooldown = Config.TowerFireInterval)
+            val dest = if t.tpe.kind == DamageKind.Explosion then Some(e.pos) else None
+            fresh += Projectile(
+              t.cell.centerX,
+              t.cell.centerY,
+              e.id,
+              t.tpe.kind,
+              t.tpe.damage,
+              t.tpe.projectileSpeed,
+              t.tpe.splashRadius,
+              dest
+            )
+            t.copy(cooldown = t.tpe.fireInterval)
     }
 
     w.copy(towers = towers, shots = w.shots ++ fresh.result())
 
-  /** Homes each shot at its target, applies the damage of any that land, then
-    * cashes in whatever died.
+  /** One landing shot's worth of effect on a single enemy. */
+  private case class Hit(id: Long, damage: Float, burn: Option[(Float, Float)], slow: Option[(Float, Float)])
+
+  /** Moves each shot, converts the ones that land into hits, applies them, then
+    * cashes in whatever died. Explosion shots detonate at their fixed point even
+    * if the original target has already died.
     */
   private def moveProjectiles(w: World, dt: Float): World =
-    val byId    = w.enemies.map(e => e.id -> e).toMap
-    val stepLen = Config.ProjectileSpeed * dt
+    val byId = w.enemies.map(e => e.id -> e).toMap
+    val fs   = Vector.newBuilder[Projectile]
+    val hs   = Vector.newBuilder[Hit]
 
-    val (flying, landed) = w.shots.partitionMap { p =>
-      byId.get(p.targetId) match
-        case None => Right(None) // target already dead: the shot fizzles
-        case Some(e) =>
-          val (ex, ey) = e.pos
-          val dx       = ex - p.x
-          val dy       = ey - p.y
-          val d        = math.hypot(dx, dy).toFloat
-          if d <= stepLen + Config.HitRadius then Right(Some(p.targetId -> p.damage))
-          else Left(p.copy(x = p.x + dx / d * stepLen, y = p.y + dy / d * stepLen))
+    w.shots.foreach { p =>
+      val stepLen = p.speed * dt
+      if p.homes then
+        byId.get(p.targetId) match
+          case None => () // target already dead: the shot fizzles
+          case Some(e) =>
+            val (ex, ey) = e.pos
+            val dx       = ex - p.x
+            val dy       = ey - p.y
+            val d        = math.hypot(dx, dy).toFloat
+            if d <= stepLen + Config.HitRadius then hs ++= resolveImpact(w, p, (ex, ey))
+            else fs += p.copy(x = p.x + dx / d * stepLen, y = p.y + dy / d * stepLen)
+      else
+        val (tx, ty) = p.dest.getOrElse((p.x, p.y))
+        val dx       = tx - p.x
+        val dy       = ty - p.y
+        val d        = math.hypot(dx, dy).toFloat
+        if d <= stepLen + Config.HitRadius then hs ++= resolveImpact(w, p, (tx, ty))
+        else fs += p.copy(x = p.x + dx / d * stepLen, y = p.y + dy / d * stepLen)
     }
 
-    val damage  = landed.flatten.groupMapReduce(_._1)(_._2)(_ + _)
-    val hit     = w.enemies.map(e => damage.get(e.id).fold(e)(d => e.copy(hp = e.hp - d)))
-    val (dead, alive) = hit.partition(_.hp <= 0f)
+    val hits     = hs.result()
+    val hitsById = hits.groupBy(_.id)
+    val damaged  = w.enemies.map { e =>
+      hitsById.get(e.id) match
+        case None => e
+        case Some(es) =>
+          val total = es.map(_.damage).sum
+          es.foldLeft(e.copy(hp = e.hp - total)) { (acc, h) =>
+            val burned = h.burn.fold(acc) { case (dps, dur) =>
+              acc.copy(burnDps = math.max(acc.burnDps, dps), burnUntil = math.max(acc.burnUntil, dur))
+            }
+            h.slow.fold(burned) { case (factor, dur) =>
+              val f = if burned.slowed then math.min(burned.slowFactor, factor) else factor
+              burned.copy(slowFactor = f, slowUntil = math.max(burned.slowUntil, dur))
+            }
+          }
+    }
+    val (dead, alive) = damaged.partition(_.hp <= 0f)
 
     w.copy(
-      shots = flying,
+      shots = fs.result(),
       enemies = alive,
       gold = w.gold + dead.size * Config.KillReward
     )
+
+  private def resolveImpact(w: World, p: Projectile, at: (Float, Float)): Vector[Hit] =
+    val (ix, iy) = at
+    val targets =
+      if p.splashRadius > 0f then
+        val r2 = p.splashRadius * p.splashRadius
+        w.enemies.filter { e =>
+          val (ex, ey) = e.pos
+          val dx       = ex - ix
+          val dy       = ey - iy
+          dx * dx + dy * dy <= r2
+        }
+      else w.enemies.filter(_.id == p.targetId)
+
+    targets.map { e =>
+      p.kind match
+        case DamageKind.Kinetic   => Hit(e.id, p.damage, None, None)
+        case DamageKind.Fire      => Hit(e.id, p.damage, Some((Config.BurnDps, Config.BurnDuration)), None)
+        case DamageKind.Slow      => Hit(e.id, p.damage, None, Some((Config.SlowFactor, Config.SlowDuration)))
+        case DamageKind.Splash    => Hit(e.id, p.damage, None, None)
+        case DamageKind.Explosion => Hit(e.id, p.damage, None, None)
+    }

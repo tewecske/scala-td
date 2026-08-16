@@ -17,15 +17,16 @@ object Config:
   // -- economy ---------------------------------------------------------------
   val StartGold  = 120
   val StartLives = 20
-  val TowerCost  = 50
   val KillReward = 8
 
   // -- combat ----------------------------------------------------------------
-  val TowerRange        = 3.2f * CellPx
-  val TowerFireInterval = 0.55f
-  val TowerDamage       = 12f
-  val ProjectileSpeed   = 420f
-  val HitRadius         = 6f
+  // Per-tower tuning (cost, range, damage, fire interval, projectile speed)
+  // lives in the TowerType enum; these are the shared status-effect knobs.
+  val HitRadius    = 6f
+  val BurnDps      = 6f
+  val BurnDuration = 3f
+  val SlowFactor   = 0.5f
+  val SlowDuration = 2f
 
   /** Frames longer than this are clamped so enemies can never tunnel past a
     * tower after a stall (window drag, GC pause).
@@ -40,9 +41,19 @@ object Config:
   val PathColor  = new Color(0.44f, 0.41f, 0.37f, 1f)
   val BuildColor = new Color(0.15f, 0.26f, 0.19f, 1f)
   val GridLine   = new Color(0f, 0f, 0f, 0.25f)
-  val TowerColor = new Color(0.35f, 0.60f, 0.95f, 1f)
+  val TowerColor       = new Color(0.35f, 0.60f, 0.95f, 1f)
+  val TowerFireColor   = new Color(0.95f, 0.45f, 0.15f, 1f)
+  val TowerFrostColor  = new Color(0.45f, 0.85f, 0.95f, 1f)
+  val TowerSplashColor = new Color(0.70f, 0.45f, 0.95f, 1f)
+  val TowerBoomColor   = new Color(0.80f, 0.25f, 0.20f, 1f)
   val EnemyColor = new Color(0.88f, 0.28f, 0.28f, 1f)
   val ShotColor  = new Color(0.98f, 0.85f, 0.30f, 1f)
+  val ShotFireColor    = new Color(0.98f, 0.55f, 0.20f, 1f)
+  val ShotFrostColor   = new Color(0.55f, 0.90f, 1f, 1f)
+  val ShotSplashColor  = new Color(0.80f, 0.60f, 1f, 1f)
+  val ShotBoomColor    = new Color(1f, 0.35f, 0.20f, 1f)
+  val BurnTint         = new Color(1f, 0.45f, 0.10f, 1f)
+  val SlowTint         = new Color(0.45f, 0.85f, 1f, 1f)
   val PanelColor = new Color(0.13f, 0.14f, 0.18f, 1f)
   val HoverOk    = new Color(0.55f, 0.85f, 0.55f, 0.45f)
   val HoverBad   = new Color(0.85f, 0.30f, 0.30f, 0.40f)

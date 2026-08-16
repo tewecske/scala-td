@@ -17,9 +17,10 @@ object Main:
   * All the rules live in [[Sim]]; this class only decides which screen is up.
   */
 class TdGame extends ApplicationAdapter:
-  private var gfx: Render    = scala.compiletime.uninitialized
-  private var phase: Phase   = Phase.Menu
-  private var fast: Boolean  = false
+  private var gfx: Render      = scala.compiletime.uninitialized
+  private var phase: Phase     = Phase.Menu
+  private var fast: Boolean    = false
+  private var selected: Int    = 0
 
   override def create(): Unit =
     gfx = new Render
@@ -50,8 +51,12 @@ class TdGame extends ApplicationAdapter:
       case Phase.Playing(w) =>
         if Gdx.input.isKeyJustPressed(Input.Keys.F) then fast = !fast
 
+        TowerType.values.indices.foreach { i =>
+          if Gdx.input.isKeyJustPressed(Input.Keys.NUM_1 + i) then selected = i
+        }
+        val sel  = TowerType.values(selected)
         val hover = Some(Grid.cellAt(mx, my)).filter(Grid.inBounds)
-        val cmds  = hover.filter(_ => clicked).map(Command.Build.apply).toVector
+        val cmds  = hover.filter(_ => clicked).map(Command.Build(_, sel)).toVector
 
         // Fast-forward runs extra whole steps rather than a bigger dt, so the
         // rules behave identically at any speed.
@@ -59,7 +64,7 @@ class TdGame extends ApplicationAdapter:
         val first  = Sim.step(w, dt, cmds)
         val next   = (1 until steps).foldLeft(first)((acc, _) => Sim.step(acc, dt, Vector.empty))
 
-        gfx.drawGame(next, hover, fast)
+        gfx.drawGame(next, hover, fast, sel)
 
         if Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) then Phase.Menu
         else if next.isOver then Phase.GameOver(next.wave)
