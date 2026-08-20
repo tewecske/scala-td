@@ -48,7 +48,9 @@ class TdGame extends ApplicationAdapter:
     phase = phase match
       case Phase.Menu =>
         gfx.drawMenu()
-        if clicked && Ui.Play.contains(mx, my) then newRun() else Phase.Menu
+        if clicked && Ui.Play.contains(mx, my) then newRun()
+        else if Gdx.input.isKeyJustPressed(Input.Keys.T) then startTutorial()
+        else Phase.Menu
 
       case Phase.GameOver(level, wave) =>
         gfx.drawGameOver(level, wave)
@@ -111,6 +113,10 @@ class TdGame extends ApplicationAdapter:
   private def newRun(): Phase =
     fast = false
     Phase.Playing(Sim.initial(System.nanoTime()))
+
+  private def startTutorial(): Phase =
+    fast = false
+    Phase.Playing(Sim.initial(RunGen.tutorial(System.nanoTime())))
 
   /** ESC toggles pause; P is a redundant alias so the run never aborts by
     * accident. Abandoning a run now happens through the pause menu's Exit.

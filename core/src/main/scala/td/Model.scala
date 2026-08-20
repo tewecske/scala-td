@@ -91,6 +91,9 @@ object RunContext:
 case class RunContext(
     seed: Long,
     biome: String = "tutorial",
+    resistTheme: ResistTheme = ResistTheme(DamageKind.Kinetic, 0f, DamageKind.Fire, 0f),
+    twists: Vector[String] = Vector.empty,
+    roster: Vector[String] = Vector.empty,
     mods: Vector[String] = Vector.empty,
     loadout: Vector[String] = Vector.empty,
     relics: Vector[String] = Vector.empty,

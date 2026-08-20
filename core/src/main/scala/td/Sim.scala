@@ -9,7 +9,10 @@ package td
   */
 object Sim:
 
-  def initial(seed: Long = RunContext.DefaultSeed): World = World(
+  def initial(seed: Long = RunContext.DefaultSeed): World =
+    initial(RunGen.roll(seed))
+
+  def initial(run: RunContext): World = World(
     level = 0,
     towers = Vector.empty,
     enemies = Vector.empty,
@@ -21,7 +24,7 @@ object Sim:
     spawnTimer = 0f,
     breakTimer = Waves.breakTime, // grace period before the level's first wave
     nextId = 1L,
-    run = RunContext(seed = seed)
+    run = run
   )
 
   def step(w0: World, dt: Float, cmds: Vector[Command]): World =
