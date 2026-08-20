@@ -56,6 +56,31 @@ object Config:
   def enemySpec(name: String): EnemySpec =
     current.enemies.find(_.name == name).getOrElse(sys.error(s"unknown enemy '$name'"))
 
+  // -- biomes -----------------------------------------------------------------
+  def biomes: Vector[Biome] = current.biomes
+  def biome(id: String): Biome =
+    current.biomes.find(_.id == id).getOrElse(sys.error(s"unknown biome '$id'"))
+
+  // -- twists -----------------------------------------------------------------
+  def twists: Vector[Twist] = current.twists
+  def twist(id: String): Twist =
+    current.twists.find(_.id == id).getOrElse(sys.error(s"unknown twist '$id'"))
+
+  // -- relics -----------------------------------------------------------------
+  def relics: Vector[Relic] = current.relics
+  def relic(id: String): Relic =
+    current.relics.find(_.id == id).getOrElse(sys.error(s"unknown relic '$id'"))
+
+  // -- augments ---------------------------------------------------------------
+  def augments: Vector[Augment] = current.augments
+  def augment(id: String): Augment =
+    current.augments.find(_.id == id).getOrElse(sys.error(s"unknown augment '$id'"))
+
+  // -- talents ----------------------------------------------------------------
+  def talents: Vector[Talent] = current.talents
+  def talent(id: String): Talent =
+    current.talents.find(_.id == id).getOrElse(sys.error(s"unknown talent '$id'"))
+
   // -- levels -----------------------------------------------------------------
   def levels: Vector[LevelConfig] = current.levels
   def levelCount: Int             = current.levels.size

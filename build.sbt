@@ -37,7 +37,12 @@ lazy val editor = (project in file("editor"))
 lazy val headless = (project in file("headless"))
   .dependsOn(core)
   .settings(commonSettings)
-  .settings(name := "headless")
+  .settings(
+    name := "headless",
+    // Separate JVM so sys.exit(code) kills only the run, not sbt.
+    fork := true,
+    Compile / mainClass := Some("td.HeadlessMain")
+  )
 
 lazy val root = (project in file("."))
   .aggregate(core, game, editor, headless)

@@ -74,9 +74,35 @@ object ConfigLoader:
 
     requireUnique(towers.map(_.name), "tower")
     requireUnique(enemies.map(_.name), "enemy")
-    val known  = enemies.map(_.name).toSet
-    val levels = parseLevels(root, known)
+    val known      = enemies.map(_.name).toSet
+    val towerNames = towers.map(_.name).toSet
+    val levels     = parseLevels(root, known)
     if levels.isEmpty then throw IllegalArgumentException("at least one level is required")
+
+    val talents = arr(root, "talents").map(parseTalent)
+    requireUnique(talents.map(_.id), "talent")
+    val talentIds = talents.map(_.id).toSet
+    talents.foreach { t =>
+      t.prereqs.foreach { p =>
+        if !talentIds.contains(p) then
+          throw IllegalArgumentException(s"talent '${t.id}' prereq references unknown talent '$p'")
+      }
+    }
+
+    val biomes = arr(root, "biomes").map(parseBiome(_, known))
+    requireUnique(biomes.map(_.id), "biome")
+    if biomes.isEmpty then throw IllegalArgumentException("at least one biome is required")
+    if !biomes.exists(_.id == "tutorial") then
+      throw IllegalArgumentException("a biome with id 'tutorial' is required")
+
+    val twists = arr(root, "twists").map(parseTwist(_, towerNames))
+    requireUnique(twists.map(_.id), "twist")
+
+    val relics = arr(root, "relics").map(parseRelic(_, talentIds))
+    requireUnique(relics.map(_.id), "relic")
+
+    val augments = arr(root, "augments").map(parseAugment)
+    requireUnique(augments.map(_.id), "augment")
 
     val board = obj(root, "board")
     val econ  = obj(root, "economy")
@@ -94,11 +120,20 @@ object ConfigLoader:
         f(cmbt, "slowDuration"),
         f(cmbt, "breakTime")
       ),
+      i18n = parseI18n(obj(root, "i18n")),
       towers = towers,
       enemies = enemies,
       levels = levels,
-      colors = colors
+      colors = colors,
+      biomes = biomes,
+      twists = twists,
+      relics = relics,
+      augments = augments,
+      talents = talents
     )
+
+  private def parseI18n(v: JsonValue): I18nConfig =
+    I18nConfig(lang = s(v, "lang"), showCodes = b(v, "showCodes"))
 
   private def parseTower(v: JsonValue, cellPx: Float): TowerSpec =
     TowerSpec(
@@ -202,6 +237,72 @@ object ConfigLoader:
       dimText = c(v, "dimText")
     )
 
+  private def parseEffect(v: JsonValue): Effect =
+    Effect(kind = s(v, "kind"), params = parseFloatMap(obj(v, "params")))
+
+  private def parseResistTheme(v: JsonValue): ResistTheme =
+    ResistTheme(
+      primary = enumValue(s(v, "primary"), "resist theme primary", DamageKind.values),
+      primaryAmount = f(v, "primaryAmount"),
+      secondary = enumValue(s(v, "secondary"), "resist theme secondary", DamageKind.values),
+      secondaryAmount = f(v, "secondaryAmount")
+    )
+
+  private def parseBiome(v: JsonValue, enemyNames: Set[String]): Biome =
+    val id     = s(v, "id")
+    val roster = arr(v, "roster").map(_.asString())
+    if roster.isEmpty then
+      throw IllegalArgumentException(s"biome '$id' has an empty roster")
+    roster.foreach { e =>
+      if !enemyNames.contains(e) then
+        throw IllegalArgumentException(s"biome '$id' roster references unknown enemy '$e'")
+    }
+    val envVal = v.get("environment")
+    val environment =
+      if envVal == null || !envVal.isObject then None
+      else Some(parseEffect(envVal))
+    val theme = parseResistTheme(obj(v, "resistTheme"))
+    if theme.primary == theme.secondary then
+      throw IllegalArgumentException(s"biome '$id' resist theme primary and secondary must differ")
+    Biome(id, name = s(v, "name"), roster, environment, theme)
+
+  private def parseTwist(v: JsonValue, towerNames: Set[String]): Twist =
+    val id     = s(v, "id")
+    val target = s(v, "targetTower")
+    if !towerNames.contains(target) then
+      throw IllegalArgumentException(s"twist '$id' targetTower references unknown tower '$target'")
+    Twist(id, name = s(v, "name"), targetTower = target, effect = parseEffect(obj(v, "effect")))
+
+  private def parseRelic(v: JsonValue, talentIds: Set[String]): Relic =
+    val id     = s(v, "id")
+    val rarity = enumValue(s(v, "rarity"), "rarity", Rarity.values)
+    val reqVal = v.get("requiredTalent")
+    val requiredTalent =
+      if reqVal == null || reqVal.isNull then None
+      else
+        val t = reqVal.asString()
+        if !talentIds.contains(t) then
+          throw IllegalArgumentException(s"relic '$id' requiredTalent references unknown talent '$t'")
+        Some(t)
+    if rarity == Rarity.Common && requiredTalent.isDefined then
+      throw IllegalArgumentException(s"relic '$id' is Common but has requiredTalent")
+    if rarity != Rarity.Common && requiredTalent.isEmpty then
+      throw IllegalArgumentException(s"relic '$id' is $rarity but has no requiredTalent")
+    Relic(id, name = s(v, "name"), rarity, effect = parseEffect(obj(v, "effect")), requiredTalent)
+
+  private def parseAugment(v: JsonValue): Augment =
+    Augment(id = s(v, "id"), name = s(v, "name"), effect = parseEffect(obj(v, "effect")))
+
+  private def parseTalent(v: JsonValue): Talent =
+    Talent(
+      id = s(v, "id"),
+      name = s(v, "name"),
+      layer = enumValue(s(v, "layer"), "talent layer", TalentLayer.values),
+      cost = i(v, "cost"),
+      prereqs = arr(v, "prereqs").map(_.asString()),
+      effect = parseEffect(obj(v, "effect"))
+    )
+
   // -- helpers ----------------------------------------------------------------
 
   private def obj(v: JsonValue, name: String): JsonValue =
@@ -231,6 +332,11 @@ object ConfigLoader:
     if child == null then throw IllegalArgumentException(s"missing field '$name'")
     child.asInt()
 
+  private def b(v: JsonValue, name: String): Boolean =
+    val child = v.get(name)
+    if child == null then throw IllegalArgumentException(s"missing field '$name'")
+    child.asBoolean()
+
   private def c(v: JsonValue, name: String): Color =
     parseColor(s(v, name))
 
@@ -238,3 +344,16 @@ object ConfigLoader:
     val dupes = names.groupBy(identity).collect { case (n, xs) if xs.size > 1 => n }.toVector
     if dupes.nonEmpty then
       throw IllegalArgumentException(s"duplicate $what name(s): ${dupes.mkString(", ")}")
+
+  private def enumValue[T](raw: String, what: String, values: Array[T]): T =
+    values.find(_.toString == raw).getOrElse(
+      throw IllegalArgumentException(
+        s"unknown $what '$raw' (expected one of: ${values.map(_.toString).mkString(", ")})"
+      )
+    )
+
+  private def parseFloatMap(v: JsonValue): Map[String, Float] =
+    (0 until v.size).map { idx =>
+      val e = v.get(idx)
+      e.name -> e.asFloat()
+    }.toMap

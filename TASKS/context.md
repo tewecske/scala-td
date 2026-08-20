@@ -33,8 +33,8 @@ Locked decisions (PLAN section 2) — these are NOT up for debate in a task:
 Separate sbt subprojects, all still package `td`:
   core/     — all rules + data. Sim, Model, Config, GameConfig, ConfigLoader,
               Grid, Waves, Rng, RunGen, Biomes, Journal, Meta, Talent, Relic,
-              Augment, Twist. Resources: config.json (and later talent/relic
-              data). Depends on libGDX CORE only (Color, JsonReader are
+              Augment, Twist. Resources: config.json, messages/messages_*.properties
+              (and later talent/relic data). Depends on libGDX CORE only (Color, JsonReader are
               headless-safe; no natives needed).
   game/     — Main (TdGame) + Render + bloom shaders. Depends on core +
               gdx-backend-lwjgl3 + gdx-platform natives-desktop.
@@ -70,6 +70,7 @@ projects. `fork := true` stays on the game project (LWJGL3 needs its own JVM).
 - Config.scala     — accessors resolving against the active GameConfig.
 - GameConfig.scala — TowerSpec, EnemySpec, WaveSpec, LevelConfig, GameConfig...
 - ConfigLoader.scala — JSON -> GameConfig (libGDX JsonReader, headless-safe).
+- Messages.scala    — i18n accessor (code -> text); see section 9.
 - Grid.scala       — board, route derivation, positionAt, isBuildable.
 - Waves.scala      — wave pacing lookup + spawnOrder.
 - Main.scala       — TdGame glue (input/screens).
@@ -103,6 +104,8 @@ Testing convention (needed for all tasks, so it lives here):
 - Follow existing code style (Scala 3, package `td`, immutability).
 - Data before code: new content (biomes, talents, relics, augments, twists,
   enemy/tower specs) is JSON config, not hardcoded tables.
+- All user-facing strings go through `Messages.t(code)`, never a raw literal
+  (section 9).
 - Save data (meta currency, talent unlocks, journal) is JSON via the existing
   JsonReader/JsonValue pattern (ConfigLoader is the reference implementation).
 
@@ -119,3 +122,28 @@ munit tests it added per section 5).
 Square/box/cube/edge/angle/line vocabulary. Square = natural order; non-square
 polygons = eldritch (elites/bosses). Examples are in PLAN section 7 — reuse
 them verbatim unless a task explicitly renames. Keep names funny.
+
+9. INTERNATIONALIZATION (I18N)
+------------------------------
+- All user-facing text (menus, buttons, HUD labels, notices, window title)
+  resolves through `Messages.t("code")` — never a raw string literal.
+- Translations live in Java `.properties` files under
+  `core/src/main/resources/messages/messages_<lang>.properties`, one
+  `code=text` line per string.
+- `Messages.t(code, args*)` supports printf-style interpolation (`%s`, `%d`).
+  A missing code falls back to the code itself, so an untranslated key is
+  visible rather than crashing.
+- The active language comes from config only (`config.json` -> `i18n.lang`);
+  no in-game language picker yet.
+- Debug "code mode": `Messages.showCodes` starts from config
+  (`i18n.showCodes`) and is toggled at runtime with Alt+I. When on, `t`
+  returns the KEY instead of the text, so devs/translators can see which code
+  backs each label. It is a rendering-only concern — it never touches `Sim`.
+- Each task localizes the strings IT defines: add keys to
+  `messages_en.properties` (and other languages) as part of the task that
+  introduces the text; do not do one big retroactive sweep.
+- GOTCHA: libGDX's built-in BitmapFont has a limited glyph set (the game uses
+  no font assets). Translations must stay ASCII-safe for now; non-ASCII scripts
+  (accented Latin, Cyrillic, CJK) will not render until a font asset is added.
+- Content names (tower/enemy/level names) come from config.json and are NOT
+  routed through Messages (they are data, not UI).

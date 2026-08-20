@@ -73,6 +73,11 @@ class TdGame extends ApplicationAdapter:
             else notice = Some("config reload failed")
             noticeTimer = NoticeTime
 
+          if showCodesPressed then
+            Messages.showCodes = !Messages.showCodes
+            notice = Some(Messages.t("notice.showCodes", if Messages.showCodes then "on" else "off"))
+            noticeTimer = NoticeTime
+
           Config.game.towers.indices.foreach { i =>
             if Gdx.input.isKeyJustPressed(Input.Keys.NUM_1 + i) then selected = i
           }
@@ -105,10 +110,15 @@ class TdGame extends ApplicationAdapter:
   /** Every run starts from a clean World, so nothing leaks across retries. */
   private def newRun(): Phase =
     fast = false
-    Phase.Playing(Sim.initial())
+    Phase.Playing(Sim.initial(System.nanoTime()))
 
   /** ESC toggles pause; P is a redundant alias so the run never aborts by
     * accident. Abandoning a run now happens through the pause menu's Exit.
     */
   private def pausePressed: Boolean =
     Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) || Gdx.input.isKeyJustPressed(Input.Keys.P)
+
+  /** Alt+I toggles the debug code display (Messages.showCodes). */
+  private def showCodesPressed: Boolean =
+    (Gdx.input.isKeyPressed(Input.Keys.ALT_LEFT) || Gdx.input.isKeyPressed(Input.Keys.ALT_RIGHT)) &&
+      Gdx.input.isKeyJustPressed(Input.Keys.I)

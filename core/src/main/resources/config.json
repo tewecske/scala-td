@@ -11,6 +11,7 @@
     "slowDuration": 2.0,
     "breakTime": 4.0
   },
+  "i18n": { "lang": "en", "showCodes": false },
   "towers": [
     { "name": "Basic",   "cost": 50,  "color": "#5C63A5", "range": 3.2, "fireInterval": 0.55, "damage": 12.0, "projectileSpeed": 420.0, "kind": "Kinetic",   "splashRadius": 0.0 },
     { "name": "Fire",    "cost": 80,  "color": "#ED7477", "range": 2.8, "fireInterval": 0.50, "damage": 8.0,  "projectileSpeed": 480.0, "kind": "Fire",      "splashRadius": 0.0 },
@@ -94,5 +95,85 @@
     "hpBarFill": "#9DEC99",
     "text": "#FFE6A5",
     "dimText": "#5C63A5"
-  }
+  },
+  "biomes": [
+    {
+      "id": "tutorial",
+      "name": "The Sandbox",
+      "roster": ["Grunt", "Swift", "Ember", "Frostling"],
+      "environment": null,
+      "resistTheme": { "primary": "Kinetic", "primaryAmount": 0.0, "secondary": "Fire", "secondaryAmount": 0.0 }
+    },
+    {
+      "id": "cube-farm",
+      "name": "The Cube Farm",
+      "roster": ["Grunt", "Swift", "Frostling", "Commander"],
+      "environment": { "kind": "openFloorPlan", "params": { "armorPerNeighbor": 0.15, "radius": 1.5 } },
+      "resistTheme": { "primary": "Slow", "primaryAmount": 0.4, "secondary": "Kinetic", "secondaryAmount": 0.2 }
+    },
+    {
+      "id": "shipping-yard",
+      "name": "The Shipping Yard",
+      "roster": ["Brute", "Shieldbearer", "Ember", "Commander"],
+      "environment": { "kind": "crushed", "params": { "hazardDuration": 3.0, "slowFactor": 0.4 } },
+      "resistTheme": { "primary": "Fire", "primaryAmount": 0.4, "secondary": "Kinetic", "secondaryAmount": 0.3 }
+    },
+    {
+      "id": "cardboard-wastes",
+      "name": "The Cardboard Wastes",
+      "roster": ["Swift", "Grunt", "Ember", "Brute"],
+      "environment": { "kind": "recycling", "params": { "livesLossMult": 0.5, "killGoldBonus": 1.0, "swarmSizeMult": 1.4 } },
+      "resistTheme": { "primary": "Splash", "primaryAmount": 0.35, "secondary": "Explosion", "secondaryAmount": 0.25 }
+    }
+  ],
+  "twists": [
+    { "id": "brittle", "name": "Brittle", "targetTower": "Frost",
+      "effect": { "kind": "brittle", "params": { "slowDurationMult": 0.5, "kineticDamageVsSlowed": 1.5 } } },
+    { "id": "backdraft", "name": "Backdraft", "targetTower": "Fire",
+      "effect": { "kind": "backdraft", "params": { "burnTickRateMult": 2.0, "maxBurnStacks": 1.0 } } },
+    { "id": "shaped-charge", "name": "Shaped Charge", "targetTower": "Bombard",
+      "effect": { "kind": "shapedCharge", "params": { "radiusMult": 0.6, "armorPierce": 1.0 } } },
+    { "id": "ricochet", "name": "Ricochet", "targetTower": "Basic",
+      "effect": { "kind": "ricochet", "params": { "bounceEvery": 3.0, "fireIntervalMult": 1.25 } } }
+  ],
+  "relics": [
+    { "id": "square-deal", "name": "Square Deal", "rarity": "Common", "requiredTalent": null,
+      "effect": { "kind": "squareDeal", "params": { "goldMult": 1.1 } } },
+    { "id": "box-office", "name": "Box Office", "rarity": "Rare", "requiredTalent": "conflagration",
+      "effect": { "kind": "boxOffice", "params": { "killRewardBonus": 2.0 } } },
+    { "id": "perimeter-alarm", "name": "Perimeter Alarm", "rarity": "Rare", "requiredTalent": "permafrost",
+      "effect": { "kind": "perimeterAlarm", "params": { "leakWarningTime": 2.0 } } },
+    { "id": "open-the-box", "name": "Open the Box", "rarity": "Rare", "requiredTalent": "demolition",
+      "effect": { "kind": "openTheBox", "params": { "wavesPerRoll": 1.0 } } },
+    { "id": "pandoras-box", "name": "Pandora's Box", "rarity": "Legendary", "requiredTalent": "conflagration",
+      "effect": { "kind": "pandorasBox", "params": {} } }
+  ],
+  "augments": [
+    { "id": "cornerstone", "name": "Cornerstone", "effect": { "kind": "cornerstone", "params": { "debuffImmunity": 1.0 } } },
+    { "id": "sharpened-edge", "name": "Sharpened Edge", "effect": { "kind": "sharpenedEdge", "params": { "damageMult": 1.2 } } },
+    { "id": "ninety-degrees", "name": "90 Degrees", "effect": { "kind": "ninetyDegrees", "params": {} } },
+    { "id": "set-square", "name": "Set Square", "effect": { "kind": "setSquare", "params": {} } },
+    { "id": "box-springs", "name": "Box Springs", "effect": { "kind": "boxSprings", "params": {} } },
+    { "id": "vertigo", "name": "Vertigo", "effect": { "kind": "vertigo", "params": { "slowAmount": 0.25, "slowDuration": 2.0 } } }
+  ],
+  "talents": [
+    { "id": "filler-damage", "name": "Square Up", "layer": "Filler", "cost": 1, "prereqs": [],
+      "effect": { "kind": "damageBonus", "params": { "mult": 0.1 } } },
+    { "id": "filler-range", "name": "Long Edge", "layer": "Filler", "cost": 1, "prereqs": [],
+      "effect": { "kind": "rangeBonus", "params": { "mult": 0.1 } } },
+    { "id": "filler-gold", "name": "Coin Slot", "layer": "Filler", "cost": 1, "prereqs": [],
+      "effect": { "kind": "goldBonus", "params": { "mult": 0.15 } } },
+    { "id": "pyromancer", "name": "Pyromancer", "layer": "Core", "cost": 3, "prereqs": ["filler-damage"],
+      "effect": { "kind": "pyromancer", "params": {} } },
+    { "id": "frostwarden", "name": "Frostwarden", "layer": "Core", "cost": 3, "prereqs": ["filler-range"],
+      "effect": { "kind": "frostwarden", "params": {} } },
+    { "id": "breaker", "name": "Breaker", "layer": "Core", "cost": 3, "prereqs": ["filler-damage"],
+      "effect": { "kind": "breaker", "params": {} } },
+    { "id": "permafrost", "name": "Permafrost", "layer": "Deep", "cost": 5, "prereqs": ["frostwarden"],
+      "effect": { "kind": "permafrost", "params": {} } },
+    { "id": "conflagration", "name": "Conflagration", "layer": "Deep", "cost": 5, "prereqs": ["pyromancer"],
+      "effect": { "kind": "conflagration", "params": {} } },
+    { "id": "demolition", "name": "Demolition", "layer": "Deep", "cost": 5, "prereqs": ["breaker"],
+      "effect": { "kind": "demolition", "params": {} } }
+  ]
 }

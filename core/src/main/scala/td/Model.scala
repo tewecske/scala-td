@@ -84,6 +84,19 @@ case class Projectile(
   * change during a run lives here so a run can be snapshotted, replayed, or
   * seeded.
   */
+object RunContext:
+  val DefaultSeed: Long = 0x5EEDL
+
+/** The seed and player-selected run modifiers that shape one playthrough. */
+case class RunContext(
+    seed: Long,
+    biome: String = "tutorial",
+    mods: Vector[String] = Vector.empty,
+    loadout: Vector[String] = Vector.empty,
+    relics: Vector[String] = Vector.empty,
+    augments: Vector[String] = Vector.empty
+)
+
 case class World(
     level: Int,
     towers: Vector[Tower],
@@ -96,7 +109,10 @@ case class World(
     spawnTimer: Float,
     breakTimer: Float,
     nextId: Long,
-    won: Boolean = false
+    run: RunContext,
+    won: Boolean = false,
+    kills: Int = 0,
+    leaks: Int = 0
 ):
   def isOver: Boolean   = lives <= 0
   def inBreak: Boolean  = breakTimer > 0f

@@ -9,7 +9,7 @@ package td
   */
 object Sim:
 
-  def initial(): World = World(
+  def initial(seed: Long = RunContext.DefaultSeed): World = World(
     level = 0,
     towers = Vector.empty,
     enemies = Vector.empty,
@@ -20,7 +20,8 @@ object Sim:
     spawnQueue = Vector.empty,
     spawnTimer = 0f,
     breakTimer = Waves.breakTime, // grace period before the level's first wave
-    nextId = 1L
+    nextId = 1L,
+    run = RunContext(seed = seed)
   )
 
   def step(w0: World, dt: Float, cmds: Vector[Command]): World =
@@ -178,13 +179,13 @@ object Sim:
       }
       val (dead, alive) = updated.partition(_.hp <= 0f)
       if dead.isEmpty then w.copy(enemies = alive)
-      else w.copy(enemies = alive, gold = w.gold + dead.size * Config.KillReward)
+      else w.copy(enemies = alive, gold = w.gold + dead.size * Config.KillReward, kills = w.kills + dead.size)
 
   private def moveEnemies(w: World, dt: Float): World =
     val advanced        = w.enemies.map(e => e.copy(progress = e.progress + e.effectiveSpeed * dt))
     val (leaked, still) = advanced.partition(e => e.progress >= Grid.length(e.level))
     if leaked.isEmpty then w.copy(enemies = still)
-    else w.copy(enemies = still, lives = math.max(0, w.lives - leaked.size))
+    else w.copy(enemies = still, lives = math.max(0, w.lives - leaked.size), leaks = w.leaks + leaked.size)
 
   private def fireTowers(w: World, dt: Float): World =
     val fresh = Vector.newBuilder[Projectile]
@@ -290,7 +291,8 @@ object Sim:
     w.copy(
       shots = fs.result(),
       enemies = alive,
-      gold = w.gold + dead.size * Config.KillReward
+      gold = w.gold + dead.size * Config.KillReward,
+      kills = w.kills + dead.size
     )
 
   private def resolveImpact(w: World, p: Projectile, at: (Float, Float)): Vector[Hit] =

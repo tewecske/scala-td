@@ -34,6 +34,9 @@ case class EnemySpec(
 
 case class BoardConfig(gridSize: Int, cellPx: Float, panelPx: Float)
 
+/** I18N tuning: the active language and whether debug code-display starts on. */
+case class I18nConfig(lang: String, showCodes: Boolean)
+
 case class EconomyConfig(startGold: Int, startLives: Int, killReward: Int, levelBonus: Int)
 
 case class CombatConfig(
@@ -92,13 +95,91 @@ case class Colors(
     dimText: Color
 )
 
+enum Rarity:
+  case Common, Rare, Legendary
+
+enum TalentLayer:
+  case Filler, Core, Deep
+
+/** A generic tunable effect: an opaque kind plus a float parameter map. The
+  * editor renders kind+params without knowing any specific mechanic.
+  */
+case class Effect(kind: String, params: Map[String, Float])
+
+/** A biome's resist theme: which two damage kinds its roster resists and how
+  * much (additive resistance fraction; exact combination rule is a later task).
+  */
+case class ResistTheme(
+    primary: DamageKind,
+    primaryAmount: Float,
+    secondary: DamageKind,
+    secondaryAmount: Float
+)
+
+/** A biome: a themed package of roster, environment rule, and resist theme.
+  * `roster` holds enemy NAME ids; `environment` is None for "no rule".
+  */
+case class Biome(
+    id: String,
+    name: String,
+    roster: Vector[String],
+    environment: Option[Effect],
+    resistTheme: ResistTheme
+)
+
+/** A twist that reroutes one tower kind: a nerf plus a silver-lining buff,
+  * both encoded in `effect.params`.
+  */
+case class Twist(
+    id: String,
+    name: String,
+    targetTower: String,
+    effect: Effect
+)
+
+/** A global relic. `requiredTalent` gates the rarity tier: None for common,
+  * Some(deep-talent-id) for rare/legendary.
+  */
+case class Relic(
+    id: String,
+    name: String,
+    rarity: Rarity,
+    effect: Effect,
+    requiredTalent: Option[String]
+)
+
+/** A tower-socket augment (one socket per tower). */
+case class Augment(
+    id: String,
+    name: String,
+    effect: Effect
+)
+
+/** One node in the shared meta talent tree. `prereqs` are talent ids (empty for
+  * fillers). `cost` is meta-currency. `effect` is generic.
+  */
+case class Talent(
+    id: String,
+    name: String,
+    layer: TalentLayer,
+    cost: Int,
+    prereqs: Vector[String],
+    effect: Effect
+)
+
 /** The whole tuning set, immutable, one value per loaded config. */
 case class GameConfig(
     board: BoardConfig,
     economy: EconomyConfig,
     combat: CombatConfig,
+    i18n: I18nConfig,
     towers: Vector[TowerSpec],
     enemies: Vector[EnemySpec],
     levels: Vector[LevelConfig],
-    colors: Colors
+    colors: Colors,
+    biomes: Vector[Biome],
+    twists: Vector[Twist],
+    relics: Vector[Relic],
+    augments: Vector[Augment],
+    talents: Vector[Talent]
 )
