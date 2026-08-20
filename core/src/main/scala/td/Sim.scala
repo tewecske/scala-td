@@ -122,6 +122,63 @@ object Sim:
 
   private def effects(w: World): TalentEffects = Meta.effects(w.run.talents)
 
+  // -- twists ------------------------------------------------------------------
+
+  /** The run's rolled twists, resolved to their config records (unknown ids are
+    * ignored so a config reload that drops a twist degrades to "no twist").
+    */
+  private def activeTwists(w: World): Vector[Twist] =
+    w.run.twists.flatMap(id => Config.twists.find(_.id == id))
+
+  /** The composed twist effect for one tower kind. Multiple twists targeting the
+    * same kind fold together (multipliers multiply, flags OR).
+    */
+  private def twistFx(w: World, towerName: String): TwistFx =
+    activeTwists(w).filter(_.targetTower == towerName)
+      .foldLeft(TwistFx.none)(_ combined TwistFx.from(_))
+
+  /** Multiplier for kinetic damage against slowed enemies while Brittle is
+    * active (1f when it is not). The silver lining is run-wide, not tower-bound.
+    */
+  private def brittleKineticMult(w: World): Float =
+    activeTwists(w).find(_.effect.kind == "brittle")
+      .map(_.effect.params.getOrElse("kineticDamageVsSlowed", 1f))
+      .getOrElse(1f)
+
+  /** Per-tower twist modifiers, composed from the run's active twists. */
+  private case class TwistFx(
+      slowDurationMult: Float = 1f,
+      burnTickRate: Float = 1f,
+      noBurnStack: Boolean = false,
+      radiusMult: Float = 1f,
+      armorPierce: Boolean = false,
+      bounceEvery: Int = 0,
+      bounceRadius: Float = 0f,
+      fireIntervalMult: Float = 1f
+  ):
+    def combined(o: TwistFx): TwistFx =
+      TwistFx(
+        slowDurationMult = slowDurationMult * o.slowDurationMult,
+        burnTickRate = burnTickRate * o.burnTickRate,
+        noBurnStack = noBurnStack || o.noBurnStack,
+        radiusMult = radiusMult * o.radiusMult,
+        armorPierce = armorPierce || o.armorPierce,
+        bounceEvery = math.max(bounceEvery, o.bounceEvery),
+        bounceRadius = math.max(bounceRadius, o.bounceRadius),
+        fireIntervalMult = fireIntervalMult * o.fireIntervalMult
+      )
+
+  private object TwistFx:
+    val none: TwistFx = TwistFx()
+    def from(t: Twist): TwistFx =
+      val p = t.effect.params
+      t.effect.kind match
+        case "brittle"      => TwistFx(slowDurationMult = p.getOrElse("slowDurationMult", 1f))
+        case "backdraft"    => TwistFx(burnTickRate = p.getOrElse("burnTickRateMult", 1f), noBurnStack = p.getOrElse("maxBurnStacks", 1f) <= 1f)
+        case "shapedCharge" => TwistFx(radiusMult = p.getOrElse("radiusMult", 1f), armorPierce = p.getOrElse("armorPierce", 0f) >= 1f)
+        case "ricochet"     => TwistFx(bounceEvery = p.getOrElse("bounceEvery", 0f).toInt, bounceRadius = p.getOrElse("bounceRadius", 0f), fireIntervalMult = p.getOrElse("fireIntervalMult", 1f))
+        case _              => TwistFx.none
+
   private def killReward(w: World): Float =
     (Config.KillReward + envParam(w, "recycling", "killGoldBonus") + relicKillBonus(w)) *
       effects(w).goldMult * relicGoldMult(w)
@@ -434,6 +491,7 @@ object Sim:
       if cd > 0f then t.copy(cooldown = cd)
       else
         val spec   = t.spec
+        val tw     = twistFx(w, t.tpe)
         val range  = spec.range * eff.rangeMult
         val range2 = range * range
         // Standard tower-defense targeting: whatever is closest to leaking.
@@ -449,8 +507,13 @@ object Sim:
         target match
           case None => t.copy(cooldown = 0f)
           case Some(e) =>
-            val dest = if spec.kind == DamageKind.Explosion then Some(e.pos) else None
-            val fx   = augmentFx(t)
+            val dest   = if spec.kind == DamageKind.Explosion then Some(e.pos) else None
+            val fx     = augmentFx(t)
+            val fired  = t.shotsFired + 1
+            val bounce = tw.bounceEvery > 0 && fired % tw.bounceEvery == 0
+            val slowOv =
+              if spec.kind == DamageKind.Slow then Some((Config.SlowFactor, Config.SlowDuration * tw.slowDurationMult))
+              else fx.slow
             fresh += Projectile(
               t.cell.centerX,
               t.cell.centerY,
@@ -458,11 +521,16 @@ object Sim:
               spec.kind,
               spec.damage * eff.damageMult * fx.damageMult,
               spec.projectileSpeed,
-              spec.splashRadius,
+              spec.splashRadius * tw.radiusMult,
               dest,
-              fx.slow
+              slowOv,
+              burnTickRate = tw.burnTickRate,
+              noBurnStack = tw.noBurnStack,
+              armorPierce = tw.armorPierce,
+              bounce = bounce,
+              bounceRadius = tw.bounceRadius * Config.CellPx
             )
-            t.copy(cooldown = spec.fireInterval)
+            t.copy(cooldown = spec.fireInterval * tw.fireIntervalMult, shotsFired = fired)
     }
 
     w.copy(towers = towers, shots = w.shots ++ fresh.result())
@@ -470,13 +538,22 @@ object Sim:
   /** One landing shot's worth of effect on a single enemy. Resistances are not
     * applied here — each target reads its own resist/armor when the hit lands.
     */
-  private case class Hit(id: Long, kind: DamageKind, damage: Float, burn: Option[(Float, Float)], slow: Option[(Float, Float)])
+  private case class Hit(
+      id: Long,
+      kind: DamageKind,
+      damage: Float,
+      burn: Option[(Float, Float)],
+      slow: Option[(Float, Float)],
+      noBurnStack: Boolean = false,
+      armorPierce: Boolean = false
+  )
 
   /** Moves each shot, converts the ones that land into hits, applies them, then
     * cashes in whatever died. Explosion shots detonate at their fixed point even
     * if the original target has already died.
     */
   private def moveProjectiles(w: World, dt: Float): World =
+    val brittleKin = brittleKineticMult(w)
     val byId = w.enemies.map(e => e.id -> e).toMap
     val fs   = Vector.newBuilder[Projectile]
     val hs   = Vector.newBuilder[Hit]
@@ -511,7 +588,11 @@ object Sim:
         case Some(es) =>
           es.foldLeft(e) { (acc, h) =>
             val resistFrac = e.resist(h.kind)
-            val dmg = math.max(0f, h.damage * (1f - resistFrac) * (1f - e.armor))
+            val base       = h.damage * (1f - resistFrac)
+            val armored    = if h.armorPierce then base else base * (1f - e.armor)
+            val dmg        = math.max(0f,
+              if brittleKin != 1f && h.kind == DamageKind.Kinetic && e.slowed then armored * brittleKin
+              else armored)
             val (ex, ey) = e.pos
             fb += HitFeedback(ex, ey, h.kind, dmg, resistFrac)
             var cur = acc.copy(hp = acc.hp - dmg)
@@ -519,7 +600,9 @@ object Sim:
               val fr = e.resist(DamageKind.Fire)
               val du = dur * (1f - fr)
               if du > 0f then
-                cur = cur.copy(burnDps = math.max(cur.burnDps, dps * (1f - fr)), burnUntil = math.max(cur.burnUntil, du))
+                if h.noBurnStack && acc.burning then ()
+                else
+                  cur = cur.copy(burnDps = math.max(cur.burnDps, dps * (1f - fr)), burnUntil = math.max(cur.burnUntil, du))
             }
             h.slow.foreach { case (factor, dur) =>
               val sr = e.resist(DamageKind.Slow)
@@ -556,7 +639,7 @@ object Sim:
 
   private def resolveImpact(w: World, p: Projectile, at: (Float, Float)): Vector[Hit] =
     val (ix, iy) = at
-    val targets =
+    val primary =
       if p.splashRadius > 0f then
         val r2 = p.splashRadius * p.splashRadius
         w.enemies.filter { e =>
@@ -567,12 +650,32 @@ object Sim:
         }
       else w.enemies.filter(_.id == p.targetId)
 
-    targets.map { e =>
+    def make(e: Enemy): Hit =
       val base = p.kind match
-        case DamageKind.Kinetic   => Hit(e.id, DamageKind.Kinetic, p.damage, None, None)
-        case DamageKind.Fire      => Hit(e.id, DamageKind.Fire, p.damage, Some((Config.BurnDps, Config.BurnDuration)), None)
-        case DamageKind.Slow      => Hit(e.id, DamageKind.Slow, p.damage, None, Some((Config.SlowFactor, Config.SlowDuration)))
-        case DamageKind.Splash    => Hit(e.id, DamageKind.Splash, p.damage, None, None)
-        case DamageKind.Explosion => Hit(e.id, DamageKind.Explosion, p.damage, None, None)
+        case DamageKind.Kinetic   => Hit(e.id, DamageKind.Kinetic, p.damage, None, None, p.noBurnStack, p.armorPierce)
+        case DamageKind.Fire      => Hit(e.id, DamageKind.Fire, p.damage, Some((Config.BurnDps * p.burnTickRate, Config.BurnDuration)), None, p.noBurnStack, p.armorPierce)
+        case DamageKind.Slow      => Hit(e.id, DamageKind.Slow, p.damage, None, Some((Config.SlowFactor, Config.SlowDuration)), p.noBurnStack, p.armorPierce)
+        case DamageKind.Splash    => Hit(e.id, DamageKind.Splash, p.damage, None, None, p.noBurnStack, p.armorPierce)
+        case DamageKind.Explosion => Hit(e.id, DamageKind.Explosion, p.damage, None, None, p.noBurnStack, p.armorPierce)
       p.slow.fold(base)(s => base.copy(slow = Some(s)))
-    }
+
+    val hits = primary.map(make)
+    if p.bounce then
+      val r2     = p.bounceRadius * p.bounceRadius
+      val hitIds = hits.map(_.id).toSet
+      val second = w.enemies
+        .filter(e => !hitIds.contains(e.id))
+        .filter { e =>
+          val (ex, ey) = e.pos
+          val dx       = ex - ix
+          val dy       = ey - iy
+          dx * dx + dy * dy <= r2
+        }
+        .minByOption { e =>
+          val (ex, ey) = e.pos
+          val dx       = ex - ix
+          val dy       = ey - iy
+          dx * dx + dy * dy
+        }
+      second.fold(hits)(e2 => hits :+ make(e2))
+    else hits

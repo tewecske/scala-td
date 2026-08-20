@@ -443,6 +443,12 @@ class Render:
     line(s"LIVES  ${w.lives}", 1.5f, Config.EnemyColor)
     line(s"LEVEL  ${w.level + 1} / ${Config.levelCount}  ${Config.levelAt(w.level).name}", 1.3f, Config.TextColor)
     line(s"WAVE   ${w.wave} / ${Waves.waveCount(w.level)}", 1.5f, Config.TextColor)
+    w.run.twists.foreach { id =>
+      Config.twists.find(_.id == id).foreach { tw =>
+        line(s"${Messages.t("briefing.twist")} ${tw.name} - ${Messages.t(s"twist.${tw.id}")}", 1.0f, Config.ShotColor)
+      }
+    }
+    if w.run.twists.nonEmpty then y -= 8f
     w.pendingAugment.foreach { id =>
       line(s"${Config.augment(id).name} - ${Messages.t("draft.socketHint")}", 1.1f, Config.ShotColor)
     }

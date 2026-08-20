@@ -80,12 +80,13 @@ case class Enemy(
   def buffed: Boolean      = speedMult > 1f || armor > 0f
   def effectiveSpeed: Float = (if slowed then speed * slowFactor else speed) * speedMult
 
-case class Tower(cell: GridPos, cooldown: Float, tpe: String, augment: Option[String] = None):
+case class Tower(cell: GridPos, cooldown: Float, tpe: String, augment: Option[String] = None, shotsFired: Int = 0):
   def spec: TowerSpec = Config.towerSpec(tpe)
 
 /** A shot in flight. [[dest]] is set only for explosion projectiles, which fly
   * to a fixed world point instead of homing at a live target. [[slow]] carries
-  * an augment-supplied slow override (vertigo), or None for the default.
+  * an augment-supplied slow override (vertigo), or None for the default. The
+  * remaining fields carry twist-supplied modifiers from the firing tower.
   */
 case class Projectile(
     x: Float,
@@ -96,7 +97,12 @@ case class Projectile(
     speed: Float,
     splashRadius: Float,
     dest: Option[(Float, Float)],
-    slow: Option[(Float, Float)] = None
+    slow: Option[(Float, Float)] = None,
+    burnTickRate: Float = 1f,
+    noBurnStack: Boolean = false,
+    armorPierce: Boolean = false,
+    bounce: Boolean = false,
+    bounceRadius: Float = 0f
 ):
   def homes: Boolean = kind != DamageKind.Explosion
 

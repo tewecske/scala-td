@@ -137,7 +137,7 @@
     { "id": "shaped-charge", "name": "Shaped Charge", "targetTower": "Bombard",
       "effect": { "kind": "shapedCharge", "params": { "radiusMult": 0.6, "armorPierce": 1.0 } } },
     { "id": "ricochet", "name": "Ricochet", "targetTower": "Basic",
-      "effect": { "kind": "ricochet", "params": { "bounceEvery": 3.0, "fireIntervalMult": 1.25 } } }
+      "effect": { "kind": "ricochet", "params": { "bounceEvery": 3.0, "fireIntervalMult": 1.25, "bounceRadius": 2.0 } } }
   ],
   "relics": [
     { "id": "square-deal", "name": "Square Deal", "rarity": "Common", "requiredTalent": null,
