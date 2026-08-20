@@ -9,7 +9,8 @@
     "burnDuration": 3.0,
     "slowFactor": 0.5,
     "slowDuration": 2.0,
-    "breakTime": 4.0
+    "breakTime": 4.0,
+    "studyHits": 5
   },
   "i18n": { "lang": "en", "showCodes": false },
   "towers": [

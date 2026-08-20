@@ -73,6 +73,38 @@ object Sim:
   private def killReward(w: World): Float =
     Config.KillReward + envParam(w, "recycling", "killGoldBonus")
 
+  private def vagueHint(base: Float): String =
+    if base >= 0.99f then "immune"
+    else if base > 0f then "resists"
+    else if base < 0f then "weak"
+    else "neutral"
+
+  private def bumpObserved(
+      hits: Map[(String, String), Int],
+      events: Vector[DiscoveryEvent],
+      tpe: String,
+      key: String,
+      studiedAfter: Int,
+      sightHint: String,
+      studiedValue: String
+  ): (Map[(String, String), Int], Vector[DiscoveryEvent]) =
+    val n = hits.getOrElse((tpe, key), 0) + 1
+    val ev: Option[DiscoveryEvent] =
+      if n == 1 && studiedAfter == 1 then Some(DiscoveryEvent(tpe, key, Precision.Studied, studiedValue))
+      else if n == 1 then Some(DiscoveryEvent(tpe, key, Precision.Sighting, sightHint))
+      else if n == studiedAfter then Some(DiscoveryEvent(tpe, key, Precision.Studied, studiedValue))
+      else None
+    (hits + ((tpe, key) -> n), ev.fold(events)(events :+ _))
+
+  private def observeAbilities(w: World, spec: EnemySpec): World =
+    val traits = Vector.newBuilder[(String, Int, String)]
+    spec.aura.foreach(a => traits += (("aura", 1, s"${a.kind} ${a.magnitude}")))
+    if spec.heavy then traits += (("heavy", 1, "true"))
+    traits.result().foldLeft(w) { case (acc, (key, after, value)) =>
+      val (hits, evs) = bumpObserved(acc.traitHits, acc.events, spec.name, key, after, "", value)
+      acc.copy(traitHits = hits, events = evs)
+    }
+
   // -- wave pacing -----------------------------------------------------------
 
   private def spawn(w: World, dt: Float): World =
@@ -94,7 +126,7 @@ object Sim:
           level = w.level,
           resist = spec.resist.layered(w.run.resistTheme)
         )
-        w.copy(
+        observeAbilities(w, spec).copy(
           enemies = w.enemies :+ e,
           spawnQueue = w.spawnQueue.tail,
           spawnTimer = Waves.spec(w.level, w.wave).spawnInterval,
@@ -345,10 +377,10 @@ object Sim:
         else fs += p.copy(x = p.x + dx / d * stepLen, y = p.y + dy / d * stepLen)
     }
 
-    val hits     = hs.result()
-    val hitsById = hits.groupBy(_.id)
+    val landed     = hs.result()
+    val landedById = landed.groupBy(_.id)
     val damaged  = w.enemies.map { e =>
-      hitsById.get(e.id) match
+      landedById.get(e.id) match
         case None => e
         case Some(es) =>
           es.foldLeft(e) { (acc, h) =>
@@ -373,12 +405,24 @@ object Sim:
     }
     val (dead, alive) = damaged.partition(_.hp <= 0f)
 
+    val idToTpe = w.enemies.map(e => e.id -> e.tpe).toMap
+    val (newHits, newEvents) = landed.foldLeft((w.traitHits, w.events)) {
+      case ((hh, ee), h) =>
+        idToTpe.get(h.id) match
+          case None => (hh, ee)
+          case Some(tpe) =>
+            val base = Config.enemySpec(tpe).resist(h.kind)
+            bumpObserved(hh, ee, tpe, s"resist.${h.kind}", Config.StudyHits, vagueHint(base), base.toString)
+    }
+
     w.copy(
       shots = fs.result(),
       enemies = alive,
       gold = w.gold + math.round(dead.size * killReward(w)),
       kills = w.kills + dead.size,
-      hazards = w.hazards ++ crushedHazards(w, dead)
+      hazards = w.hazards ++ crushedHazards(w, dead),
+      traitHits = newHits,
+      events = newEvents
     )
 
   private def resolveImpact(w: World, p: Projectile, at: (Float, Float)): Vector[Hit] =

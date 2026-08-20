@@ -49,6 +49,7 @@ object Config:
   def MaxStepDt: Float    = current.combat.maxStepDt
   def FastForward: Int    = current.combat.fastForward
   def BreakTime: Float    = current.combat.breakTime
+  def StudyHits: Int      = current.combat.studyHits
 
   // -- specs ------------------------------------------------------------------
   def towerSpec(name: String): TowerSpec =

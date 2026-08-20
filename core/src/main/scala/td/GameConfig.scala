@@ -48,7 +48,8 @@ case class CombatConfig(
     burnDuration: Float,
     slowFactor: Float,
     slowDuration: Float,
-    breakTime: Float
+    breakTime: Float,
+    studyHits: Int
 )
 
 /** One wave of a level: a fixed enemy mix and its pacing. [[composition]] lists

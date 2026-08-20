@@ -118,7 +118,8 @@ object ConfigLoader:
         f(cmbt, "burnDuration"),
         f(cmbt, "slowFactor"),
         f(cmbt, "slowDuration"),
-        f(cmbt, "breakTime")
+        f(cmbt, "breakTime"),
+        i(cmbt, "studyHits")
       ),
       i18n = parseI18n(obj(root, "i18n")),
       towers = towers,

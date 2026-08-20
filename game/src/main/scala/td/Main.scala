@@ -93,12 +93,14 @@ class TdGame extends ApplicationAdapter:
           val steps  = if fast then Config.FastForward else 1
           val first  = Sim.step(w, dt, cmds)
           val next   = (1 until steps).foldLeft(first)((acc, _) => Sim.step(acc, dt, Vector.empty))
+          next.events.foreach(Journal.record)
+          val drained = next.copy(events = Vector.empty)
 
-          gfx.drawGame(next, hover, fast, sel, notice)
+          gfx.drawGame(drained, hover, fast, sel, notice)
 
-          if next.won then Phase.Victory(next.level, next.lives, next.gold)
-          else if next.isOver then Phase.GameOver(next.level, next.wave)
-          else Phase.Playing(next)
+          if drained.won then Phase.Victory(drained.level, drained.lives, drained.gold)
+          else if drained.isOver then Phase.GameOver(drained.level, drained.wave)
+          else Phase.Playing(drained)
 
       case Phase.Paused(w) =>
         val sel = Config.game.towers(math.min(selected, Config.game.towers.size - 1))
@@ -112,11 +114,15 @@ class TdGame extends ApplicationAdapter:
   /** Every run starts from a clean World, so nothing leaks across retries. */
   private def newRun(): Phase =
     fast = false
-    Phase.Playing(Sim.initial(System.nanoTime()))
+    val w = Sim.initial(System.nanoTime())
+    Journal.recordRun(w.run)
+    Phase.Playing(w)
 
   private def startTutorial(): Phase =
     fast = false
-    Phase.Playing(Sim.initial(RunGen.tutorial(System.nanoTime())))
+    val w = Sim.initial(RunGen.tutorial(System.nanoTime()))
+    Journal.recordRun(w.run)
+    Phase.Playing(w)
 
   /** ESC toggles pause; P is a redundant alias so the run never aborts by
     * accident. Abandoning a run now happens through the pause menu's Exit.

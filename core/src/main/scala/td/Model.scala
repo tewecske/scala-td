@@ -140,7 +140,9 @@ case class World(
     kills: Int = 0,
     leaks: Int = 0,
     hazards: Vector[Hazard] = Vector.empty,
-    leakDamage: Float = 0f
+    leakDamage: Float = 0f,
+    events: Vector[DiscoveryEvent] = Vector.empty,
+    traitHits: Map[(String, String), Int] = Map.empty
 ):
   def isOver: Boolean   = lives <= 0
   def inBreak: Boolean  = breakTimer > 0f
@@ -158,3 +160,12 @@ enum Phase:
   case Paused(w: World)
   case GameOver(level: Int, wave: Int)
   case Victory(level: Int, lives: Int, gold: Int)
+
+/** How precisely a trait is known. UNKNOWN is the absence of a journal entry. */
+enum Precision:
+  case Sighting, Studied
+
+/** A discovery surfaced from Sim during a step. [[value]] is the vague hint at
+  * Sighting ("resists"/"neutral"/...), or the exact value at Studied ("0.35").
+  */
+case class DiscoveryEvent(enemy: String, traitKey: String, tier: Precision, value: String)

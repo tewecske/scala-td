@@ -69,11 +69,14 @@ object HeadlessMain:
 
     val dt    = Config.MaxStepDt
     var world = Sim.initial(opts.seed)
+    Journal.recordRun(world.run)
     var steps = 0L
     var done  = false
     while !done do
       val cmds = if opts.bot then Bot.step(world) else Vector.empty
       world = Sim.step(world, dt, cmds)
+      world.events.foreach(Journal.record)
+      world = world.copy(events = Vector.empty)
       steps += 1
       done = world.won || world.isOver || world.level >= opts.maxLevels || steps >= opts.maxSteps
 
