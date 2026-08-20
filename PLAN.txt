@@ -1,0 +1,220 @@
+ROGUELITE TOWER DEFENSE — DESIGN & IMPLEMENTATION PLAN
+========================================================
+
+1. VISION
+---------
+Turn the fixed tower-defense game into a roguelite with a knowledge loop.
+Losing is part of the game: every run banks partial progress, teaches the
+player something, and advances a permanent meta progression. No two runs
+play alike because each run rolls a themed "biome" that reshapes the enemy
+roster, the resist profile, and a global environment rule.
+
+2. LOCKED DECISIONS
+-------------------
+- Tutorial biome: hand-crafted, exactly 2 levels, always identical, teaches
+  the core mechanics, skippable.
+- Real game starts with 3 biomes.
+- Talent tree: ONE shared tree with mid-tree "core" commitments (archetypes)
+  that can be MIXED at end game (cores are not exclusive).
+- Knowledge precision: first encounter is VAGUE; after N hits the exact
+  number is revealed and recorded.
+- Live discovery (resist popups on hit, first-meet name flash).
+- Journal banks INSTANTLY and is never gated (no note-taking tax).
+- No rerolls at launch; rerolls are unlocked via talent and cost IN-RUN GOLD.
+- One augment socket per tower.
+- Branches exist on routes; enemies traverse them randomly, with special
+  side-taking enemy types arriving later.
+- Every tunable value comes from a configuration file (data-driven); nothing
+  is hardcoded, so balancing needs no recompilation.
+- A separate config editor application provides a UI to adjust configuration.
+- The game has a headless mode so simulations can run with a custom setup.
+
+3. DATA-DRIVEN CONFIGURATION & TOOLING
+--------------------------------------
+EVERY VALUE IS CONFIG
+Every tunable value is data, not code: tower/enemy specs, biomes, waves,
+talents, relics, augments, twists, economy, combat tuning, and colors all
+live in configuration files (JSON, consistent with the existing config.json
+pattern). No balancing change should require recompilation. This applies to
+every system added in this plan, from day one.
+
+CONFIG EDITOR APP
+A separate desktop application ("Config Editor") provides a UI to view and
+edit the configuration files. It loads the same JSON the game reads, exposes
+each value as a labeled field with validation (ranges, enums, unique names,
+wave-count consistency), and writes back to disk. Editing through the UI
+guarantees the file stays parseable and internally consistent. The editor
+shares the game's parsing code so what the editor shows is exactly what the
+game loads.
+
+HEADLESS MODE
+The game supports a headless mode: no window, no rendering, runnable from the
+command line. Given a seed and/or an explicit config path, it steps the pure
+Sim to completion (or to a configurable stopping point) and reports results
+(levels cleared, waves survived, leaks, gold, end state). This lets the
+designer run thousands of simulations to validate balance, and lets custom
+setups be scripted without a display. Relies on Sim.step already being a pure
+function of (state, dt, input).
+
+4. THE RUN LOOP
+---------------
+menu -> talents (spend meta currency)
+     -> start run (roll seed + biome)
+     -> briefing (biome name, environment rule, resist theme, twists)
+     -> pick loadout (which towers to bring)
+     -> play levels (live discovery)
+     -> between levels: draft 1-of-3 relics (reroll = gold, talent-gated)
+     -> lose OR win
+     -> run end (bank partial currency + death recap + journal updates)
+     -> back to talents
+
+5. BIOMES
+---------
+A biome is a coherent package: (a) enemy roster, (b) environment rule,
+(c) resist theme (primary + secondary resistance), (d) visual identity.
+
+TUTORIAL: "The Sandbox" — 2 fixed levels, fixed waves, no surprises,
+explicitly skippable. Teaches: building, targeting, resistances,
+live-discovery popups, the journal, drafting.
+
+Three real biomes (resist themes are tunable; goal is coverage across the 5
+damage kinds over the set):
+  1. The Cube Farm       — office/cubicle drones, regenerating, slow-primary.
+                          Environment: "Open Floor Plan" (enemies gain armor
+                          while near each other).
+  2. The Shipping Yard   — armored crates, fire/kinetic theme, slow heavy hitters.
+                          Environment: "Crushed" (dying heavies leave a
+                          temporary movement hazard).
+  3. The Cardboard Wastes — brittle swarms, splash/explosion theme, fast+fragile.
+                          Environment: "Recycling" (leaks are cheaper / extra
+                          gold, but swarms are larger).
+
+Environment rules must pass the test: "does this reroute my strategy, or just
+subtract numbers?" Every rule should change HOW you play, not just punish.
+
+6. KNOWLEDGE & THE JOURNAL
+--------------------------
+Telegraphed vs discovered, resolved:
+  - TELEGRAPHED: biome name, environment rule, resist theme, twists.
+  - DISCOVERED: per-enemy exact traits (resist %, abilities, affixes, route
+    preference).
+
+Trait precision tiers (per enemy + per damage kind):
+  - UNKNOWN   — never seen.
+  - SIGHTING  — VAGUE: "resists frost" / "weak to fire" (first hit of kind).
+  - STUDIED   — EXACT: "50% frost resist" (after N hits of that kind).
+
+Live discovery UI:
+  - Damage popup on hit: normal number, or "RESIST" / "IMMUNE".
+  - First meet: name flashes (or "???" until first killing blow).
+  - First hit of a new kind upgrades that trait to SIGHTING; N hits -> STUDIED.
+
+Journal (persistent, un-gated):
+  - Records every trait learned, with precision tier.
+  - Records biome knowledge, twists, elite/affix behavior, route preference.
+  - End screen = consolidation: NEW discoveries highlighted, old dimmed.
+  - Death recap: "78% of leaks were fire-resistant; you brought no kinetic."
+
+7. NAMING THEME
+---------------
+All named things use squares/boxes/cubes/edges/angles/lines vocabulary.
+Comedic spine: squareness = the natural order; non-square polygons = eldritch
+abominations. A circle is the most horrifying thing (no corners).
+
+Enemies (conforming, square-ish):
+  - Crate Expectations — splits into smaller boxes on death (Matryoshka).
+  - Edgelord         — fast, hugs path edges.
+  - Cornercase       — the bug that only appears at corners.
+  - Dicey            — random resist (ties to resist theme).
+  - Brick            — armored, slow.
+  - Cubicle          — regenerates.
+  - Pallet Jack      — aura that speeds allies.
+  - Milk Crate       — brittle.
+
+Elites/bosses (wrong number of sides):
+  - The Trespasser — triangle.
+  - The Pentagon   — literally.
+  - Hexcellent     — hexagon elite.
+  - The Roundabout — a circle; no corners, no mercy.
+  - The Stop Sign  — octagon that cannot be stopped (multi-route boss candidate).
+
+8. META TALENT TREE (shared + cores)
+------------------------------------
+One shared tree. Three archetype cores for the first pass. Three layers:
+  - FILLERS: +x% dmg, +range, +gold — pathing costs only.
+  - CORES (mid-tree): archetype commits, NOT exclusive, mixable at end game.
+      Pyromancer  (fire/slow/explosion reactions)
+      Frostwarden (slow/kinetic/shatter)
+      Breaker     (kinetic/splash)
+  - DEEP (end-of-tree): brutal synergies; the "engine" that relics/augments
+    plug into. Example: "Permafrost" (slow never expires).
+
+Rule: relics/augments supply the VERB; deep talents supply the ENGINE.
+
+9. IN-RUN DRAFT (relics + augments)
+-----------------------------------
+Between levels, pick 1 of 3. Rerolls cost gold, unlocked via talent.
+Two kinds:
+  - GLOBAL relics (affect all/some actors): Pandora's Box, Box Office,
+    Square Deal, Open the Box (per-wave random), Perimeter Alarm.
+  - AUGMENTS (attach to one tower, ONE socket per tower): Cornerstone
+    (immune to debuffs), Sharpened Edge, 90 Degrees, Set Square, Box Springs,
+    Vertigo (adds slow).
+
+Talent-gated rarity: deep talents unlock rare/legendary relics in the pool and
+amplify them. A shallow player literally cannot roll the broken combos.
+
+10. TWISTS (silver-lining debuffs)
+----------------------------------
+Named, recognizable, journal-able. Each REROUTES a tower, never strictly nerfs:
+  - Frost: "Brittle"       — shorter slow, but slowed take +50% kinetic.
+  - Fire: "Backdraft"      — burn ticks faster, but no longer stacks.
+  - Explosion: "Shaped Charge" — smaller radius, but direct hits ignore armor.
+  - Kinetic: "Ricochet"    — every 3rd shot bounces, but slower fire rate.
+
+11. BRANCHES & SIDE-TAKING ENEMIES
+----------------------------------
+Routes may fork; enemies traverse randomly. Later, specialist enemies always
+take a specific side (e.g. Edgelord always takes the left fork). Route
+preference is a discoverable, journaled trait — scouting becomes a skill.
+
+12. IMPLEMENTATION PHASES (executable order)
+--------------------------------------------
+Phase 0 — Foundations
+  - Seeded RNG (xorshift) in a new Rng object.
+  - Run context on World: seed, biome id, mods, loadout, relics, augments.
+  - Keep Sim.step pure: roll ALL randomness once at run start; steps only read.
+  - All new data config-file-driven (biomes/talents/relics/augments in JSON).
+  - Headless runner + CLI entry: seed/config path in, results out.
+
+Phase 1 — Biomes + run generation
+  - Biome data (tutorial + 3). RunGen rolls: biome, resist profile, twists, roster.
+  - Environment rules + resist theme applied in Sim.spawn/fireTowers/moveProjectiles.
+
+Phase 2 — Knowledge & journal
+  - Trait discovery state (Sighting -> Studied), persisted journal.
+  - Hit feedback surfaced from Sim (event log on World, or step result).
+  - Live popups + end-screen consolidation + death recap in Render.
+
+Phase 3 — Meta progression
+  - Meta currency + shared talent tree + cores + deep nodes; persistence.
+
+Phase 4 — Draft
+  - Relics + augments, one socket per tower, reroll (gold, talent-gated).
+
+Phase 5 — Twists, branches, side-taking enemies.
+
+Phase 6 — Config editor app
+  - Separate desktop app sharing the game's config parsing, with validation
+    and save-to-disk.
+
+Phase 7 — Polish: naming pass, colors, briefing screen, skippable tutorial.
+
+13. NOTES / FUTURE
+------------------
+- Remembered: enemy type that requires multiple routes and always takes the
+  left side at a fork. Fold into Phase 5.
+- Optional polish: retheme damage kinds (Kinetic -> Momentum, Slow -> Stall,
+  Splash -> Spread) — last, after player-facing names are settled.
+- canBuild stays the single build-validity check; loadout, debuff pricing, and
+  augment logic must all funnel through it (preview and rule never disagree).
