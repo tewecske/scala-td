@@ -1,12 +1,12 @@
 # AGENTS.md
 
-Scala 3 tower-defense game on libGDX (LWJGL3 desktop backend). Single sbt module, package `td`.
+Scala 3 tower-defense game on libGDX (LWJGL3 desktop backend). Multi-project sbt build (`core`/`game`/`editor`/`headless`), package `td`.
 
 ## Commands
 
 - `sbt compile` — build
-- `sbt run` — launches the GUI window; needs a display, so not runnable headless
-- No tests, no scalafmt, no sbt plugins, no CI. `sbt test` has nothing to run.
+- `sbt "game/run"` — launches the GUI window; needs a display, so not runnable headless
+- `sbt test` — munit unit tests (headless-safe). Tests are wired in by `TASKS/task01`; see `TASKS/context.md` section 5 for the testing convention. No scalafmt, no CI.
 
 ## Architecture
 
