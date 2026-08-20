@@ -142,7 +142,12 @@ case class World(
     hazards: Vector[Hazard] = Vector.empty,
     leakDamage: Float = 0f,
     events: Vector[DiscoveryEvent] = Vector.empty,
-    traitHits: Map[(String, String), Int] = Map.empty
+    traitHits: Map[(String, String), Int] = Map.empty,
+    hitFeedback: Vector[HitFeedback] = Vector.empty,
+    nameEvents: Vector[NameEvent] = Vector.empty,
+    seen: Set[String] = Set.empty,
+    revealed: Set[String] = Set.empty,
+    leaksByType: Map[String, Int] = Map.empty
 ):
   def isOver: Boolean   = lives <= 0
   def inBreak: Boolean  = breakTimer > 0f
@@ -158,8 +163,16 @@ enum Phase:
   case Menu
   case Playing(w: World)
   case Paused(w: World)
-  case GameOver(level: Int, wave: Int)
-  case Victory(level: Int, lives: Int, gold: Int)
+  case Recap(
+      won: Boolean,
+      level: Int,
+      wave: Int,
+      lives: Int,
+      gold: Int,
+      newEntries: Vector[JournalEntry],
+      knownEntries: Vector[JournalEntry],
+      death: Option[DeathRecap]
+  )
 
 /** How precisely a trait is known. UNKNOWN is the absence of a journal entry. */
 enum Precision:
@@ -169,3 +182,23 @@ enum Precision:
   * Sighting ("resists"/"neutral"/...), or the exact value at Studied ("0.35").
   */
 case class DiscoveryEvent(enemy: String, traitKey: String, tier: Precision, value: String)
+
+/** A landed hit surfaced to the renderer for a damage/resist popup. [[dealt]] is
+  * the post-resist/armor damage; [[resistFrac]] is the fraction of incoming
+  * damage removed by resistance (0 none, >= 1 immune).
+  */
+case class HitFeedback(x: Float, y: Float, kind: DamageKind, dealt: Float, resistFrac: Float)
+
+/** A name flash: an enemy type was first seen this run (`reveal=false`, drawn as
+  * "???" until its name is known) or its name was first learned by a killing blow
+  * (`reveal=true`).
+  */
+case class NameEvent(enemy: String, x: Float, y: Float, reveal: Boolean)
+
+/** A one-line cause-of-death summary computed from leaks + the run's loadout. */
+case class DeathRecap(
+    resistedKind: DamageKind,
+    leakPct: Int,
+    counterKind: DamageKind,
+    missingCounter: Boolean
+)

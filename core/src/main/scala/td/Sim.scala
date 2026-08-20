@@ -105,6 +105,19 @@ object Sim:
       acc.copy(traitHits = hits, events = evs)
     }
 
+  /** First killing blow on a type reveals its name: a journal entry plus a
+    * reveal flash at the death spot. Run-scoped via [[World.revealed]].
+    */
+  private def noteReveals(w: World, dead: Vector[Enemy]): World =
+    val (revealed, events, names) = dead.foldLeft((w.revealed, w.events, w.nameEvents)) {
+      case ((rev, evs, ns), e) =>
+        if rev.contains(e.tpe) then (rev, evs, ns)
+        else
+          val (x, y) = e.pos
+          (rev + e.tpe, evs :+ DiscoveryEvent(e.tpe, "name", Precision.Studied, e.tpe), ns :+ NameEvent(e.tpe, x, y, reveal = true))
+    }
+    w.copy(revealed = revealed, events = events, nameEvents = names)
+
   // -- wave pacing -----------------------------------------------------------
 
   private def spawn(w: World, dt: Float): World =
@@ -126,11 +139,15 @@ object Sim:
           level = w.level,
           resist = spec.resist.layered(w.run.resistTheme)
         )
+        val (ex, ey) = e.pos
+        val meet     = if w.seen.contains(spec.name) then Vector.empty else Vector(NameEvent(spec.name, ex, ey, reveal = false))
         observeAbilities(w, spec).copy(
           enemies = w.enemies :+ e,
           spawnQueue = w.spawnQueue.tail,
           spawnTimer = Waves.spec(w.level, w.wave).spawnInterval,
-          nextId = w.nextId + 1
+          nextId = w.nextId + 1,
+          seen = w.seen + spec.name,
+          nameEvents = w.nameEvents ++ meet
         )
 
   /** Counts down the break and starts the next wave; once a wave is fully
@@ -254,12 +271,13 @@ object Sim:
       }
       val (dead, alive) = updated.partition(_.hp <= 0f)
       if dead.isEmpty then base.copy(enemies = alive)
-      else base.copy(
-        enemies = alive,
-        gold = base.gold + math.round(dead.size * killReward(base)),
-        kills = base.kills + dead.size,
-        hazards = base.hazards ++ crushedHazards(base, dead)
-      )
+      else
+        noteReveals(base, dead).copy(
+          enemies = alive,
+          gold = base.gold + math.round(dead.size * killReward(base)),
+          kills = base.kills + dead.size,
+          hazards = base.hazards ++ crushedHazards(base, dead)
+        )
 
   private def tickHazards(hazards: Vector[Hazard], dt: Float): Vector[Hazard] =
     if hazards.isEmpty then hazards
@@ -287,11 +305,13 @@ object Sim:
         case m            => m
       val pending = w.leakDamage + leaked.size * mult
       val whole   = pending.toInt
+      val merged  = leaked.foldLeft(w.leaksByType) { (m, e) => m + (e.tpe -> (m.getOrElse(e.tpe, 0) + 1)) }
       w.copy(
         enemies = still,
         lives = math.max(0, w.lives - whole),
         leaks = w.leaks + leaked.size,
-        leakDamage = pending - whole
+        leakDamage = pending - whole,
+        leaksByType = merged
       )
 
   private def hazardMult(e: Enemy, hazards: Vector[Hazard]): Float =
@@ -379,12 +399,16 @@ object Sim:
 
     val landed     = hs.result()
     val landedById = landed.groupBy(_.id)
+    val fb         = Vector.newBuilder[HitFeedback]
     val damaged  = w.enemies.map { e =>
       landedById.get(e.id) match
         case None => e
         case Some(es) =>
           es.foldLeft(e) { (acc, h) =>
-            val dmg = math.max(0f, h.damage * (1f - e.resist(h.kind)) * (1f - e.armor))
+            val resistFrac = e.resist(h.kind)
+            val dmg = math.max(0f, h.damage * (1f - resistFrac) * (1f - e.armor))
+            val (ex, ey) = e.pos
+            fb += HitFeedback(ex, ey, h.kind, dmg, resistFrac)
             var cur = acc.copy(hp = acc.hp - dmg)
             h.burn.foreach { case (dps, dur) =>
               val fr = e.resist(DamageKind.Fire)
@@ -415,14 +439,14 @@ object Sim:
             bumpObserved(hh, ee, tpe, s"resist.${h.kind}", Config.StudyHits, vagueHint(base), base.toString)
     }
 
-    w.copy(
+    val withResist = w.copy(traitHits = newHits, events = newEvents)
+    noteReveals(withResist, dead).copy(
       shots = fs.result(),
       enemies = alive,
       gold = w.gold + math.round(dead.size * killReward(w)),
       kills = w.kills + dead.size,
       hazards = w.hazards ++ crushedHazards(w, dead),
-      traitHits = newHits,
-      events = newEvents
+      hitFeedback = w.hitFeedback ++ fb.result()
     )
 
   private def resolveImpact(w: World, p: Projectile, at: (Float, Float)): Vector[Hit] =

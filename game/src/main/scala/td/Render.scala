@@ -40,6 +40,55 @@ class Render:
 
   font.setUseIntegerPositions(false)
 
+  // -- floating popups/flashes -------------------------------------------------
+
+  private val PopupLife = 0.9f
+  private val FlashLife = 1.6f
+
+  private case class Floating(x: Float, y: Float, label: String, color: Color, life: Float, maxLife: Float, big: Boolean)
+  private val floating = scala.collection.mutable.ArrayBuffer[Floating]()
+
+  /** Register a landed hit as a floating damage/status label. */
+  def feedHits(hits: Vector[HitFeedback]): Unit =
+    hits.foreach { h =>
+      val (label, color) =
+        if h.resistFrac >= 0.99f then (Messages.t("popup.immune"), Config.EnemyColor)
+        else if h.resistFrac > 0f then (Messages.t("popup.resist"), Config.EnemyColor)
+        else (math.round(h.dealt).toString, Config.TextColor)
+      floating += Floating(h.x, h.y + 14f, label, color, PopupLife, PopupLife, big = false)
+    }
+
+  /** Register a first-meet / name-reveal flash. Unknown names show "???" until
+    * the journal knows them (a killing blow in any run).
+    */
+  def feedNames(names: Vector[NameEvent], known: Set[String]): Unit =
+    names.foreach { n =>
+      val label =
+        if n.reveal then n.enemy
+        else if known.contains(n.enemy) then n.enemy
+        else Messages.t("popup.unknown")
+      floating += Floating(n.x, n.y + 26f, label, Config.TextColor, FlashLife, FlashLife, big = true)
+    }
+
+  /** Ages the floating labels once per frame (call even when not drawing them). */
+  def updateFx(dt: Float): Unit =
+    if floating.nonEmpty then
+      val aged = floating.map(f => f.copy(life = f.life - dt)).filter(_.life > 0f)
+      floating.clear()
+      floating ++= aged
+
+  def clearFx(): Unit = floating.clear()
+
+  private def drawFloating(): Unit =
+    floating.foreach { f =>
+      val t     = f.life / f.maxLife
+      val rise  = (1f - t) * 12f
+      val scale = if f.big then 1.4f else 1.0f
+      val c     = new Color(f.color)
+      c.a       = math.min(1f, t * 2f)
+      centered(f.label, f.x, f.y + rise, scale, c)
+    }
+
   def resize(w: Int, h: Int): Unit = viewport.update(w, h, true)
 
   /** Screen pixel -> world unit, so clicks land where they look like they land. */
@@ -105,6 +154,22 @@ class Render:
     shapes.setColor(c.r, c.g, c.b, 0.34f)
     shapes.circle(x, y, r * 0.35f)
 
+  private def kindName(kind: DamageKind): String = Messages.t(s"kind.${kind.toString}")
+
+  private def entryParts(e: JournalEntry): (String, String) =
+    val v = e.value.getOrElse("")
+    e.traitKey match
+      case "name" => (e.enemy, "")
+      case "aura" => (e.enemy, v)
+      case "heavy" => (e.enemy, "")
+      case k if k.startsWith("resist.") =>
+        val kind   = DamageKind.valueOf(k.stripPrefix("resist."))
+        val detail =
+          if e.tier == Precision.Studied then Messages.t("recap.resistExact", kindName(kind), v)
+          else Messages.t("recap.resistVague", kindName(kind), v)
+        (e.enemy, detail)
+      case k => (e.enemy, s"$k $v")
+
   // -- screens ---------------------------------------------------------------
 
   def drawMenu(): Unit =
@@ -123,7 +188,16 @@ class Render:
     batch.end()
     present()
 
-  def drawGameOver(level: Int, wave: Int): Unit =
+  def drawRecap(
+      won: Boolean,
+      level: Int,
+      wave: Int,
+      lives: Int,
+      gold: Int,
+      newEntries: Vector[JournalEntry],
+      knownEntries: Vector[JournalEntry],
+      death: Option[DeathRecap]
+  ): Unit =
     beginScene()
     shapes.begin(ShapeType.Filled)
     button(Ui.Retry)
@@ -131,25 +205,43 @@ class Render:
     shapes.end()
 
     batch.begin()
-    centered("GAME OVER", Config.WorldW / 2, 460f, 3f, Config.EnemyColor)
-    centered(s"you reached level ${level + 1} · wave $wave", Config.WorldW / 2, 400f, 1.4f, Config.DimText)
-    buttonLabel(Ui.Retry, "RETRY")
-    buttonLabel(Ui.Menu, "MENU")
-    batch.end()
-    present()
+    val title      = if won then "VICTORY" else "GAME OVER"
+    val titleColor = if won then Config.BuffTint else Config.EnemyColor
+    centered(title, Config.WorldW / 2, 600f, 3f, titleColor)
 
-  def drawVictory(level: Int, lives: Int, gold: Int): Unit =
-    beginScene()
-    shapes.begin(ShapeType.Filled)
-    button(Ui.PlayAgain)
-    button(Ui.Menu)
-    shapes.end()
+    val stats =
+      if won then s"all ${level + 1} levels cleared - $lives lives remaining - $gold gold"
+      else s"you reached level ${level + 1} - wave $wave"
+    centered(stats, Config.WorldW / 2, 548f, 1.3f, Config.DimText)
 
-    batch.begin()
-    centered("VICTORY", Config.WorldW / 2, 460f, 3f, Config.BuffTint)
-    centered(s"all ${level + 1} levels cleared", Config.WorldW / 2, 400f, 1.4f, Config.DimText)
-    centered(s"$lives lives remaining · $gold gold", Config.WorldW / 2, 365f, 1.2f, Config.DimText)
-    buttonLabel(Ui.PlayAgain, "PLAY AGAIN")
+    death.foreach { d =>
+      centered(Messages.t("recap.deathResisted", d.leakPct, kindName(d.resistedKind)),
+        Config.WorldW / 2, 505f, 1.2f, Config.EnemyColor)
+      if d.missingCounter then
+        centered(Messages.t("recap.deathMissing", kindName(d.counterKind)),
+          Config.WorldW / 2, 478f, 1.2f, Config.EnemyColor)
+    }
+
+    centered(Messages.t("recap.discoveries"), Config.WorldW / 2, 432f, 1.6f)
+
+    var y = 396f
+    def line(s: String, c: Color): Unit =
+      if y > 240f then
+        text(s, Config.WorldW / 2 - 190f, y, 1.1f, c)
+        y -= 22f
+
+    newEntries.foreach { e =>
+      val (name, detail) = entryParts(e)
+      line(s"${Messages.t("recap.new")}  $name${if detail.isEmpty then "" else s" - $detail"}", Config.TextColor)
+    }
+    knownEntries.foreach { e =>
+      val (name, detail) = entryParts(e)
+      line(s"${Messages.t("recap.known")}  $name${if detail.isEmpty then "" else s" - $detail"}", Config.DimText)
+    }
+    if newEntries.isEmpty && knownEntries.isEmpty then
+      line(Messages.t("recap.none"), Config.DimText)
+
+    buttonLabel(Ui.Retry, if won then "PLAY AGAIN" else "RETRY")
     buttonLabel(Ui.Menu, "MENU")
     batch.end()
     present()
@@ -202,6 +294,7 @@ class Render:
 
     batch.begin()
     drawHud(w, fast, selected)
+    drawFloating()
     notice.foreach(n => centered(n, Config.BoardPx + Config.PanelPx / 2, 30f, 1.1f, Config.ShotColor))
     batch.end()
 

@@ -25,6 +25,8 @@ class TdGame extends ApplicationAdapter:
   private var selected: Int    = 0
   private var notice: Option[String] = None
   private var noticeTimer: Float     = 0f
+  private var knownNames: Set[String]     = Set.empty
+  private var startEntries: Vector[JournalEntry] = Vector.empty
 
   override def create(): Unit =
     gfx = new Render
@@ -52,17 +54,11 @@ class TdGame extends ApplicationAdapter:
         else if Gdx.input.isKeyJustPressed(Input.Keys.T) then startTutorial()
         else Phase.Menu
 
-      case Phase.GameOver(level, wave) =>
-        gfx.drawGameOver(level, wave)
+      case Phase.Recap(won, level, wave, lives, gold, newEntries, knownEntries, death) =>
+        gfx.drawRecap(won, level, wave, lives, gold, newEntries, knownEntries, death)
         if clicked && Ui.Retry.contains(mx, my) then newRun()
         else if clicked && Ui.Menu.contains(mx, my) then Phase.Menu
-        else Phase.GameOver(level, wave)
-
-      case Phase.Victory(level, lives, gold) =>
-        gfx.drawVictory(level, lives, gold)
-        if clicked && Ui.PlayAgain.contains(mx, my) then newRun()
-        else if clicked && Ui.Menu.contains(mx, my) then Phase.Menu
-        else Phase.Victory(level, lives, gold)
+        else Phase.Recap(won, level, wave, lives, gold, newEntries, knownEntries, death)
 
       case Phase.Playing(w) =>
         // While paused nothing steps and only the pause keys / buttons act.
@@ -94,12 +90,14 @@ class TdGame extends ApplicationAdapter:
           val first  = Sim.step(w, dt, cmds)
           val next   = (1 until steps).foldLeft(first)((acc, _) => Sim.step(acc, dt, Vector.empty))
           next.events.foreach(Journal.record)
-          val drained = next.copy(events = Vector.empty)
+          gfx.feedHits(next.hitFeedback)
+          gfx.feedNames(next.nameEvents, knownNames)
+          gfx.updateFx(dt)
+          val drained = next.copy(events = Vector.empty, hitFeedback = Vector.empty, nameEvents = Vector.empty)
 
           gfx.drawGame(drained, hover, fast, sel, notice)
 
-          if drained.won then Phase.Victory(drained.level, drained.lives, drained.gold)
-          else if drained.isOver then Phase.GameOver(drained.level, drained.wave)
+          if drained.won || drained.isOver then toRecap(drained)
           else Phase.Playing(drained)
 
       case Phase.Paused(w) =>
@@ -115,14 +113,60 @@ class TdGame extends ApplicationAdapter:
   private def newRun(): Phase =
     fast = false
     val w = Sim.initial(System.nanoTime())
-    Journal.recordRun(w.run)
+    beginRun(w)
     Phase.Playing(w)
 
   private def startTutorial(): Phase =
     fast = false
     val w = Sim.initial(RunGen.tutorial(System.nanoTime()))
-    Journal.recordRun(w.run)
+    beginRun(w)
     Phase.Playing(w)
+
+  /** Snapshots the journal so the recap can tell NEW entries from known ones. */
+  private def beginRun(w: World): Unit =
+    Journal.recordRun(w.run)
+    val data = Journal.load().getOrElse(JournalData.empty)
+    startEntries = data.entries
+    knownNames = data.entries.collect { case e if e.traitKey == "name" => e.enemy }.toSet
+    gfx.clearFx()
+
+  /** Run ended: build the recap (new vs known entries, plus a death summary). */
+  private def toRecap(w: World): Phase =
+    val after = Journal.load().getOrElse(JournalData.empty).entries
+    val newEntries   = after.filterNot(startEntries.contains)
+    val knownEntries = after.filter(startEntries.contains)
+    val death        = if w.isOver then deathRecap(w) else None
+    Phase.Recap(w.won, w.level, w.wave, w.lives, w.gold, newEntries, knownEntries, death)
+
+  private def damageKinds: Vector[DamageKind] =
+    Vector(DamageKind.Kinetic, DamageKind.Fire, DamageKind.Slow, DamageKind.Splash, DamageKind.Explosion)
+
+  private def dominantKind(res: Resistances): Option[DamageKind] =
+    damageKinds.maxBy(res(_)) match
+      case k if res(k) > 0f => Some(k)
+      case _                => None
+
+  private def deathRecap(w: World): Option[DeathRecap] =
+    if w.leaksByType.isEmpty then None
+    else
+      val total = w.leaksByType.values.sum
+      val resisted = w.leaksByType.toVector.flatMap { case (tpe, n) =>
+        val res = Config.enemySpec(tpe).resist.layered(w.run.resistTheme)
+        dominantKind(res).map(k => k -> n)
+      }
+      if resisted.isEmpty then None
+      else
+        val byKind = resisted.groupBy(_._1).view.mapValues(_.map(_._2).sum).toMap
+        val resistedKind = byKind.toVector.maxBy { case (k, n) => (n, k.ordinal) }._1
+        val leakPct      = math.round(100f * byKind(resistedKind) / total).toInt
+        val counterKind  = damageKinds.minBy(k => leakResistSum(w, k))
+        val brought      = w.run.loadout.map(Config.towerSpec(_).kind).toSet ++ w.towers.map(_.spec.kind).toSet
+        Some(DeathRecap(resistedKind, leakPct, counterKind, !brought.contains(counterKind)))
+
+  private def leakResistSum(w: World, kind: DamageKind): Float =
+    w.leaksByType.toVector.map { case (tpe, n) =>
+      Config.enemySpec(tpe).resist.layered(w.run.resistTheme)(kind) * n
+    }.sum
 
   /** ESC toggles pause; P is a redundant alias so the run never aborts by
     * accident. Abandoning a run now happens through the pause menu's Exit.
