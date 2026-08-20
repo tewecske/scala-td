@@ -162,6 +162,11 @@ class Render:
       case "name" => (e.enemy, "")
       case "aura" => (e.enemy, v)
       case "heavy" => (e.enemy, "")
+      case "route" =>
+        val detail =
+          if e.tier == Precision.Studied then Messages.t("recap.routeStudied", e.value.getOrElse(""))
+          else Messages.t("recap.routeVague")
+        (e.enemy, detail)
       case k if k.startsWith("resist.") =>
         val kind   = DamageKind.valueOf(k.stripPrefix("resist."))
         val detail =

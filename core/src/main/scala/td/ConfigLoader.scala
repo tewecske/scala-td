@@ -180,7 +180,11 @@ object ConfigLoader:
         f(resist, "explosion")
       ),
       aura = aura,
-      heavy = v.getBoolean("heavy", false)
+      heavy = v.getBoolean("heavy", false),
+      sidePreference =
+        val sideVal = v.get("sidePreference")
+        if sideVal == null || sideVal.isNull then None
+        else Some(enumValue(sideVal.asString(), "side preference", RouteSide.values))
     )
 
   private def parseLevels(root: JsonValue, known: Set[String]): Vector[LevelConfig] =
@@ -190,6 +194,19 @@ object ConfigLoader:
       val waves = arr(v, "waves").map(parseWave(_, known))
       if route.waypoints.isEmpty then
         throw IllegalArgumentException(s"level '$name' has an empty route")
+      if route.branches.nonEmpty && route.waypoints.size < 2 then
+        throw IllegalArgumentException(s"level '$name' has branches but fewer than two waypoints")
+      route.branches.foreach { b =>
+        if b.from < 0 || b.from >= route.waypoints.size then
+          throw IllegalArgumentException(s"level '$name' branch '${b.side}' from index ${b.from} out of range")
+        if b.to <= b.from || b.to >= route.waypoints.size then
+          throw IllegalArgumentException(s"level '$name' branch '${b.side}' needs 0 < to > from < waypoints")
+        if b.waypoints.isEmpty then
+          throw IllegalArgumentException(s"level '$name' branch '${b.side}' has no waypoints")
+      }
+      val dupFrom = route.branches.groupBy(_.from).collect { case (f, bs) if bs.size > 1 => f }
+      if dupFrom.nonEmpty then
+        throw IllegalArgumentException(s"level '$name' has multiple branches at fork index ${dupFrom.min}")
       if waves.isEmpty then
         throw IllegalArgumentException(s"level '$name' has no waves")
       LevelConfig(name, waves, route)
@@ -215,7 +232,21 @@ object ConfigLoader:
     val waypoints = arr(v, "waypoints").map { p =>
       GridPos(p.get(0).asInt(), p.get(1).asInt())
     }
-    Route(waypoints)
+    val branchesVal = v.get("branches")
+    val branches =
+      if branchesVal == null || !branchesVal.isArray then Vector.empty
+      else (0 until branchesVal.size).map { idx =>
+        val b = branchesVal.get(idx)
+        Branch(
+          side = enumValue(s(b, "side"), "branch side", RouteSide.values),
+          from = i(b, "from"),
+          to = i(b, "to"),
+          waypoints = arr(b, "waypoints").map { p =>
+            GridPos(p.get(0).asInt(), p.get(1).asInt())
+          }
+        )
+      }.toVector
+    Route(waypoints, branches)
 
   private def parseColors(v: JsonValue): Colors =
     Colors(

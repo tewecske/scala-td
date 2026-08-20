@@ -442,9 +442,29 @@ object Sim:
       case _ => Vector.empty
 
   private def moveEnemies(w: World, dt: Float): World =
-    val advanced        = w.enemies.map(e => e.copy(progress = e.progress + e.effectiveSpeed * hazardMult(e, w.hazards) * dt))
-    val (leaked, still) = advanced.partition(e => e.progress >= Grid.length(e.level))
-    if leaked.isEmpty then w.copy(enemies = still)
+    val (laned, hits, evs) = w.enemies.foldLeft((Vector.empty[Enemy], w.traitHits, w.events)) {
+      case ((acc, hh, ee), e) =>
+        val next = e.progress + e.effectiveSpeed * hazardMult(e, w.hazards) * dt
+        val e2   = e.copy(progress = next)
+        if e.lane.isDefined then (acc :+ e2, hh, ee)
+        else
+          Grid.forks(e.level).find(f => e.progress < f.forkProgress && next >= f.forkProgress) match
+            case None => (acc :+ e2, hh, ee)
+            case Some(f) =>
+              e.spec.sidePreference match
+                case Some(side) =>
+                  val lane = if f.side == side then Some(f.branchIndex) else None
+                  val (hh2, evs2) =
+                    bumpObserved(hh, ee, e.tpe, "route", Config.StudyHits, "takes a side", side.toString.toLowerCase)
+                  (acc :+ e2.copy(lane = lane), hh2, evs2)
+                case None =>
+                  val lane = if (laneRoll(w, e) & 1L) == 0L then None else Some(f.branchIndex)
+                  (acc :+ e2.copy(lane = lane), hh, ee)
+    }
+
+    val base = w.copy(traitHits = hits, events = evs)
+    val (leaked, still) = laned.partition(e => e.progress >= Grid.length(e.level))
+    if leaked.isEmpty then base.copy(enemies = still)
     else
       val mult = math.max(0f, envParam(w, "recycling", "livesLossMult")) match
         case m if m <= 0f => 1f
@@ -452,13 +472,20 @@ object Sim:
       val pending = w.leakDamage + leaked.size * mult
       val whole   = pending.toInt
       val merged  = leaked.foldLeft(w.leaksByType) { (m, e) => m + (e.tpe -> (m.getOrElse(e.tpe, 0) + 1)) }
-      w.copy(
+      base.copy(
         enemies = still,
         lives = math.max(0, w.lives - whole),
         leaks = w.leaks + leaked.size,
         leakDamage = pending - whole,
         leaksByType = merged
       )
+
+  /** Pre-rolled lane choice for an enemy at its first fork, read from the run
+    * (never consumed via RNG here). Indexed by the enemy's id with a safe wrap.
+    */
+  private def laneRoll(w: World, e: Enemy): Long =
+    val choices = w.run.laneChoices
+    if choices.isEmpty then 0L else choices(((e.id - 1) % choices.size).toInt)
 
   private def hazardMult(e: Enemy, hazards: Vector[Hazard]): Float =
     if hazards.isEmpty then 1f

@@ -18,9 +18,16 @@ case class TowerSpec(
     splashRadius: Float
 )
 
+/** Which side of a fork a lane (or a side-taking enemy) favours. A branch
+  * declares its side; the trunk lane it bypasses is the opposite side.
+  */
+enum RouteSide:
+  case Left, Right
+
 /** An enemy archetype's tuning. `baseHp`/`baseSpeed` are the wave-1 baselines
   * (hp is scaled by the owning wave's [[WaveSpec.hpScale]]); resistances and the
-  * optional aura come straight from here.
+  * optional aura come straight from here. [[sidePreference]] marks a specialist
+  * that always takes that side of a fork (None = random), a discoverable trait.
   */
 case class EnemySpec(
     name: String,
@@ -30,7 +37,8 @@ case class EnemySpec(
     size: Float,
     resist: Resistances,
     aura: Option[Aura],
-    heavy: Boolean = false
+    heavy: Boolean = false,
+    sidePreference: Option[RouteSide] = None
 )
 
 case class BoardConfig(gridSize: Int, cellPx: Float, panelPx: Float)
@@ -76,10 +84,18 @@ case class WaveSpec(
 /** One level: a named route plus its own explicit wave table. */
 case class LevelConfig(name: String, waves: Vector[WaveSpec], route: Route)
 
-/** The walkable route, authored as corner waypoints. Path cells and the
-  * polyline enemies walk are derived from these by [[Grid]].
+/** A fork's alternative lane. It leaves the trunk at waypoint index [[from]]
+  * and re-joins it at [[to]] (`from < to`); the lane itself runs
+  * waypoints(from) -> waypoints -> waypoints(to). [[side]] labels which side of
+  * the fork this lane is; the trunk segment it bypasses is the other side.
   */
-case class Route(waypoints: Vector[GridPos])
+case class Branch(side: RouteSide, from: Int, to: Int, waypoints: Vector[GridPos])
+
+/** The walkable route, authored as corner waypoints. Path cells and the
+  * polyline(s) enemies walk are derived from these by [[Grid]]. A route forks
+  * where a [[Branch]] detours off the trunk between two waypoint indices.
+  */
+case class Route(waypoints: Vector[GridPos], branches: Vector[Branch] = Vector.empty)
 
 /** Shared palette, as parsed hex colors. */
 case class Colors(

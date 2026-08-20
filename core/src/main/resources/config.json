@@ -38,7 +38,9 @@
       "aura": { "kind": "SpeedBoost", "radius": 2.5, "magnitude": 0.25 } },
     { "name": "Shieldbearer", "baseHp": 55.0, "baseSpeed": 32.0, "color": "#323875", "size": 18.0, "heavy": true,
       "resist": { "kinetic": 0.2, "fire": 0.0, "slow": 0.0, "splash": 0.0, "explosion": 0.0 },
-      "aura": { "kind": "Armor", "radius": 2.0, "magnitude": 0.3 } }
+      "aura": { "kind": "Armor", "radius": 2.0, "magnitude": 0.3 } },
+    { "name": "Edgelord", "baseHp": 30.0, "baseSpeed": 60.0, "color": "#C9A8E1", "size": 14.0, "sidePreference": "Left",
+      "resist": { "kinetic": 0.0, "fire": 0.0, "slow": 0.0, "splash": 0.0, "explosion": 0.0 }, "aura": null }
   ],
   "levels": [
     {
@@ -53,13 +55,14 @@
     },
     {
       "name": "Ashen Ridge",
-      "route": { "waypoints": [[0, 1], [0, 9], [8, 9], [8, 17], [16, 17], [16, 3], [19, 3]] },
+      "route": { "waypoints": [[0, 1], [0, 9], [8, 9], [8, 17], [16, 17], [16, 3], [19, 3]],
+        "branches": [ { "side": "Right", "from": 2, "to": 5, "waypoints": [[8, 3]] } ] },
       "waves": [
         { "count": 10, "spawnInterval": 0.80, "hpScale": 1.2, "composition": { "Grunt": 6, "Ember": 4 } },
         { "count": 12, "spawnInterval": 0.75, "hpScale": 1.4, "composition": { "Swift": 4, "Ember": 4, "Frostling": 4 } },
         { "count": 14, "spawnInterval": 0.70, "hpScale": 1.6, "composition": { "Grunt": 6, "Brute": 2, "Ember": 4, "Frostling": 2 } },
         { "count": 16, "spawnInterval": 0.65, "hpScale": 1.8, "composition": { "Brute": 4, "Ember": 4, "Commander": 2, "Frostling": 4, "Swift": 2 } },
-        { "count": 18, "spawnInterval": 0.60, "hpScale": 2.0, "composition": { "Brute": 4, "Commander": 3, "Shieldbearer": 3, "Ember": 4, "Swift": 4 } }
+        { "count": 20, "spawnInterval": 0.60, "hpScale": 2.0, "composition": { "Brute": 4, "Commander": 3, "Shieldbearer": 3, "Ember": 4, "Swift": 4, "Edgelord": 2 } }
       ]
     },
     {

@@ -55,7 +55,8 @@ enum DamageKind:
   * simply `progress >= Grid.length(level)`. The type is a spec name, resolved
   * against the active config so a reload re-tunes enemies already on the field.
   * [[level]] pins the enemy to the route it was spawned on (routes differ per
-  * level).
+  * level). [[lane]] is the branch it took at a fork (None = trunk/not yet
+  * forked), read by [[Grid.positionAt]].
   */
 case class Enemy(
     id: Long,
@@ -71,10 +72,11 @@ case class Enemy(
     burnDps: Float = 0f,
     burnUntil: Float = 0f,
     speedMult: Float = 1f,
-    armor: Float = 0f
+    armor: Float = 0f,
+    lane: Option[Int] = None
 ):
   def spec: EnemySpec      = Config.enemySpec(tpe)
-  def pos: (Float, Float)  = Grid.positionAt(progress, level)
+  def pos: (Float, Float)  = Grid.positionAt(progress, level, lane)
   def slowed: Boolean      = slowUntil > 0f
   def burning: Boolean     = burnUntil > 0f
   def buffed: Boolean      = speedMult > 1f || armor > 0f
@@ -142,7 +144,8 @@ case class RunContext(
     relics: Vector[String] = Vector.empty,
     augments: Vector[String] = Vector.empty,
     talents: Vector[String] = Vector.empty,
-    draftPool: Vector[DraftOffer] = Vector.empty
+    draftPool: Vector[DraftOffer] = Vector.empty,
+    laneChoices: Vector[Long] = Vector.empty
 )
 
 case class World(

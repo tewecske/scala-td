@@ -15,12 +15,22 @@ case class GridPos(x: Int, y: Int):
   */
 object Grid:
 
+  private case class BranchLane(
+      side: RouteSide,
+      points: Vector[(Float, Float)],
+      cumulative: Vector[Float],
+      length: Float,
+      forkProgress: Float,
+      mergeProgress: Float
+  )
+
   private case class Derived(
       size: Int,
       pathCells: Set[GridPos],
       points: Vector[(Float, Float)],
       cumulative: Vector[Float],
-      length: Float
+      length: Float,
+      branches: Vector[BranchLane]
   )
 
   @volatile private var cachedSizeFor: GameConfig | Null = null
@@ -49,8 +59,10 @@ object Grid:
       d
 
   private def build(cfg: GameConfig, level: Int): Derived =
-    val wp = Config.levelAt(level).route.waypoints
-    val pathCells = wp.indices
+    val route = Config.levelAt(level).route
+    val wp    = route.waypoints
+
+    val trunkCells = wp.indices
       .dropRight(1)
       .flatMap(i => cellsBetween(wp(i), wp(i + 1)))
       .toSet
@@ -64,7 +76,29 @@ object Grid:
       }
       .scanLeft(0f)(_ + _)
       .toVector
-    Derived(cfg.board.gridSize, pathCells, points, cumulative, cumulative.last)
+    val length = cumulative.last
+
+    val branches = route.branches.map { b =>
+      val laneWp        = wp(b.from) +: b.waypoints :+ wp(b.to)
+      val lanePoints    = laneWp.map(p => (p.centerX, p.centerY))
+      val laneCumulative = lanePoints.indices
+        .dropRight(1)
+        .map { i =>
+          val (ax, ay) = lanePoints(i)
+          val (bx, by) = lanePoints(i + 1)
+          math.hypot(bx - ax, by - ay).toFloat
+        }
+        .scanLeft(0f)(_ + _)
+        .toVector
+      BranchLane(b.side, lanePoints, laneCumulative, laneCumulative.last, cumulative(b.from), cumulative(b.to))
+    }
+
+    val branchCells = route.branches.flatMap { b =>
+      val laneWp = wp(b.from) +: b.waypoints :+ wp(b.to)
+      laneWp.indices.dropRight(1).flatMap(i => cellsBetween(laneWp(i), laneWp(i + 1)))
+    }.toSet
+
+    Derived(cfg.board.gridSize, trunkCells ++ branchCells, points, cumulative, length, branches)
 
   def Size: Int = size
 
@@ -89,25 +123,50 @@ object Grid:
 
   // -- the walkable polyline, in world units ---------------------------------
 
-  /** Total route length of the current level, in world units. */
+  /** Total route length of the current level, in world units. Branches re-join
+    * the trunk, so every lane shares this same canonical total — an enemy leaks
+    * exactly when its progress reaches this.
+    */
   def length(level: Int): Float = routeDerived(level).length
 
-  /** World position of a walker that has travelled `progress` units along the
-    * level's route. Clamped at both ends.
+  /** One fork on a level's route: which branch lane it is, which side that lane
+    * sits on, and the canonical progress where it diverges ([[forkProgress]])
+    * and re-joins ([[mergeProgress]]). The trunk segment the branch bypasses is
+    * the opposite side.
     */
-  def positionAt(progress: Float, level: Int): (Float, Float) =
+  case class Fork(branchIndex: Int, side: RouteSide, forkProgress: Float, mergeProgress: Float)
+
+  /** The forks of a level's route, in the order an enemy meets them. */
+  def forks(level: Int): Vector[Fork] =
     val d = routeDerived(level)
-    val points = d.points
-    val cumulative = d.cumulative
-    if progress <= 0f then points.head
-    else if progress >= d.length then points.last
+    d.branches.zipWithIndex.map { case (b, i) => Fork(i, b.side, b.forkProgress, b.mergeProgress) }
+
+  /** World position of a walker that has travelled `progress` units along the
+    * level's route, on the given lane. `lane = None` is the trunk; a branch
+    * index is that branch's lane. Branches map canonical progress linearly, so
+    * movement stays continuous and an enemy never teleports at a fork/merge.
+    * Clamped at both ends.
+    */
+  def positionAt(progress: Float, level: Int, lane: Option[Int] = None): (Float, Float) =
+    val d = routeDerived(level)
+    lane.flatMap(i => d.branches.lift(i)) match
+      case Some(b) if progress >= b.forkProgress && progress <= b.mergeProgress =>
+        val span = b.mergeProgress - b.forkProgress
+        val dist = if span <= 0f then 0f else (progress - b.forkProgress) / span * b.length
+        pointAlong(b.points, b.cumulative, dist)
+      case _ =>
+        pointAlong(d.points, d.cumulative, progress)
+
+  private def pointAlong(points: Vector[(Float, Float)], cumulative: Vector[Float], dist: Float): (Float, Float) =
+    if dist <= 0f then points.head
+    else if dist >= cumulative.last then points.last
     else
-      // Last waypoint at or before `progress`; the segment starts there.
-      val i = cumulative.lastIndexWhere(_ <= progress).max(0).min(points.size - 2)
+      // Last waypoint at or before `dist`; the segment starts there.
+      val i = cumulative.lastIndexWhere(_ <= dist).max(0).min(points.size - 2)
       val (ax, ay) = points(i)
       val (bx, by) = points(i + 1)
       val segLen   = cumulative(i + 1) - cumulative(i)
-      val t        = if segLen <= 0f then 0f else (progress - cumulative(i)) / segLen
+      val t        = if segLen <= 0f then 0f else (dist - cumulative(i)) / segLen
       (ax + (bx - ax) * t, ay + (by - ay) * t)
 
   /** Grid cell containing a world point, whether or not it is on the board. */
