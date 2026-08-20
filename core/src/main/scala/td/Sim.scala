@@ -29,6 +29,7 @@ object Sim:
 
   def step(w0: World, dt: Float, cmds: Vector[Command]): World =
     if w0.isOver || w0.won then w0
+    else if w0.draft.isDefined then cmds.foldLeft(w0)(applyCommand)
     else
       val withCmds = cmds.foldLeft(w0)(applyCommand)
       val spawned  = spawn(withCmds, dt)
@@ -44,10 +45,45 @@ object Sim:
   private def applyCommand(w: World, c: Command): World = c match
     case Command.Build(cell, tpe) =>
       val spec = Config.towerSpec(tpe)
-      if canBuild(w, cell, tpe) then
+      if w.draft.isEmpty && canBuild(w, cell, tpe) then
         w.copy(
           towers = w.towers :+ Tower(cell, 0f, tpe),
           gold = w.gold - spec.cost
+        )
+      else w
+
+    case Command.PickRelic(relicId) =>
+      w.draft match
+        case Some(d) if d.offers.contains(DraftOffer.Relic(relicId)) && !w.run.relics.contains(relicId) =>
+          beginNextLevel(w.copy(run = w.run.copy(relics = w.run.relics :+ relicId)))
+        case _ => w
+
+    case Command.PickAugment(augmentId) =>
+      w.draft match
+        case Some(d) if d.offers.contains(DraftOffer.Augment(augmentId)) && !w.run.augments.contains(augmentId) =>
+          beginNextLevel(w.copy(
+            run = w.run.copy(augments = w.run.augments :+ augmentId),
+            pendingAugment = Some(augmentId)
+          ))
+        case _ => w
+
+    case Command.Reroll() =>
+      w.draft match
+        case Some(d) if canReroll(w, d) =>
+          w.copy(
+            draft = Some(Draft(nextOffers(w), d.rerollCost + Config.RerollCostGrowth)),
+            draftCursor = w.draftCursor + Config.OfferCount,
+            gold = w.gold - d.rerollCost
+          )
+        case _ => w
+
+    case Command.AttachAugment(cell) =>
+      if canAttachAugment(w, cell) then
+        val aug = w.pendingAugment.get
+        val idx = w.towers.indexWhere(_.cell == cell)
+        w.copy(
+          towers = w.towers.updated(idx, w.towers(idx).copy(augment = Some(aug))),
+          pendingAugment = None
         )
       else w
 
@@ -59,6 +95,20 @@ object Sim:
     w.gold >= spec.cost &&
       Grid.isBuildable(cell, w.level) &&
       !w.towers.exists(_.cell == cell)
+
+  /** Whether clicking a cell would socket the held augment into the tower there.
+    * Shared by the renderer preview and the rule.
+    */
+  def canAttachAugment(w: World, cell: GridPos): Boolean =
+    w.pendingAugment.isDefined && w.towers.exists(t => t.cell == cell && t.augment.isEmpty)
+
+  // -- draft ------------------------------------------------------------------
+
+  private def nextOffers(w: World): Vector[DraftOffer] =
+    w.run.draftPool.slice(w.draftCursor, w.draftCursor + Config.OfferCount)
+
+  private def canReroll(w: World, d: Draft): Boolean =
+    effects(w).rerollUnlocked && w.gold >= d.rerollCost && nextOffers(w).nonEmpty
 
   // -- environment rules -------------------------------------------------------
 
@@ -73,7 +123,22 @@ object Sim:
   private def effects(w: World): TalentEffects = Meta.effects(w.run.talents)
 
   private def killReward(w: World): Float =
-    (Config.KillReward + envParam(w, "recycling", "killGoldBonus")) * effects(w).goldMult
+    (Config.KillReward + envParam(w, "recycling", "killGoldBonus") + relicKillBonus(w)) *
+      effects(w).goldMult * relicGoldMult(w)
+
+  /** Multiplicative gold multiplier from owned `squareDeal` relics. */
+  private def relicGoldMult(w: World): Float =
+    w.run.relics.foldLeft(1f) { (acc, id) =>
+      val r = Config.relic(id)
+      if r.effect.kind == "squareDeal" then acc * r.effect.params.getOrElse("goldMult", 1f) else acc
+    }
+
+  /** Additive kill-reward bonus from owned `boxOffice` relics. */
+  private def relicKillBonus(w: World): Float =
+    w.run.relics.foldLeft(0f) { (acc, id) =>
+      val r = Config.relic(id)
+      if r.effect.kind == "boxOffice" then acc + r.effect.params.getOrElse("killRewardBonus", 0f) else acc
+    }
 
   private def vagueHint(base: Float): String =
     if base >= 0.99f then "immune"
@@ -188,8 +253,7 @@ object Sim:
     * level sets [[World.won]] and freezes the sim.
     */
   private def completeLevel(w: World): World =
-    val next = w.level + 1
-    if next >= Config.levelCount then
+    if w.level + 1 >= Config.levelCount then
       w.copy(
         won = true,
         enemies = Vector.empty,
@@ -197,19 +261,42 @@ object Sim:
         spawnQueue = Vector.empty,
         breakTimer = 0f
       )
-    else
-      w.copy(
-        level = next,
-        wave = 0,
-        towers = Vector.empty,
-        enemies = Vector.empty,
-        shots = Vector.empty,
-        spawnQueue = Vector.empty,
-        spawnTimer = 0f,
-        breakTimer = Waves.breakTime,
-        gold = w.gold + math.round(Config.LevelBonus * effects(w).goldMult),
-        hazards = Vector.empty
-      )
+    else enterDraft(w)
+
+  /** Between levels: clear the field and present the next pre-rolled offers.
+    * The level number does NOT advance until the player picks.
+    */
+  private def enterDraft(w: World): World =
+    w.copy(
+      draft = Some(Draft(nextOffers(w), Config.RerollCost)),
+      draftCursor = w.draftCursor + Config.OfferCount,
+      towers = Vector.empty,
+      enemies = Vector.empty,
+      shots = Vector.empty,
+      spawnQueue = Vector.empty,
+      spawnTimer = 0f,
+      breakTimer = Waves.breakTime,
+      hazards = Vector.empty
+    )
+
+  /** A pick was made: advance to the next level. Towers/enemies/shots are
+    * cleared, the level bonus is awarded, and the draft closes. `pendingAugment`
+    * (if any) is carried over for socketing during play.
+    */
+  private def beginNextLevel(w: World): World =
+    w.copy(
+      level = w.level + 1,
+      wave = 0,
+      towers = Vector.empty,
+      enemies = Vector.empty,
+      shots = Vector.empty,
+      spawnQueue = Vector.empty,
+      spawnTimer = 0f,
+      breakTimer = Waves.breakTime,
+      gold = w.gold + math.round(Config.LevelBonus * effects(w).goldMult * relicGoldMult(w)),
+      hazards = Vector.empty,
+      draft = None
+    )
 
   // -- auras ------------------------------------------------------------------
 
@@ -326,6 +413,18 @@ object Sim:
       }
       if factors.isEmpty then 1f else factors.min
 
+  private case class AugmentFx(damageMult: Float, slow: Option[(Float, Float)])
+
+  private def augmentFx(t: Tower): AugmentFx =
+    t.augment match
+      case None => AugmentFx(1f, None)
+      case Some(id) =>
+        val a = Config.augment(id)
+        a.effect.kind match
+          case "sharpenedEdge" => AugmentFx(a.effect.params.getOrElse("damageMult", 1f), None)
+          case "vertigo"       => AugmentFx(1f, Some((a.effect.params.getOrElse("slowAmount", 0f), a.effect.params.getOrElse("slowDuration", 0f))))
+          case _               => AugmentFx(1f, None)
+
   private def fireTowers(w: World, dt: Float): World =
     val fresh = Vector.newBuilder[Projectile]
     val eff   = effects(w)
@@ -351,15 +450,17 @@ object Sim:
           case None => t.copy(cooldown = 0f)
           case Some(e) =>
             val dest = if spec.kind == DamageKind.Explosion then Some(e.pos) else None
+            val fx   = augmentFx(t)
             fresh += Projectile(
               t.cell.centerX,
               t.cell.centerY,
               e.id,
               spec.kind,
-              spec.damage * eff.damageMult,
+              spec.damage * eff.damageMult * fx.damageMult,
               spec.projectileSpeed,
               spec.splashRadius,
-              dest
+              dest,
+              fx.slow
             )
             t.copy(cooldown = spec.fireInterval)
     }
@@ -467,10 +568,11 @@ object Sim:
       else w.enemies.filter(_.id == p.targetId)
 
     targets.map { e =>
-      p.kind match
+      val base = p.kind match
         case DamageKind.Kinetic   => Hit(e.id, DamageKind.Kinetic, p.damage, None, None)
         case DamageKind.Fire      => Hit(e.id, DamageKind.Fire, p.damage, Some((Config.BurnDps, Config.BurnDuration)), None)
         case DamageKind.Slow      => Hit(e.id, DamageKind.Slow, p.damage, None, Some((Config.SlowFactor, Config.SlowDuration)))
         case DamageKind.Splash    => Hit(e.id, DamageKind.Splash, p.damage, None, None)
         case DamageKind.Explosion => Hit(e.id, DamageKind.Explosion, p.damage, None, None)
+      p.slow.fold(base)(s => base.copy(slow = Some(s)))
     }

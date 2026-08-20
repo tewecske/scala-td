@@ -45,6 +45,11 @@ case class EconomyConfig(startGold: Int, startLives: Int, killReward: Int, level
   */
 case class MetaConfig(payoutPerLevel: Int, payoutPerWave: Int, payoutWinBonus: Int)
 
+/** Between-level draft tuning: how many offers, what a reroll costs, how the
+  * cost grows per reroll, and how many rounds of offers are pre-rolled.
+  */
+case class DraftConfig(offerCount: Int, rerollCost: Int, rerollCostGrowth: Int, poolRounds: Int)
+
 case class CombatConfig(
     maxStepDt: Float,
     fastForward: Int,
@@ -180,6 +185,7 @@ case class GameConfig(
     economy: EconomyConfig,
     meta: MetaConfig,
     combat: CombatConfig,
+    draft: DraftConfig,
     i18n: I18nConfig,
     towers: Vector[TowerSpec],
     enemies: Vector[EnemySpec],

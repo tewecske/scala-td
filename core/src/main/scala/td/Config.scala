@@ -45,6 +45,12 @@ object Config:
   def PayoutPerWave: Int  = current.meta.payoutPerWave
   def PayoutWinBonus: Int = current.meta.payoutWinBonus
 
+  // -- draft -----------------------------------------------------------------
+  def OfferCount: Int       = current.draft.offerCount
+  def RerollCost: Int       = current.draft.rerollCost
+  def RerollCostGrowth: Int = current.draft.rerollCostGrowth
+  def DraftPoolRounds: Int  = current.draft.poolRounds
+
   // -- combat ----------------------------------------------------------------
   def HitRadius: Float    = current.combat.hitRadius
   def BurnDps: Float      = current.combat.burnDps
@@ -142,3 +148,7 @@ object Ui:
   def PlayAgain = Rect(cx, 250f, bw, bh)
   def Resume = Rect(cx, 250f, bw, bh)
   def Exit   = Rect(cx, 180f, bw, bh)
+
+  /** Between-level draft: three offer rows plus a reroll button. */
+  def DraftOffer(i: Int): Rect = Rect(cx, 420f - i * 80f, bw, 60f)
+  def DraftReroll: Rect        = Rect(cx, 120f, bw, bh)

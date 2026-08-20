@@ -251,6 +251,42 @@ class Render:
     drawScene(w, hover, fast, selected, notice)
     present()
 
+  /** The between-level draft: the offers on the table plus the reroll button and
+    * the player's gold. No sim is stepped while this is on screen.
+    */
+  def drawDraft(w: World): Unit =
+    beginScene()
+    val d = w.draft.get
+    val unlocked = Meta.effects(w.run.talents).rerollUnlocked
+    val canReroll = unlocked && w.gold >= d.rerollCost
+
+    shapes.begin(ShapeType.Filled)
+    d.offers.zipWithIndex.foreach { case (_, i) => button(Ui.DraftOffer(i)) }
+    button(Ui.DraftReroll)
+    shapes.end()
+
+    batch.begin()
+    centered(Messages.t("draft.title"), Config.WorldW / 2, 560f, 3f)
+    d.offers.zipWithIndex.foreach { case (offer, i) =>
+      val (kind, name, extra) = offer match
+        case DraftOffer.Relic(id) =>
+          val r = Config.relic(id)
+          (Messages.t("draft.relic"), r.name, Messages.t(s"draft.rarity.${r.rarity}"))
+        case DraftOffer.Augment(id) =>
+          val a = Config.augment(id)
+          (Messages.t("draft.augment"), a.name, "")
+      val r = Ui.DraftOffer(i)
+      text(s"$kind - $name  $extra", r.x + 16f, r.centerY + 8f, 1.2f)
+    }
+    val rerollLabel =
+      if !unlocked then Messages.t("draft.rerollLocked")
+      else Messages.t("draft.reroll", d.rerollCost)
+    centered(rerollLabel, Ui.DraftReroll.centerX, Ui.DraftReroll.centerY + 8f, 1.4f,
+      if canReroll then Config.TextColor else Config.DimText)
+    centered(s"GOLD ${w.gold}", Config.WorldW / 2, 90f, 1.4f, Config.ShotColor)
+    batch.end()
+    present()
+
   /** Frozen game view under a dim overlay plus the pause panel and its buttons. */
   def drawPaused(w: World, fast: Boolean, selected: TowerSpec): Unit =
     beginScene()
@@ -323,6 +359,10 @@ class Render:
         Config.CellPx - 10f,
         Config.CellPx - 10f
       )
+      // While an augment is held, mark every socketable tower (build-hover color).
+      if w.pendingAugment.isDefined && t.augment.isEmpty then
+        shapes.setColor(Config.HoverOk)
+        shapes.rect(t.cell.x * Config.CellPx, t.cell.y * Config.CellPx, Config.CellPx, Config.CellPx)
     }
 
   private def drawEnemies(w: World): Unit =
@@ -403,6 +443,9 @@ class Render:
     line(s"LIVES  ${w.lives}", 1.5f, Config.EnemyColor)
     line(s"LEVEL  ${w.level + 1} / ${Config.levelCount}  ${Config.levelAt(w.level).name}", 1.3f, Config.TextColor)
     line(s"WAVE   ${w.wave} / ${Waves.waveCount(w.level)}", 1.5f, Config.TextColor)
+    w.pendingAugment.foreach { id =>
+      line(s"${Config.augment(id).name} - ${Messages.t("draft.socketHint")}", 1.1f, Config.ShotColor)
+    }
     y -= 12f
 
     if w.inBreak then

@@ -2,6 +2,7 @@
   "board": { "gridSize": 20, "cellPx": 32.0, "panelPx": 240.0 },
   "economy": { "startGold": 120, "startLives": 20, "killReward": 8, "levelBonus": 50 },
   "meta": { "payoutPerLevel": 10, "payoutPerWave": 2, "payoutWinBonus": 25 },
+  "draft": { "offerCount": 3, "rerollCost": 25, "rerollCostGrowth": 15, "poolRounds": 10 },
   "combat": {
     "maxStepDt": 0.05,
     "fastForward": 3,
@@ -176,6 +177,8 @@
     { "id": "conflagration", "name": "Conflagration", "layer": "Deep", "cost": 5, "prereqs": ["pyromancer"],
       "effect": { "kind": "conflagration", "params": {} } },
     { "id": "demolition", "name": "Demolition", "layer": "Deep", "cost": 5, "prereqs": ["breaker"],
-      "effect": { "kind": "demolition", "params": {} } }
+      "effect": { "kind": "demolition", "params": {} } },
+    { "id": "reroll", "name": "Restock", "layer": "Filler", "cost": 2, "prereqs": [],
+      "effect": { "kind": "reroll", "params": {} } }
   ]
 }

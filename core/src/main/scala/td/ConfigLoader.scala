@@ -108,10 +108,12 @@ object ConfigLoader:
     val econ  = obj(root, "economy")
     val cmbt  = obj(root, "combat")
     val meta  = obj(root, "meta")
+    val draft = obj(root, "draft")
     GameConfig(
       board = BoardConfig(i(board, "gridSize"), cellPx, f(board, "panelPx")),
       economy = EconomyConfig(i(econ, "startGold"), i(econ, "startLives"), i(econ, "killReward"), i(econ, "levelBonus")),
       meta = MetaConfig(i(meta, "payoutPerLevel"), i(meta, "payoutPerWave"), i(meta, "payoutWinBonus")),
+      draft = DraftConfig(i(draft, "offerCount"), i(draft, "rerollCost"), i(draft, "rerollCostGrowth"), i(draft, "poolRounds")),
       combat = CombatConfig(
         f(cmbt, "maxStepDt"),
         i(cmbt, "fastForward"),

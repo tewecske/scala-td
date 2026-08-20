@@ -17,6 +17,12 @@ class ConfigTest extends munit.FunSuite:
     assertEquals(cfg.meta.payoutWinBonus, 25)
   }
 
+  test("draft tuning loads from config") {
+    assertEquals(cfg.draft.offerCount, 3)
+    assertEquals(cfg.draft.rerollCost, 25)
+    assertEquals(cfg.draft.poolRounds, 10)
+  }
+
   test("tutorial biome exists and real biomes have distinct resist themes") {
     assert(cfg.biomes.exists(_.id == "tutorial"))
     assertEquals(cfg.biomes.size, 4)
@@ -72,6 +78,7 @@ class ConfigTest extends munit.FunSuite:
   "board": { "gridSize": 20, "cellPx": 32.0, "panelPx": 240.0 },
   "economy": { "startGold": 120, "startLives": 20, "killReward": 8, "levelBonus": 50 },
   "meta": { "payoutPerLevel": 10, "payoutPerWave": 2, "payoutWinBonus": 25 },
+  "draft": { "offerCount": 3, "rerollCost": 25, "rerollCostGrowth": 15, "poolRounds": 10 },
   "combat": { "maxStepDt": 0.05, "fastForward": 3, "hitRadius": 6.0, "burnDps": 6.0, "burnDuration": 3.0, "slowFactor": 0.5, "slowDuration": 2.0, "breakTime": 4.0 },
   "i18n": { "lang": "en", "showCodes": false },
   "towers": [],

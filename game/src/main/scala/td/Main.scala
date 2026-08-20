@@ -76,29 +76,53 @@ class TdGame extends ApplicationAdapter:
             notice = Some(Messages.t("notice.showCodes", if Messages.showCodes then "on" else "off"))
             noticeTimer = NoticeTime
 
-          Config.game.towers.indices.foreach { i =>
-            if Gdx.input.isKeyJustPressed(Input.Keys.NUM_1 + i) then selected = i
-          }
-          selected = math.min(selected, Config.game.towers.size - 1)
-          val sel   = Config.game.towers(selected)
-          val hover = Some(Grid.cellAt(mx, my)).filter(Grid.inBounds)
-          val cmds  = hover.filter(_ => clicked).map(Command.Build(_, sel.name)).toVector
+          w.draft match
+            case Some(d) =>
+              // Between levels: only draft commands apply; the sim never steps.
+              val cmds =
+                if clicked then
+                  if Ui.DraftReroll.contains(mx, my) &&
+                      Meta.effects(w.run.talents).rerollUnlocked && w.gold >= d.rerollCost then
+                    Vector(Command.Reroll())
+                  else
+                    d.offers.zipWithIndex.collectFirst {
+                      case (DraftOffer.Relic(id), i) if Ui.DraftOffer(i).contains(mx, my)   => Command.PickRelic(id)
+                      case (DraftOffer.Augment(id), i) if Ui.DraftOffer(i).contains(mx, my) => Command.PickAugment(id)
+                    }.toVector
+                else Vector.empty
+              val next = Sim.step(w, dt, cmds)
+              gfx.updateFx(dt)
+              gfx.drawDraft(next)
+              if next.won || next.isOver then toRecap(next)
+              else Phase.Playing(next)
 
-          // Fast-forward runs extra whole steps rather than a bigger dt, so the
-          // rules behave identically at any speed.
-          val steps  = if fast then Config.FastForward else 1
-          val first  = Sim.step(w, dt, cmds)
-          val next   = (1 until steps).foldLeft(first)((acc, _) => Sim.step(acc, dt, Vector.empty))
-          next.events.foreach(Journal.record)
-          gfx.feedHits(next.hitFeedback)
-          gfx.feedNames(next.nameEvents, knownNames)
-          gfx.updateFx(dt)
-          val drained = next.copy(events = Vector.empty, hitFeedback = Vector.empty, nameEvents = Vector.empty)
+            case None =>
+              Config.game.towers.indices.foreach { i =>
+                if Gdx.input.isKeyJustPressed(Input.Keys.NUM_1 + i) then selected = i
+              }
+              selected = math.min(selected, Config.game.towers.size - 1)
+              val sel   = Config.game.towers(selected)
+              val hover = Some(Grid.cellAt(mx, my)).filter(Grid.inBounds)
+              val cmds  = hover.filter(_ => clicked).map { cell =>
+                if w.pendingAugment.isDefined && Sim.canAttachAugment(w, cell) then Command.AttachAugment(cell)
+                else Command.Build(cell, sel.name)
+              }.toVector
 
-          gfx.drawGame(drained, hover, fast, sel, notice)
+              // Fast-forward runs extra whole steps rather than a bigger dt, so the
+              // rules behave identically at any speed.
+              val steps  = if fast then Config.FastForward else 1
+              val first  = Sim.step(w, dt, cmds)
+              val next   = (1 until steps).foldLeft(first)((acc, _) => Sim.step(acc, dt, Vector.empty))
+              next.events.foreach(Journal.record)
+              gfx.feedHits(next.hitFeedback)
+              gfx.feedNames(next.nameEvents, knownNames)
+              gfx.updateFx(dt)
+              val drained = next.copy(events = Vector.empty, hitFeedback = Vector.empty, nameEvents = Vector.empty)
 
-          if drained.won || drained.isOver then toRecap(drained)
-          else Phase.Playing(drained)
+              gfx.drawGame(drained, hover, fast, sel, notice)
+
+              if drained.won || drained.isOver then toRecap(drained)
+              else Phase.Playing(drained)
 
       case Phase.Paused(w) =>
         val sel = Config.game.towers(math.min(selected, Config.game.towers.size - 1))
@@ -112,13 +136,13 @@ class TdGame extends ApplicationAdapter:
   /** Every run starts from a clean World, so nothing leaks across retries. */
   private def newRun(): Phase =
     fast = false
-    val w = Sim.initial(RunGen.roll(System.nanoTime()).copy(talents = Meta.active().talents))
+    val w = Sim.initial(RunGen.roll(System.nanoTime(), Meta.active().talents))
     beginRun(w)
     Phase.Playing(w)
 
   private def startTutorial(): Phase =
     fast = false
-    val w = Sim.initial(RunGen.tutorial(System.nanoTime()).copy(talents = Meta.active().talents))
+    val w = Sim.initial(RunGen.tutorial(System.nanoTime(), Meta.active().talents))
     beginRun(w)
     Phase.Playing(w)
 

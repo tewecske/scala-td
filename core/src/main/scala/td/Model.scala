@@ -80,11 +80,12 @@ case class Enemy(
   def buffed: Boolean      = speedMult > 1f || armor > 0f
   def effectiveSpeed: Float = (if slowed then speed * slowFactor else speed) * speedMult
 
-case class Tower(cell: GridPos, cooldown: Float, tpe: String):
+case class Tower(cell: GridPos, cooldown: Float, tpe: String, augment: Option[String] = None):
   def spec: TowerSpec = Config.towerSpec(tpe)
 
 /** A shot in flight. [[dest]] is set only for explosion projectiles, which fly
-  * to a fixed world point instead of homing at a live target.
+  * to a fixed world point instead of homing at a live target. [[slow]] carries
+  * an augment-supplied slow override (vertigo), or None for the default.
   */
 case class Projectile(
     x: Float,
@@ -94,7 +95,8 @@ case class Projectile(
     damage: Float,
     speed: Float,
     splashRadius: Float,
-    dest: Option[(Float, Float)]
+    dest: Option[(Float, Float)],
+    slow: Option[(Float, Float)] = None
 ):
   def homes: Boolean = kind != DamageKind.Explosion
 
@@ -102,6 +104,18 @@ case class Projectile(
   * through it. [[remaining]] counts down each step.
   */
 case class Hazard(x: Float, y: Float, radius: Float, slowFactor: Float, remaining: Float)
+
+/** One thing the between-level draft can offer: a global relic or a tower-socket
+  * augment.
+  */
+enum DraftOffer:
+  case Relic(id: String)
+  case Augment(id: String)
+
+/** The between-level draft: the offers on the table and the current gold cost
+  * to reroll them (grows with each reroll).
+  */
+case class Draft(offers: Vector[DraftOffer], rerollCost: Int)
 
 /** The whole mutable-feeling game, as one immutable value. Everything that can
   * change during a run lives here so a run can be snapshotted, replayed, or
@@ -121,7 +135,8 @@ case class RunContext(
     loadout: Vector[String] = Vector.empty,
     relics: Vector[String] = Vector.empty,
     augments: Vector[String] = Vector.empty,
-    talents: Vector[String] = Vector.empty
+    talents: Vector[String] = Vector.empty,
+    draftPool: Vector[DraftOffer] = Vector.empty
 )
 
 case class World(
@@ -137,6 +152,9 @@ case class World(
     breakTimer: Float,
     nextId: Long,
     run: RunContext,
+    draft: Option[Draft] = None,
+    draftCursor: Int = 0,
+    pendingAugment: Option[String] = None,
     won: Boolean = false,
     kills: Int = 0,
     leaks: Int = 0,
@@ -158,6 +176,10 @@ case class World(
   */
 enum Command:
   case Build(cell: GridPos, tpe: String)
+  case PickRelic(relicId: String)
+  case PickAugment(augmentId: String)
+  case AttachAugment(cell: GridPos)
+  case Reroll()
 
 /** Which screen the game is on. */
 enum Phase:
