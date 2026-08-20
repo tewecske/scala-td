@@ -40,6 +40,11 @@ object Config:
   def KillReward: Int = current.economy.killReward
   def LevelBonus: Int = current.economy.levelBonus
 
+  // -- meta progression --------------------------------------------------------
+  def PayoutPerLevel: Int = current.meta.payoutPerLevel
+  def PayoutPerWave: Int  = current.meta.payoutPerWave
+  def PayoutWinBonus: Int = current.meta.payoutWinBonus
+
   // -- combat ----------------------------------------------------------------
   def HitRadius: Float    = current.combat.hitRadius
   def BurnDps: Float      = current.combat.burnDps

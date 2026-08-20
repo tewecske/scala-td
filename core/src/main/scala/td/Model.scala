@@ -120,7 +120,8 @@ case class RunContext(
     mods: Vector[String] = Vector.empty,
     loadout: Vector[String] = Vector.empty,
     relics: Vector[String] = Vector.empty,
-    augments: Vector[String] = Vector.empty
+    augments: Vector[String] = Vector.empty,
+    talents: Vector[String] = Vector.empty
 )
 
 case class World(

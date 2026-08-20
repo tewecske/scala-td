@@ -112,13 +112,13 @@ class TdGame extends ApplicationAdapter:
   /** Every run starts from a clean World, so nothing leaks across retries. */
   private def newRun(): Phase =
     fast = false
-    val w = Sim.initial(System.nanoTime())
+    val w = Sim.initial(RunGen.roll(System.nanoTime()).copy(talents = Meta.active().talents))
     beginRun(w)
     Phase.Playing(w)
 
   private def startTutorial(): Phase =
     fast = false
-    val w = Sim.initial(RunGen.tutorial(System.nanoTime()))
+    val w = Sim.initial(RunGen.tutorial(System.nanoTime()).copy(talents = Meta.active().talents))
     beginRun(w)
     Phase.Playing(w)
 
@@ -132,6 +132,7 @@ class TdGame extends ApplicationAdapter:
 
   /** Run ended: build the recap (new vs known entries, plus a death summary). */
   private def toRecap(w: World): Phase =
+    Meta.bankRun(w)
     val after = Journal.load().getOrElse(JournalData.empty).entries
     val newEntries   = after.filterNot(startEntries.contains)
     val knownEntries = after.filter(startEntries.contains)

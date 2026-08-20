@@ -107,9 +107,11 @@ object ConfigLoader:
     val board = obj(root, "board")
     val econ  = obj(root, "economy")
     val cmbt  = obj(root, "combat")
+    val meta  = obj(root, "meta")
     GameConfig(
       board = BoardConfig(i(board, "gridSize"), cellPx, f(board, "panelPx")),
       economy = EconomyConfig(i(econ, "startGold"), i(econ, "startLives"), i(econ, "killReward"), i(econ, "levelBonus")),
+      meta = MetaConfig(i(meta, "payoutPerLevel"), i(meta, "payoutPerWave"), i(meta, "payoutWinBonus")),
       combat = CombatConfig(
         f(cmbt, "maxStepDt"),
         i(cmbt, "fastForward"),

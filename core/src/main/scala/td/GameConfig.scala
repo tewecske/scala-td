@@ -40,6 +40,11 @@ case class I18nConfig(lang: String, showCodes: Boolean)
 
 case class EconomyConfig(startGold: Int, startLives: Int, killReward: Int, levelBonus: Int)
 
+/** Out-of-run meta-progression economy: how a finished run converts progress
+  * into permanent currency.
+  */
+case class MetaConfig(payoutPerLevel: Int, payoutPerWave: Int, payoutWinBonus: Int)
+
 case class CombatConfig(
     maxStepDt: Float,
     fastForward: Int,
@@ -173,6 +178,7 @@ case class Talent(
 case class GameConfig(
     board: BoardConfig,
     economy: EconomyConfig,
+    meta: MetaConfig,
     combat: CombatConfig,
     i18n: I18nConfig,
     towers: Vector[TowerSpec],

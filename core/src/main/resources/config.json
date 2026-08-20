@@ -1,6 +1,7 @@
 {
   "board": { "gridSize": 20, "cellPx": 32.0, "panelPx": 240.0 },
   "economy": { "startGold": 120, "startLives": 20, "killReward": 8, "levelBonus": 50 },
+  "meta": { "payoutPerLevel": 10, "payoutPerWave": 2, "payoutWinBonus": 25 },
   "combat": {
     "maxStepDt": 0.05,
     "fastForward": 3,

@@ -70,8 +70,10 @@ object Sim:
       case Some(e) if e.kind == kind => e.params.getOrElse(key, 0f)
       case _                         => 0f
 
+  private def effects(w: World): TalentEffects = Meta.effects(w.run.talents)
+
   private def killReward(w: World): Float =
-    Config.KillReward + envParam(w, "recycling", "killGoldBonus")
+    (Config.KillReward + envParam(w, "recycling", "killGoldBonus")) * effects(w).goldMult
 
   private def vagueHint(base: Float): String =
     if base >= 0.99f then "immune"
@@ -205,7 +207,7 @@ object Sim:
         spawnQueue = Vector.empty,
         spawnTimer = 0f,
         breakTimer = Waves.breakTime,
-        gold = w.gold + Config.LevelBonus,
+        gold = w.gold + math.round(Config.LevelBonus * effects(w).goldMult),
         hazards = Vector.empty
       )
 
@@ -326,13 +328,15 @@ object Sim:
 
   private def fireTowers(w: World, dt: Float): World =
     val fresh = Vector.newBuilder[Projectile]
+    val eff   = effects(w)
 
     val towers = w.towers.map { t =>
       val cd = t.cooldown - dt
       if cd > 0f then t.copy(cooldown = cd)
       else
         val spec   = t.spec
-        val range2 = spec.range * spec.range
+        val range  = spec.range * eff.rangeMult
+        val range2 = range * range
         // Standard tower-defense targeting: whatever is closest to leaking.
         val target = w.enemies
           .filter { e =>
@@ -352,7 +356,7 @@ object Sim:
               t.cell.centerY,
               e.id,
               spec.kind,
-              spec.damage,
+              spec.damage * eff.damageMult,
               spec.projectileSpeed,
               spec.splashRadius,
               dest
