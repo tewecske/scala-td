@@ -18,7 +18,7 @@ class SimSmokeTest extends munit.FunSuite:
   }
 
   test("leaks accumulate with no towers; kills stay zero") {
-    var w = Sim.initial(1L)
+    var w = Sim.initial(RunGen.tutorial(1L))
     var guard = 0
     while w.leaks == 0 && guard < 100000 do
       w = Sim.step(w, Config.MaxStepDt, Vector.empty)

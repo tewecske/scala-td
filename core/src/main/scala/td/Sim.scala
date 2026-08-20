@@ -60,6 +60,19 @@ object Sim:
       Grid.isBuildable(cell, w.level) &&
       !w.towers.exists(_.cell == cell)
 
+  // -- environment rules -------------------------------------------------------
+
+  private def biomeEnv(w: World): Option[Effect] =
+    Config.biomes.find(_.id == w.run.biome).flatMap(_.environment)
+
+  private def envParam(w: World, kind: String, key: String): Float =
+    biomeEnv(w) match
+      case Some(e) if e.kind == kind => e.params.getOrElse(key, 0f)
+      case _                         => 0f
+
+  private def killReward(w: World): Float =
+    Config.KillReward + envParam(w, "recycling", "killGoldBonus")
+
   // -- wave pacing -----------------------------------------------------------
 
   private def spawn(w: World, dt: Float): World =
@@ -78,7 +91,8 @@ object Sim:
           maxHp = hp,
           speed = spec.baseSpeed,
           tpe = spec.name,
-          level = w.level
+          level = w.level,
+          resist = spec.resist.layered(w.run.resistTheme)
         )
         w.copy(
           enemies = w.enemies :+ e,
@@ -107,9 +121,16 @@ object Sim:
     w.copy(
       breakTimer = 0f,
       wave = next,
-      spawnQueue = Waves.spawnOrder(spec),
+      spawnQueue = scaledSpawnOrder(w, spec),
       spawnTimer = 0f // first enemy of the wave appears immediately
     )
+
+  private def scaledSpawnOrder(w: World, spec: WaveSpec): Vector[String] =
+    val mult = envParam(w, "recycling", "swarmSizeMult")
+    if mult <= 0f || mult == 1f then Waves.spawnOrder(spec)
+    else spec.composition.flatMap { case (name, n) =>
+      Vector.fill(math.max(0, math.round(n * mult).toInt))(name)
+    }
 
   /** End-of-level transition. Towers/enemies/shots are cleared for the next
     * route, but gold and lives carry over (plus a small bonus). Winning the last
@@ -135,7 +156,8 @@ object Sim:
         spawnQueue = Vector.empty,
         spawnTimer = 0f,
         breakTimer = Waves.breakTime,
-        gold = w.gold + Config.LevelBonus
+        gold = w.gold + Config.LevelBonus,
+        hazards = Vector.empty
       )
 
   // -- auras ------------------------------------------------------------------
@@ -144,12 +166,16 @@ object Sim:
     * each buff kind counts, so stacking commanders can never balloon speed.
     */
   private def applyAuras(w: World): World =
+    val floorPlan = biomeEnv(w) match
+      case Some(e) if e.kind == "openFloorPlan" =>
+        Some((e.params.getOrElse("radius", 0f) * Config.CellPx, e.params.getOrElse("armorPerNeighbor", 0f)))
+      case _ => None
     val carriers = w.enemies.filter(_.spec.aura.isDefined)
-    if carriers.isEmpty then w
+    if carriers.isEmpty && floorPlan.isEmpty then w
     else
       w.copy(enemies = w.enemies.map { e =>
         var speedMult = 1f
-        var armor     = 0f
+        var auraArmor = 0f
         carriers.foreach { src =>
           if src.id != e.id then
             src.spec.aura.foreach { a =>
@@ -160,8 +186,20 @@ object Sim:
               if dx * dx + dy * dy <= a.radius * a.radius then
                 a.kind match
                   case AuraKind.SpeedBoost => speedMult = math.max(speedMult, 1f + a.magnitude)
-                  case AuraKind.Armor      => armor = math.max(armor, a.magnitude)
+                  case AuraKind.Armor      => auraArmor = math.max(auraArmor, a.magnitude)
             }
+        }
+        var armor = auraArmor
+        floorPlan.foreach { case (radius, per) =>
+          val (ex, ey) = e.pos
+          val neighbors = w.enemies.count { o =>
+            if o.id == e.id then false
+            else
+              val (ox, oy) = o.pos
+              val dx = ox - ex; val dy = oy - ey
+              dx * dx + dy * dy <= radius * radius
+          }
+          armor += per * neighbors
         }
         e.copy(speedMult = speedMult, armor = armor)
       })
@@ -172,23 +210,67 @@ object Sim:
     * is cashed in here.
     */
   private def tickEffects(w: World, dt: Float): World =
-    if w.enemies.isEmpty then w
+    val hazards = tickHazards(w.hazards, dt)
+    val base = if hazards eq w.hazards then w else w.copy(hazards = hazards)
+    if base.enemies.isEmpty then base
     else
-      val updated = w.enemies.map { e =>
+      val updated = base.enemies.map { e =>
         val burned =
           if e.burning then e.copy(hp = e.hp - e.burnDps * dt, burnUntil = e.burnUntil - dt)
           else e
         if burned.slowed then burned.copy(slowUntil = burned.slowUntil - dt) else burned
       }
       val (dead, alive) = updated.partition(_.hp <= 0f)
-      if dead.isEmpty then w.copy(enemies = alive)
-      else w.copy(enemies = alive, gold = w.gold + dead.size * Config.KillReward, kills = w.kills + dead.size)
+      if dead.isEmpty then base.copy(enemies = alive)
+      else base.copy(
+        enemies = alive,
+        gold = base.gold + math.round(dead.size * killReward(base)),
+        kills = base.kills + dead.size,
+        hazards = base.hazards ++ crushedHazards(base, dead)
+      )
+
+  private def tickHazards(hazards: Vector[Hazard], dt: Float): Vector[Hazard] =
+    if hazards.isEmpty then hazards
+    else hazards.map(h => h.copy(remaining = h.remaining - dt)).filter(_.remaining > 0f)
+
+  private def crushedHazards(w: World, dead: Vector[Enemy]): Vector[Hazard] =
+    biomeEnv(w) match
+      case Some(e) if e.kind == "crushed" =>
+        val radius   = e.params.getOrElse("radius", 0f) * Config.CellPx
+        val slowF    = e.params.getOrElse("slowFactor", 1f)
+        val duration = e.params.getOrElse("hazardDuration", 0f)
+        dead.filter(_.spec.heavy).map { d =>
+          val (x, y) = d.pos
+          Hazard(x, y, radius, slowF, duration)
+        }
+      case _ => Vector.empty
 
   private def moveEnemies(w: World, dt: Float): World =
-    val advanced        = w.enemies.map(e => e.copy(progress = e.progress + e.effectiveSpeed * dt))
+    val advanced        = w.enemies.map(e => e.copy(progress = e.progress + e.effectiveSpeed * hazardMult(e, w.hazards) * dt))
     val (leaked, still) = advanced.partition(e => e.progress >= Grid.length(e.level))
     if leaked.isEmpty then w.copy(enemies = still)
-    else w.copy(enemies = still, lives = math.max(0, w.lives - leaked.size), leaks = w.leaks + leaked.size)
+    else
+      val mult = math.max(0f, envParam(w, "recycling", "livesLossMult")) match
+        case m if m <= 0f => 1f
+        case m            => m
+      val pending = w.leakDamage + leaked.size * mult
+      val whole   = pending.toInt
+      w.copy(
+        enemies = still,
+        lives = math.max(0, w.lives - whole),
+        leaks = w.leaks + leaked.size,
+        leakDamage = pending - whole
+      )
+
+  private def hazardMult(e: Enemy, hazards: Vector[Hazard]): Float =
+    if hazards.isEmpty then 1f
+    else
+      val (ex, ey) = e.pos
+      val factors = hazards.collect { case h if h.remaining > 0f =>
+        val dx = h.x - ex; val dy = h.y - ey
+        if dx * dx + dy * dy <= h.radius * h.radius then h.slowFactor else 1f
+      }
+      if factors.isEmpty then 1f else factors.min
 
   private def fireTowers(w: World, dt: Float): World =
     val fresh = Vector.newBuilder[Projectile]
@@ -294,8 +376,9 @@ object Sim:
     w.copy(
       shots = fs.result(),
       enemies = alive,
-      gold = w.gold + dead.size * Config.KillReward,
-      kills = w.kills + dead.size
+      gold = w.gold + math.round(dead.size * killReward(w)),
+      kills = w.kills + dead.size,
+      hazards = w.hazards ++ crushedHazards(w, dead)
     )
 
   private def resolveImpact(w: World, p: Projectile, at: (Float, Float)): Vector[Hit] =

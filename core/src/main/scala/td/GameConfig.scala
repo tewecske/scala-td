@@ -29,7 +29,8 @@ case class EnemySpec(
     color: Color,
     size: Float,
     resist: Resistances,
-    aura: Option[Aura]
+    aura: Option[Aura],
+    heavy: Boolean = false
 )
 
 case class BoardConfig(gridSize: Int, cellPx: Float, panelPx: Float)

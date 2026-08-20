@@ -19,6 +19,24 @@ case class Resistances(
     case DamageKind.Splash    => splash
     case DamageKind.Explosion => explosion
 
+  /** Base resist plus the run's resist theme, clamped to [0, 1] (1 = immune).
+    * Only the primary/secondary kinds gain; all others pass through untouched.
+    */
+  def layered(theme: ResistTheme): Resistances =
+    def addFor(kind: DamageKind): Float =
+      if theme.primary == kind then theme.primaryAmount
+      else if theme.secondary == kind then theme.secondaryAmount
+      else 0f
+    def c(base: Float, kind: DamageKind): Float =
+      math.min(1f, math.max(0f, base + addFor(kind)))
+    Resistances(
+      c(kinetic, DamageKind.Kinetic),
+      c(fire, DamageKind.Fire),
+      c(slow, DamageKind.Slow),
+      c(splash, DamageKind.Splash),
+      c(explosion, DamageKind.Explosion)
+    )
+
 enum AuraKind:
   case SpeedBoost, Armor
 
@@ -47,6 +65,7 @@ case class Enemy(
     speed: Float,
     tpe: String,
     level: Int,
+    resist: Resistances = Resistances(),
     slowUntil: Float = 0f,
     slowFactor: Float = 1f,
     burnDps: Float = 0f,
@@ -59,7 +78,6 @@ case class Enemy(
   def slowed: Boolean      = slowUntil > 0f
   def burning: Boolean     = burnUntil > 0f
   def buffed: Boolean      = speedMult > 1f || armor > 0f
-  def resist: Resistances  = spec.resist
   def effectiveSpeed: Float = (if slowed then speed * slowFactor else speed) * speedMult
 
 case class Tower(cell: GridPos, cooldown: Float, tpe: String):
@@ -79,6 +97,11 @@ case class Projectile(
     dest: Option[(Float, Float)]
 ):
   def homes: Boolean = kind != DamageKind.Explosion
+
+/** A temporary ground hazard (a dead heavy's wreckage) that slows enemies moving
+  * through it. [[remaining]] counts down each step.
+  */
+case class Hazard(x: Float, y: Float, radius: Float, slowFactor: Float, remaining: Float)
 
 /** The whole mutable-feeling game, as one immutable value. Everything that can
   * change during a run lives here so a run can be snapshotted, replayed, or
@@ -115,7 +138,9 @@ case class World(
     run: RunContext,
     won: Boolean = false,
     kills: Int = 0,
-    leaks: Int = 0
+    leaks: Int = 0,
+    hazards: Vector[Hazard] = Vector.empty,
+    leakDamage: Float = 0f
 ):
   def isOver: Boolean   = lives <= 0
   def inBreak: Boolean  = breakTimer > 0f

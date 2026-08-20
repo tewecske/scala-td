@@ -174,7 +174,8 @@ object ConfigLoader:
         f(resist, "splash"),
         f(resist, "explosion")
       ),
-      aura = aura
+      aura = aura,
+      heavy = v.getBoolean("heavy", false)
     )
 
   private def parseLevels(root: JsonValue, known: Set[String]): Vector[LevelConfig] =
