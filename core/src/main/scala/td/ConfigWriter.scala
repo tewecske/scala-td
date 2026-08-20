@@ -1,0 +1,206 @@
+package td
+
+import com.badlogic.gdx.graphics.Color
+import com.badlogic.gdx.utils.{JsonValue, JsonWriter}
+import java.nio.charset.StandardCharsets
+import java.nio.file.{Files, Paths}
+import scala.util.Try
+
+/** Serializes a [[GameConfig]] back to the JSON shape [[ConfigLoader]] parses,
+  * so the editor writes exactly what the game loads. Built as a libGDX
+  * `JsonValue` tree (the loader's own representation) and pretty-printed.
+  */
+object ConfigWriter:
+
+  def toJson(cfg: GameConfig): String =
+    root(cfg).prettyPrint(JsonWriter.OutputType.json, 2)
+
+  def write(cfg: GameConfig, path: String): Either[String, Unit] =
+    Try(Files.writeString(Paths.get(path), toJson(cfg) + "\n", StandardCharsets.UTF_8))
+      .toEither.map(_ => ()).left.map(_.getMessage)
+
+  /** `Color` -> `#RRGGBB` (or `#RRGGBBAA` when alpha != 1). Inverse of
+    * [[ConfigLoader.parseColor]]. Round-trips exactly: channels are 0..255.
+    */
+  def colorHex(c: Color): String =
+    def ch(v: Float): Int = math.round(v * 255f).max(0).min(255)
+    val (r, g, b, a) = (ch(c.r), ch(c.g), ch(c.b), ch(c.a))
+    if a == 255 then f"#$r%02X$g%02X$b%02X" else f"#$r%02X$g%02X$b%02X$a%02X"
+
+  // -- tree builders -----------------------------------------------------------
+
+  private def obj(fields: (String, JsonValue)*): JsonValue =
+    val o = JsonValue(JsonValue.ValueType.`object`)
+    fields.foreach { (k, v) => o.addChild(k, v) }
+    o
+
+  private def arr(items: Seq[JsonValue]): JsonValue =
+    val a = JsonValue(JsonValue.ValueType.array)
+    items.foreach(a.addChild(_))
+    a
+
+  private def str(s: String): JsonValue = JsonValue(s)
+  private def bool(b: Boolean): JsonValue = JsonValue(b)
+  private def num(i: Int): JsonValue = JsonValue(i.toLong)
+  private def num(f: Float): JsonValue = JsonValue(java.lang.Float.toString(f).toDouble)
+  private def nullV: JsonValue = JsonValue(JsonValue.ValueType.nullValue)
+
+  // -- sections ----------------------------------------------------------------
+
+  private def root(cfg: GameConfig): JsonValue =
+    obj(
+      "board"    -> board(cfg.board),
+      "economy"  -> economy(cfg.economy),
+      "meta"     -> meta(cfg.meta),
+      "draft"    -> draft(cfg.draft),
+      "combat"   -> combat(cfg.combat),
+      "i18n"     -> i18n(cfg.i18n),
+      "towers"   -> arr(cfg.towers.map(tower(cfg, _))),
+      "enemies"  -> arr(cfg.enemies.map(enemy(cfg, _))),
+      "levels"   -> arr(cfg.levels.map(level)),
+      "colors"   -> colors(cfg.colors),
+      "biomes"   -> arr(cfg.biomes.map(biome)),
+      "twists"   -> arr(cfg.twists.map(twist)),
+      "relics"   -> arr(cfg.relics.map(relic)),
+      "augments" -> arr(cfg.augments.map(augment)),
+      "talents"  -> arr(cfg.talents.map(talent))
+    )
+
+  private def board(b: BoardConfig): JsonValue =
+    obj("gridSize" -> num(b.gridSize), "cellPx" -> num(b.cellPx), "panelPx" -> num(b.panelPx))
+
+  private def economy(e: EconomyConfig): JsonValue =
+    obj("startGold" -> num(e.startGold), "startLives" -> num(e.startLives),
+        "killReward" -> num(e.killReward), "levelBonus" -> num(e.levelBonus))
+
+  private def meta(m: MetaConfig): JsonValue =
+    obj("payoutPerLevel" -> num(m.payoutPerLevel), "payoutPerWave" -> num(m.payoutPerWave),
+        "payoutWinBonus" -> num(m.payoutWinBonus))
+
+  private def draft(d: DraftConfig): JsonValue =
+    obj("offerCount" -> num(d.offerCount), "rerollCost" -> num(d.rerollCost),
+        "rerollCostGrowth" -> num(d.rerollCostGrowth), "poolRounds" -> num(d.poolRounds))
+
+  private def combat(c: CombatConfig): JsonValue =
+    obj(
+      "maxStepDt"   -> num(c.maxStepDt),
+      "fastForward" -> num(c.fastForward),
+      "hitRadius"   -> num(c.hitRadius),
+      "burnDps"     -> num(c.burnDps),
+      "burnDuration" -> num(c.burnDuration),
+      "slowFactor"  -> num(c.slowFactor),
+      "slowDuration" -> num(c.slowDuration),
+      "breakTime"   -> num(c.breakTime),
+      "studyHits"   -> num(c.studyHits)
+    )
+
+  private def i18n(i: I18nConfig): JsonValue =
+    obj("lang" -> str(i.lang), "showCodes" -> bool(i.showCodes))
+
+  private def tower(cfg: GameConfig, t: TowerSpec): JsonValue =
+    val px = cfg.board.cellPx
+    obj(
+      "name"            -> str(t.name),
+      "cost"            -> num(t.cost),
+      "color"           -> str(colorHex(t.color)),
+      "range"           -> num(t.range / px),
+      "fireInterval"    -> num(t.fireInterval),
+      "damage"          -> num(t.damage),
+      "projectileSpeed" -> num(t.projectileSpeed),
+      "kind"            -> str(t.kind.toString),
+      "splashRadius"    -> num(t.splashRadius / px)
+    )
+
+  private def enemy(cfg: GameConfig, e: EnemySpec): JsonValue =
+    val px = cfg.board.cellPx
+    val aura = e.aura.map(a => obj(
+      "kind" -> str(a.kind.toString), "radius" -> num(a.radius / px), "magnitude" -> num(a.magnitude)
+    )).getOrElse(nullV)
+    val side = e.sidePreference.map(s => str(s.toString)).getOrElse(nullV)
+    obj(
+      "name"     -> str(e.name),
+      "baseHp"   -> num(e.baseHp),
+      "baseSpeed" -> num(e.baseSpeed),
+      "color"    -> str(colorHex(e.color)),
+      "size"     -> num(e.size),
+      "resist"   -> obj(
+        "kinetic" -> num(e.resist.kinetic), "fire" -> num(e.resist.fire),
+        "slow" -> num(e.resist.slow), "splash" -> num(e.resist.splash),
+        "explosion" -> num(e.resist.explosion)
+      ),
+      "aura"     -> aura,
+      "heavy"    -> bool(e.heavy),
+      "sidePreference" -> side
+    )
+
+  private def level(l: LevelConfig): JsonValue =
+    obj("name" -> str(l.name), "route" -> route(l.route),
+        "waves" -> arr(l.waves.map(wave)))
+
+  private def route(r: Route): JsonValue =
+    obj("waypoints" -> arr(r.waypoints.map(pos)), "branches" -> arr(r.branches.map(branch)))
+
+  private def pos(p: GridPos): JsonValue = arr(Seq(num(p.x), num(p.y)))
+
+  private def branch(b: Branch): JsonValue =
+    obj("side" -> str(b.side.toString), "from" -> num(b.from), "to" -> num(b.to),
+        "waypoints" -> arr(b.waypoints.map(pos)))
+
+  private def wave(w: WaveSpec): JsonValue =
+    obj("count" -> num(w.count), "spawnInterval" -> num(w.spawnInterval),
+        "hpScale" -> num(w.hpScale), "composition" -> composition(w.composition))
+
+  private def composition(c: Vector[(String, Int)]): JsonValue =
+    val o = JsonValue(JsonValue.ValueType.`object`)
+    c.foreach { (name, n) => o.addChild(name, num(n)) }
+    o
+
+  private def colors(c: Colors): JsonValue =
+    obj(
+      "background" -> str(colorHex(c.background)), "path" -> str(colorHex(c.path)),
+      "build" -> str(colorHex(c.build)), "gridLine" -> str(colorHex(c.gridLine)),
+      "enemy" -> str(colorHex(c.enemy)), "shot" -> str(colorHex(c.shot)),
+      "shotFire" -> str(colorHex(c.shotFire)), "shotFrost" -> str(colorHex(c.shotFrost)),
+      "shotSplash" -> str(colorHex(c.shotSplash)), "shotBoom" -> str(colorHex(c.shotBoom)),
+      "burnTint" -> str(colorHex(c.burnTint)), "slowTint" -> str(colorHex(c.slowTint)),
+      "buffTint" -> str(colorHex(c.buffTint)), "panel" -> str(colorHex(c.panel)),
+      "hoverOk" -> str(colorHex(c.hoverOk)), "hoverBad" -> str(colorHex(c.hoverBad)),
+      "range" -> str(colorHex(c.range)), "buttonFill" -> str(colorHex(c.buttonFill)),
+      "hpBarBack" -> str(colorHex(c.hpBarBack)), "hpBarFill" -> str(colorHex(c.hpBarFill)),
+      "text" -> str(colorHex(c.text)), "dimText" -> str(colorHex(c.dimText))
+    )
+
+  private def effect(e: Effect): JsonValue =
+    obj("kind" -> str(e.kind), "params" -> params(e.params))
+
+  private def params(m: Map[String, Float]): JsonValue =
+    val o = JsonValue(JsonValue.ValueType.`object`)
+    m.foreach { (k, v) => o.addChild(k, num(v)) }
+    o
+
+  private def biome(b: Biome): JsonValue =
+    val env = b.environment.map(effect).getOrElse(nullV)
+    obj("id" -> str(b.id), "name" -> str(b.name), "roster" -> arr(b.roster.map(str)),
+        "environment" -> env,
+        "resistTheme" -> obj(
+          "primary" -> str(b.resistTheme.primary.toString),
+          "primaryAmount" -> num(b.resistTheme.primaryAmount),
+          "secondary" -> str(b.resistTheme.secondary.toString),
+          "secondaryAmount" -> num(b.resistTheme.secondaryAmount)))
+
+  private def twist(t: Twist): JsonValue =
+    obj("id" -> str(t.id), "name" -> str(t.name),
+        "targetTower" -> str(t.targetTower), "effect" -> effect(t.effect))
+
+  private def relic(r: Relic): JsonValue =
+    val req = r.requiredTalent.map(str).getOrElse(nullV)
+    obj("id" -> str(r.id), "name" -> str(r.name), "rarity" -> str(r.rarity.toString),
+        "requiredTalent" -> req, "effect" -> effect(r.effect))
+
+  private def augment(a: Augment): JsonValue =
+    obj("id" -> str(a.id), "name" -> str(a.name), "effect" -> effect(a.effect))
+
+  private def talent(t: Talent): JsonValue =
+    obj("id" -> str(t.id), "name" -> str(t.name), "layer" -> str(t.layer.toString),
+        "cost" -> num(t.cost), "prereqs" -> arr(t.prereqs.map(str)),
+        "effect" -> effect(t.effect))

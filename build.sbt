@@ -32,7 +32,10 @@ lazy val game = (project in file("game"))
 lazy val editor = (project in file("editor"))
   .dependsOn(core)
   .settings(commonSettings)
-  .settings(name := "editor")
+  .settings(
+    name := "editor",
+    Compile / mainClass := Some("td.ConfigEditorApp")
+  )
 
 lazy val headless = (project in file("headless"))
   .dependsOn(core)

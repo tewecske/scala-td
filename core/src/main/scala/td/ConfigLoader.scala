@@ -35,6 +35,12 @@ object ConfigLoader:
     if !f.isFile then Left(s"config file not found: $path")
     else parse(Source.fromFile(f).mkString)
 
+  /** The bundled classpath config, ignoring any working-dir override. */
+  def bundled(): Either[String, GameConfig] =
+    val in = getClass.getResourceAsStream("/" + FileName)
+    if in == null then Left(s"bundled $FileName missing from classpath")
+    else parse(Source.fromInputStream(in).mkString)
+
   def readSource(): Either[String, String] =
     val f = File(FileName)
     if f.isFile then Right(Source.fromFile(f).mkString)
