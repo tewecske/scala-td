@@ -35,6 +35,19 @@ class ConfigTest extends munit.FunSuite:
     cfg.twists.foreach(t => assert(towerNames.contains(t.targetTower)))
   }
 
+  test("loadout config: max 3, Basic default, Cannon locked, rest unlocked") {
+    assertEquals(cfg.loadout.maxSelected, 3)
+    assertEquals(cfg.loadout.defaultSelected, Vector("Basic"))
+    assertEquals(cfg.loadout.locked, Vector("Cannon"))
+    val unlocked = cfg.loadout.unlocked.toSet
+    assert(unlocked.contains("Basic"))
+    assert(unlocked.contains("Fire"))
+    assert(unlocked.contains("Frost"))
+    assert(unlocked.contains("Bombard"))
+    // every tower is either unlocked or locked, with no gaps or overlaps
+    assertEquals((unlocked ++ cfg.loadout.locked.toSet), cfg.towers.map(_.name).toSet)
+  }
+
   test("biome rosters reference existing enemies") {
     val enemyNames = cfg.enemies.map(_.name).toSet
     cfg.biomes.foreach(b => b.roster.foreach(e => assert(enemyNames.contains(e))))
@@ -82,6 +95,7 @@ class ConfigTest extends munit.FunSuite:
   "combat": { "maxStepDt": 0.05, "fastForward": 3, "hitRadius": 6.0, "burnDps": 6.0, "burnDuration": 3.0, "slowFactor": 0.5, "slowDuration": 2.0, "breakTime": 4.0 },
   "i18n": { "lang": "en", "showCodes": false },
   "towers": [],
+  "loadout": { "maxSelected": 3, "defaultSelected": [], "unlocked": [], "locked": [] },
   "enemies": [
     { "name": "Cardboard", "baseHp": 22.0, "baseSpeed": 42.0, "color": "#ED7477", "size": 16.0,
       "resist": { "kinetic": 0.0, "fire": 0.0, "slow": 0.0, "splash": 0.0, "explosion": 0.0 }, "aura": null }

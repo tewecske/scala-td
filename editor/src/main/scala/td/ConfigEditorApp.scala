@@ -92,6 +92,7 @@ final class ConfigEditorFrame extends JFrame:
   private var relicsFs: Vector[(Vector[Field], Vector[String])] = Vector.empty
   private var augmentsFs: Vector[(Vector[Field], Vector[String])] = Vector.empty
   private var talentsFs: Vector[(Vector[Field], Vector[String])] = Vector.empty
+  private var loadoutCfg: LoadoutConfig = Config.Loadout
 
   setTitle("Config Editor")
   setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE)
@@ -129,6 +130,7 @@ final class ConfigEditorFrame extends JFrame:
     relicsFs  = cfg.relics.map(r => (buildRelic(r), r.effect.params.keys.toVector.sorted))
     augmentsFs = cfg.augments.map(a => (buildAugment(a), a.effect.params.keys.toVector.sorted))
     talentsFs = cfg.talents.map(t => (buildTalent(t), t.effect.params.keys.toVector.sorted))
+    loadoutCfg = cfg.loadout
 
     val tabs = JTabbedPane()
     tabs.addTab("Board", sectionPanel(boardFs))
@@ -208,7 +210,7 @@ final class ConfigEditorFrame extends JFrame:
       augments <- sequence(augmentsFs.map { (fs, keys) => readAugment(fs, keys) })
       talents <- sequence(talentsFs.map { (fs, keys) => readTalent(fs, keys) })
     yield GameConfig(board, economy, meta, combat, draft, i18n, towers, enemies,
-                     levels, colors, biomes, twists, relics, augments, talents)
+                      levels, loadoutCfg, colors, biomes, twists, relics, augments, talents)
 
   private def sequence[A](xs: Vector[Either[String, A]]): Either[String, Vector[A]] =
     xs.foldLeft[Either[String, Vector[A]]](Right(Vector.empty)) {

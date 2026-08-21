@@ -115,6 +115,7 @@ object ConfigLoader:
     val cmbt  = obj(root, "combat")
     val meta  = obj(root, "meta")
     val draft = obj(root, "draft")
+    val loadout = parseLoadout(obj(root, "loadout"), towerNames)
     GameConfig(
       board = BoardConfig(i(board, "gridSize"), cellPx, f(board, "panelPx")),
       economy = EconomyConfig(i(econ, "startGold"), i(econ, "startLives"), i(econ, "killReward"), i(econ, "levelBonus")),
@@ -135,6 +136,7 @@ object ConfigLoader:
       towers = towers,
       enemies = enemies,
       levels = levels,
+      loadout = loadout,
       colors = colors,
       biomes = biomes,
       twists = twists,
@@ -145,6 +147,34 @@ object ConfigLoader:
 
   private def parseI18n(v: JsonValue): I18nConfig =
     I18nConfig(lang = s(v, "lang"), showCodes = b(v, "showCodes"))
+
+  private def parseLoadout(v: JsonValue, towerNames: Set[String]): LoadoutConfig =
+    val unlocked = arr(v, "unlocked").map(_.asString())
+    val locked   = arr(v, "locked").map(_.asString())
+    val maxSel   = i(v, "maxSelected")
+    val defSel   = arr(v, "defaultSelected").map(_.asString())
+
+    requireUnique(unlocked, "loadout unlocked")
+    requireUnique(locked, "loadout locked")
+    unlocked.foreach { t =>
+      if !towerNames.contains(t) then
+        throw IllegalArgumentException(s"loadout unlocked references unknown tower '$t'")
+    }
+    locked.foreach { t =>
+      if !towerNames.contains(t) then
+        throw IllegalArgumentException(s"loadout locked references unknown tower '$t'")
+    }
+    if unlocked.intersect(locked).nonEmpty then
+      throw IllegalArgumentException("a tower cannot be both unlocked and locked in loadout")
+    if (unlocked ++ locked).toSet != towerNames then
+      throw IllegalArgumentException("loadout unlocked + locked must cover every tower")
+    if maxSel < 1 then throw IllegalArgumentException("loadout maxSelected must be >= 1")
+    if defSel.exists(t => !unlocked.contains(t)) then
+      throw IllegalArgumentException("loadout defaultSelected must be a subset of unlocked")
+    if defSel.size > maxSel then
+      throw IllegalArgumentException("loadout defaultSelected exceeds maxSelected")
+
+    LoadoutConfig(maxSel, defSel, unlocked, locked)
 
   private def parseTower(v: JsonValue, cellPx: Float): TowerSpec =
     TowerSpec(

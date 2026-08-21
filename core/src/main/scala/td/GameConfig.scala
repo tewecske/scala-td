@@ -50,6 +50,17 @@ case class I18nConfig(lang: String, showCodes: Boolean)
 
 case class EconomyConfig(startGold: Int, startLives: Int, killReward: Int, levelBonus: Int)
 
+/** Pre-run loadout: which towers the player may bring, how many at most, and
+  * the default pick. Towers outside `unlocked`/`locked` are rejected at load
+  * time so the picker always shows the full, current tower roster.
+  */
+case class LoadoutConfig(
+    maxSelected: Int,
+    defaultSelected: Vector[String],
+    unlocked: Vector[String],
+    locked: Vector[String]
+)
+
 /** Out-of-run meta-progression economy: how a finished run converts progress
   * into permanent currency.
   */
@@ -208,6 +219,7 @@ case class GameConfig(
     towers: Vector[TowerSpec],
     enemies: Vector[EnemySpec],
     levels: Vector[LevelConfig],
+    loadout: LoadoutConfig,
     colors: Colors,
     biomes: Vector[Biome],
     twists: Vector[Twist],

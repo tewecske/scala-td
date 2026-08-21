@@ -51,8 +51,55 @@ class TdGame extends ApplicationAdapter:
       case Phase.Menu =>
         gfx.drawMenu()
         if clicked && Ui.Play.contains(mx, my) then newRun()
+        else if clicked && Ui.Talents.contains(mx, my) then Phase.Talents(Meta.active())
         else if Gdx.input.isKeyJustPressed(Input.Keys.T) then startTutorial()
         else Phase.Menu
+
+      case Phase.Talents(data) =>
+        gfx.drawTalents(data)
+        if clicked && Ui.TalentsBack.contains(mx, my) then Phase.Menu
+        else if clicked then
+          Ui.talentOrder.zipWithIndex.collectFirst {
+            case (t, i) if Ui.TalentRow(i).contains(mx, my) => t
+          } match
+            case Some(t) =>
+              Meta.purchase(data, t.id) match
+                case Right(next) =>
+                  Meta.save(next)
+                  Phase.Talents(next)
+                case Left(err) =>
+                  notice = Some(err)
+                  noticeTimer = NoticeTime
+                  Phase.Talents(data)
+            case None => Phase.Talents(data)
+        else Phase.Talents(data)
+
+      case Phase.Briefing(w) =>
+        gfx.drawBriefing(w)
+        if clicked && Ui.BriefingBegin.contains(mx, my) then Phase.Loadout(w.run, Config.Loadout.defaultSelected)
+        else if clicked && Ui.BriefingBack.contains(mx, my) then Phase.Menu
+        else if Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) then Phase.Menu
+        else Phase.Briefing(w)
+
+      case Phase.Loadout(run, sel) =>
+        gfx.drawLoadout(run, sel)
+        if clicked && Ui.LoadoutConfirm.contains(mx, my) then
+          Phase.Playing(Sim.initial(run.copy(loadout = sel)))
+        else if clicked && Ui.LoadoutBack.contains(mx, my) then Phase.Menu
+        else if clicked then
+          val clickedRow = Config.game.towers.indices.find(i => Ui.LoadoutRow(i).contains(mx, my))
+          clickedRow match
+            case Some(i) =>
+              val t = Config.game.towers(i)
+              if Config.Loadout.locked.contains(t.name) then Phase.Loadout(run, sel)
+              else if sel.contains(t.name) then Phase.Loadout(run, sel.filter(_ != t.name))
+              else if sel.size < Config.Loadout.maxSelected then Phase.Loadout(run, sel :+ t.name)
+              else
+                notice = Some("loadout is full")
+                noticeTimer = NoticeTime
+                Phase.Loadout(run, sel)
+            case None => Phase.Loadout(run, sel)
+        else Phase.Loadout(run, sel)
 
       case Phase.Recap(won, level, wave, lives, gold, newEntries, knownEntries, death) =>
         gfx.drawRecap(won, level, wave, lives, gold, newEntries, knownEntries, death)
@@ -97,11 +144,12 @@ class TdGame extends ApplicationAdapter:
               else Phase.Playing(next)
 
             case None =>
-              Config.game.towers.indices.foreach { i =>
+              val pool = Config.LoadoutPool(w.run.loadout)
+              pool.indices.foreach { i =>
                 if Gdx.input.isKeyJustPressed(Input.Keys.NUM_1 + i) then selected = i
               }
-              selected = math.min(selected, Config.game.towers.size - 1)
-              val sel   = Config.game.towers(selected)
+              selected = math.min(selected, pool.size - 1)
+              val sel   = pool(selected)
               val hover = Some(Grid.cellAt(mx, my)).filter(Grid.inBounds)
               val cmds  = hover.filter(_ => clicked).map { cell =>
                 if w.pendingAugment.isDefined && Sim.canAttachAugment(w, cell) then Command.AttachAugment(cell)
@@ -125,7 +173,8 @@ class TdGame extends ApplicationAdapter:
               else Phase.Playing(drained)
 
       case Phase.Paused(w) =>
-        val sel = Config.game.towers(math.min(selected, Config.game.towers.size - 1))
+        val pool = Config.LoadoutPool(w.run.loadout)
+        val sel = pool(math.min(selected, pool.size - 1))
         gfx.drawPaused(w, fast, sel)
 
         if pausePressed then Phase.Playing(w)
@@ -136,15 +185,15 @@ class TdGame extends ApplicationAdapter:
   /** Every run starts from a clean World, so nothing leaks across retries. */
   private def newRun(): Phase =
     fast = false
-    val w = Sim.initial(RunGen.roll(System.nanoTime(), Meta.active().talents))
-    beginRun(w)
-    Phase.Playing(w)
+    val run = RunGen.roll(System.nanoTime(), Meta.active().talents)
+    beginRun(Sim.initial(run))
+    Phase.Briefing(Sim.initial(run))
 
   private def startTutorial(): Phase =
     fast = false
     val w = Sim.initial(RunGen.tutorial(System.nanoTime(), Meta.active().talents))
     beginRun(w)
-    Phase.Playing(w)
+    Phase.Briefing(w)
 
   /** Snapshots the journal so the recap can tell NEW entries from known ones. */
   private def beginRun(w: World): Unit =

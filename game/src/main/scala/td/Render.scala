@@ -181,6 +181,7 @@ class Render:
     beginScene()
     shapes.begin(ShapeType.Filled)
     button(Ui.Play)
+    button(Ui.Talents)
     shapes.end()
 
     val towers = Config.game.towers.size
@@ -188,8 +189,196 @@ class Render:
     centered("TOWER DEFENSE", Config.WorldW / 2, 440f, 3f)
     centered(s"${Config.GridSize} x ${Config.GridSize} · hold the line", Config.WorldW / 2, 390f, 1.2f, Config.DimText)
     buttonLabel(Ui.Play, "PLAY")
+    buttonLabel(Ui.Talents, "TALENTS")
     centered(s"1-$towers to pick a tower · click green to build · F to fast-forward · R to reload config · ESC to pause",
       Config.WorldW / 2, 120f, 1f, Config.DimText)
+    batch.end()
+    present()
+
+  /** Meta progression: spend currency to unlock talent-tree nodes. Rows are
+    * grouped by layer (fillers / cores / deeps) in three columns; owned nodes
+    * are tinted, locked ones (unmet prereq) and unaffordable ones are dimmed.
+    * The footer summarizes the active effects those talents grant in-run.
+    */
+  def drawTalents(data: MetaData): Unit =
+    beginScene()
+    val order  = Ui.talentOrder
+    val owned  = data.talents.toSet
+    val effects = Meta.effects(data.talents)
+
+    shapes.begin(ShapeType.Filled)
+    order.zipWithIndex.foreach { case (t, i) =>
+      val r         = Ui.TalentRow(i)
+      val isOwned   = owned.contains(t.id)
+      val locked    = !t.prereqs.forall(owned.contains)
+      val affordable = data.balance >= t.cost
+      val fill =
+        if isOwned then Config.PanelColor
+        else if locked then Config.PanelColor
+        else if affordable then Config.ButtonFill
+        else Config.PanelColor
+      box(r, fill)
+      if isOwned then
+        shapes.setColor(Config.BuffTint)
+        shapes.rect(r.x, r.y, 4f, r.h)
+    }
+    button(Ui.TalentsBack)
+    shapes.end()
+
+    batch.begin()
+    centered(Messages.t("talents.title"), Config.WorldW / 2, 600f, 3f)
+    centered(Messages.t("talents.balance", data.balance), Config.WorldW / 2, 560f, 1.4f, Config.ShotColor)
+
+    order.zipWithIndex.foreach { case (t, i) =>
+      val r         = Ui.TalentRow(i)
+      val isOwned   = owned.contains(t.id)
+      val locked    = !t.prereqs.forall(owned.contains)
+      val affordable = data.balance >= t.cost
+      val labelColor =
+        if isOwned then Config.BuffTint
+        else if locked || !affordable then Config.DimText
+        else Config.TextColor
+      val status =
+        if isOwned then Messages.t("talents.owned")
+        else if locked then Messages.t("talents.locked", t.prereqs.head)
+        else Messages.t("talents.cost", t.cost)
+      text(s"${t.name}", r.x + 14f, r.centerY + 8f, 1.3f, labelColor)
+      text(status, r.x + 14f, r.y + 10f, 0.9f, Config.DimText)
+    }
+
+    centered(Messages.t("talents.effects"), Config.WorldW / 2, 150f, 1.6f)
+    var y = 122f
+    def effLine(s: String): Unit =
+      text(s, Config.WorldW / 2 - 190f, y, 1.1f, Config.TextColor)
+      y -= 20f
+    if effects.damageMult != 1f then effLine(Messages.t("talents.damageMult", pct(effects.damageMult)))
+    if effects.rangeMult  != 1f then effLine(Messages.t("talents.rangeMult", pct(effects.rangeMult)))
+    if effects.goldMult   != 1f then effLine(Messages.t("talents.goldMult", pct(effects.goldMult)))
+    if effects.loadoutSlots > 0 then effLine(Messages.t("talents.loadoutSlots", effects.loadoutSlots))
+    if effects.rerollUnlocked then effLine(Messages.t("talents.reroll"))
+    if effects.activeCores.nonEmpty then effLine(Messages.t("talents.cores", effects.activeCores.mkString(", ")))
+    if effects.activeDeeps.nonEmpty then effLine(Messages.t("talents.deeps", effects.activeDeeps.mkString(", ")))
+    if y == 122f then effLine(Messages.t("talents.none"))
+
+    buttonLabel(Ui.TalentsBack, Messages.t("talents.back"))
+    batch.end()
+    present()
+
+  /** Signed percentage of a multiplier relative to 1.0 (1.1 -> +10%). */
+  private def pct(mult: Float): String =
+    val v = math.round((mult - 1f) * 100f)
+    (if v > 0 then s"+$v" else v.toString) + "%"
+
+  /** Pre-run briefing: a vague painted field with a road, the biome's name, a
+    * one-line description, and a BEGIN button. Pure flavor — no sim is stepped.
+    */
+  def drawBriefing(w: World): Unit =
+    beginScene()
+
+    val biome = Config.biome(w.run.biome)
+    val art   = Rect(Config.WorldW / 2 - 200f, 200f, 400f, 280f)
+
+    // -- the painted field -----------------------------------------------------
+    shapes.begin(ShapeType.Filled)
+    // grass
+    box(art, new Color(0.27f, 0.55f, 0.22f, 1f))
+    // plowed rows: darker horizontal stripes
+    shapes.setColor(0.21f, 0.45f, 0.18f, 1f)
+    var ry = art.y + 18f
+    while ry < art.y + art.h do
+      shapes.rect(art.x, ry, art.w, 16f)
+      ry += 36f
+    // a few bushes for texture
+    shapes.setColor(0.18f, 0.40f, 0.15f, 1f)
+    shapes.circle(art.x + 70f,  art.y + 60f,  14f)
+    shapes.circle(art.x + 330f, art.y + 80f,  11f)
+    shapes.circle(art.x + 120f, art.y + 240f, 12f)
+    // the road: a band winding across the field, edge to edge
+    val roadW   = 34f
+    val steps   = 80
+    shapes.setColor(0.66f, 0.58f, 0.42f, 1f)
+    for i <- 0 until steps do
+      val t   = i.toFloat / steps
+      val x   = art.x + t * art.w
+      val cy  = (art.y + art.h / 2 + math.sin(t * math.Pi * 1.4 - 0.4) * (art.h / 2 - roadW)).toFloat
+      shapes.rect(x - art.w / steps / 2 - 2f, cy - roadW / 2, art.w / steps + 4f, roadW)
+    // road center dashes
+    shapes.setColor(0.85f, 0.80f, 0.62f, 1f)
+    for i <- 0 until steps by 4 do
+      val t   = i.toFloat / steps
+      val x   = art.x + t * art.w
+      val cy  = (art.y + art.h / 2 + math.sin(t * math.Pi * 1.4 - 0.4) * (art.h / 2 - roadW)).toFloat
+      shapes.rect(x - 6f, cy - 2f, 12f, 4f)
+    // a sun in the corner
+    shapes.setColor(0.95f, 0.88f, 0.45f, 1f)
+    shapes.circle(art.x + art.w - 36f, art.y + 36f, 20f)
+    // buttons sit on the same shape pass as the art
+    button(Ui.BriefingBegin)
+    button(Ui.BriefingBack)
+    shapes.end()
+
+    batch.begin()
+    centered(biome.name, Config.WorldW / 2, 540f, 3f)
+    centered(Messages.t(s"briefing.${biome.id}"), Config.WorldW / 2, 470f, 1.3f, Config.DimText)
+
+    w.run.twists.foreach { id =>
+      Config.twists.find(_.id == id).foreach { tw =>
+        centered(s"${Messages.t("briefing.twist")}: ${tw.name} - ${Messages.t(s"twist.${tw.id}")}",
+          Config.WorldW / 2, 156f, 1f, Config.ShotColor)
+      }
+    }
+
+    buttonLabel(Ui.BriefingBegin, Messages.t("briefing.begin"))
+    buttonLabel(Ui.BriefingBack, Messages.t("briefing.back"))
+    batch.end()
+    present()
+
+  /** Pre-run loadout picker: every tower as a row; unlocked rows are clickable
+    * and toggle a highlight border, locked rows render as a "?" and ignore
+    * clicks. The run starts with exactly the selected towers in its loadout.
+    */
+  def drawLoadout(run: RunContext, selected: Vector[String]): Unit =
+    beginScene()
+    val towers  = Config.game.towers
+    val locked  = Config.Loadout.locked.toSet
+    val maxSel  = Config.Loadout.maxSelected
+
+    shapes.begin(ShapeType.Filled)
+    towers.zipWithIndex.foreach { case (t, i) =>
+      val r   = Ui.LoadoutRow(i)
+      val isLocked = locked.contains(t.name)
+      val isSel    = selected.contains(t.name)
+      box(r, if isLocked then Config.PanelColor else Config.ButtonFill)
+      if isSel then
+        shapes.setColor(t.color)
+        shapes.rect(r.x, r.y, r.w, 4f)
+        shapes.rect(r.x, r.y + r.h - 4f, r.w, 4f)
+        shapes.rect(r.x, r.y, 4f, r.h)
+        shapes.rect(r.x + r.w - 4f, r.y, 4f, r.h)
+    }
+    button(Ui.LoadoutConfirm)
+    button(Ui.LoadoutBack)
+    shapes.end()
+
+    batch.begin()
+    centered("CHOOSE YOUR LOADOUT", Config.WorldW / 2, 560f, 3f)
+    centered(s"slots ${selected.size} / $maxSel", Config.WorldW / 2, 520f, 1.4f, Config.DimText)
+
+    towers.zipWithIndex.foreach { case (t, i) =>
+      val r        = Ui.LoadoutRow(i)
+      val isLocked = locked.contains(t.name)
+      if isLocked then
+        centered("?", r.centerX, r.centerY + 8f, 2.2f, Config.DimText)
+      else
+        text(s"${t.name}", r.x + 16f, r.centerY + 8f, 1.4f, t.color)
+        text(s"${t.cost}g", r.x + r.w - 70f, r.centerY + 8f, 1.2f, Config.ShotColor)
+        text(kindName(t.kind), r.x + 16f, r.y + 12f, 0.9f, Config.DimText)
+        if selected.contains(t.name) then
+          centered("SELECTED", r.centerX, r.y + 12f, 1.0f, Config.BuffTint)
+    }
+
+    buttonLabel(Ui.LoadoutConfirm, "CONFIRM")
+    buttonLabel(Ui.LoadoutBack, "BACK")
     batch.end()
     present()
 
@@ -470,7 +659,7 @@ class Render:
     line(s"types: $kinds", 1.0f, Config.DimText)
 
     y -= 20f
-    val towers = Config.game.towers
+    val towers = Config.LoadoutPool(w.run.loadout)
     line(s"build [1..${towers.size}]", 1.0f, Config.DimText)
     towers.zipWithIndex.foreach { case (t, idx) =>
       val isSel  = t.name == selected.name

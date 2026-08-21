@@ -58,6 +58,7 @@ object ConfigWriter:
       "towers"   -> arr(cfg.towers.map(tower(cfg, _))),
       "enemies"  -> arr(cfg.enemies.map(enemy(cfg, _))),
       "levels"   -> arr(cfg.levels.map(level)),
+      "loadout"  -> loadout(cfg.loadout),
       "colors"   -> colors(cfg.colors),
       "biomes"   -> arr(cfg.biomes.map(biome)),
       "twists"   -> arr(cfg.twists.map(twist)),
@@ -96,6 +97,14 @@ object ConfigWriter:
 
   private def i18n(i: I18nConfig): JsonValue =
     obj("lang" -> str(i.lang), "showCodes" -> bool(i.showCodes))
+
+  private def loadout(l: LoadoutConfig): JsonValue =
+    obj(
+      "maxSelected"     -> num(l.maxSelected),
+      "defaultSelected" -> arr(l.defaultSelected.map(str)),
+      "unlocked"        -> arr(l.unlocked.map(str)),
+      "locked"          -> arr(l.locked.map(str))
+    )
 
   private def tower(cfg: GameConfig, t: TowerSpec): JsonValue =
     val px = cfg.board.cellPx

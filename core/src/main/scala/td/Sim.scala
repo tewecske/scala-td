@@ -92,7 +92,8 @@ object Sim:
     */
   def canBuild(w: World, cell: GridPos, tpe: String): Boolean =
     val spec = Config.towerSpec(tpe)
-    w.gold >= spec.cost &&
+    (w.run.loadout.isEmpty || w.run.loadout.contains(tpe)) &&
+      w.gold >= spec.cost &&
       Grid.isBuildable(cell, w.level) &&
       !w.towers.exists(_.cell == cell)
 

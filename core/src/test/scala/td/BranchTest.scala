@@ -127,6 +127,7 @@ class BranchTest extends munit.FunSuite:
   "combat": { "maxStepDt": 0.05, "fastForward": 3, "hitRadius": 6.0, "burnDps": 6.0, "burnDuration": 3.0, "slowFactor": 0.5, "slowDuration": 2.0, "breakTime": 4.0 },
   "i18n": { "lang": "en", "showCodes": false },
   "towers": [],
+  "loadout": { "maxSelected": 3, "defaultSelected": [], "unlocked": [], "locked": [] },
   "enemies": [
     { "name": "Cardboard", "baseHp": 22.0, "baseSpeed": 42.0, "color": "#ED7477", "size": 16.0,
       "resist": { "kinetic": 0.0, "fire": 0.0, "slow": 0.0, "splash": 0.0, "explosion": 0.0 }, "aura": null }

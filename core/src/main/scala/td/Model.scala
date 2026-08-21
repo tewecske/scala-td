@@ -194,6 +194,9 @@ enum Command:
 /** Which screen the game is on. */
 enum Phase:
   case Menu
+  case Briefing(w: World)
+  case Loadout(run: RunContext, selected: Vector[String])
+  case Talents(data: MetaData)
   case Playing(w: World)
   case Paused(w: World)
   case Recap(

@@ -15,6 +15,12 @@
     "studyHits": 5
   },
   "i18n": { "lang": "en", "showCodes": false },
+  "loadout": {
+    "maxSelected": 3,
+    "defaultSelected": ["Basic"],
+    "unlocked": ["Basic", "Fire", "Frost", "Bombard"],
+    "locked": ["Cannon"]
+  },
   "towers": [
     { "name": "Basic",   "cost": 50,  "color": "#5C63A5", "range": 3.2, "fireInterval": 0.55, "damage": 12.0, "projectileSpeed": 420.0, "kind": "Kinetic",   "splashRadius": 0.0 },
     { "name": "Fire",    "cost": 80,  "color": "#ED7477", "range": 2.8, "fireInterval": 0.50, "damage": 8.0,  "projectileSpeed": 480.0, "kind": "Fire",      "splashRadius": 0.0 },

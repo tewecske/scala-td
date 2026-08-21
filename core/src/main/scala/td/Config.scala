@@ -93,6 +93,16 @@ object Config:
   def talent(id: String): Talent =
     current.talents.find(_.id == id).getOrElse(sys.error(s"unknown talent '$id'"))
 
+  // -- loadout ----------------------------------------------------------------
+  def Loadout: LoadoutConfig = current.loadout
+
+  /** The towers a run may build, given its loadout. An empty loadout (used by
+    * headless tests and the bot) means unrestricted — every tower is allowed.
+    */
+  def LoadoutPool(loadout: Vector[String]): Vector[TowerSpec] =
+    if loadout.isEmpty then current.towers
+    else current.towers.filter(t => loadout.contains(t.name))
+
   // -- levels -----------------------------------------------------------------
   def levels: Vector[LevelConfig] = current.levels
   def levelCount: Int             = current.levels.size
@@ -142,13 +152,43 @@ object Ui:
   private def bh = 52f
   private def cx = Config.WorldW / 2 - bw / 2
 
-  def Play  = Rect(cx, 240f, bw, bh)
+  def Play  = Rect(cx, 300f, bw, bh)
+  def Talents = Rect(cx, 240f, bw, bh)
   def Retry = Rect(cx, 250f, bw, bh)
   def Menu  = Rect(cx, 180f, bw, bh)
   def PlayAgain = Rect(cx, 250f, bw, bh)
   def Resume = Rect(cx, 250f, bw, bh)
   def Exit   = Rect(cx, 180f, bw, bh)
 
+  /** Pre-run briefing: a BEGIN button and a back-to-menu escape. */
+  def BriefingBegin = Rect(cx, 120f, bw, bh)
+  def BriefingBack  = Rect(cx, 56f, bw, bh)
+
   /** Between-level draft: three offer rows plus a reroll button. */
   def DraftOffer(i: Int): Rect = Rect(cx, 420f - i * 80f, bw, 60f)
   def DraftReroll: Rect        = Rect(cx, 120f, bw, bh)
+
+  /** Pre-run loadout picker: one row per tower plus confirm/back buttons. */
+  def LoadoutRow(i: Int): Rect = Rect(cx - 200f, 430f - i * 72f, 400f, 56f)
+  def LoadoutConfirm: Rect     = Rect(cx, 110f, bw, bh)
+  def LoadoutBack: Rect        = Rect(cx, 56f, bw, bh)
+
+  /** Talent screen: fillers / cores / deeps laid out in three columns, ordered
+    * by layer. A row is clickable only when it is unlocked and affordable.
+    */
+  def talentOrder: Vector[Talent] =
+    Vector(TalentLayer.Filler, TalentLayer.Core, TalentLayer.Deep)
+      .flatMap(l => Config.talents.filter(_.layer == l))
+
+  def TalentRow(i: Int): Rect =
+    val t   = talentOrder(i)
+    val col = t.layer match
+      case TalentLayer.Filler => 0
+      case TalentLayer.Core   => 1
+      case TalentLayer.Deep   => 2
+    val inLayer = talentOrder.zipWithIndex.take(i).count((t2, _) => t2.layer == t.layer)
+    val x = 20f + col * 290f
+    val y = 470f - inLayer * 64f
+    Rect(x, y, 260f, 54f)
+
+  def TalentsBack: Rect = Rect(cx, 56f, bw, bh)
