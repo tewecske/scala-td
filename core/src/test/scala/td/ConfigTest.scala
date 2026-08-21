@@ -25,7 +25,7 @@ class ConfigTest extends munit.FunSuite:
 
   test("tutorial biome exists and real biomes have distinct resist themes") {
     assert(cfg.biomes.exists(_.id == "tutorial"))
-    assertEquals(cfg.biomes.size, 4)
+    assertEquals(cfg.biomes.size, 5)
     cfg.biomes.foreach(b => assertNotEquals(b.resistTheme.primary, b.resistTheme.secondary))
   }
 
@@ -54,7 +54,7 @@ class ConfigTest extends munit.FunSuite:
 
   test("duplicate biome id is rejected") {
     val json = minimalConfig(
-      biomes = Some(s"[ ${biomeJson("tutorial", "Grunt")}, ${biomeJson("tutorial", "Grunt")} ]")
+      biomes = Some(s"[ ${biomeJson("tutorial", "Cardboard")}, ${biomeJson("tutorial", "Cardboard")} ]")
     )
     assert(ConfigLoader.parse(json).left.exists(_.contains("duplicate biome")))
   }
@@ -71,7 +71,7 @@ class ConfigTest extends munit.FunSuite:
   private def minimalConfig(
       biomes: Option[String] = None,
       relicRarity: String = "Common",
-      roster: String = "Grunt"
+      roster: String = "Cardboard"
   ): String =
     val biomeSection = biomes.getOrElse(s"[ ${biomeJson("tutorial", roster)} ]")
     s"""{
@@ -83,12 +83,12 @@ class ConfigTest extends munit.FunSuite:
   "i18n": { "lang": "en", "showCodes": false },
   "towers": [],
   "enemies": [
-    { "name": "Grunt", "baseHp": 22.0, "baseSpeed": 42.0, "color": "#ED7477", "size": 16.0,
+    { "name": "Cardboard", "baseHp": 22.0, "baseSpeed": 42.0, "color": "#ED7477", "size": 16.0,
       "resist": { "kinetic": 0.0, "fire": 0.0, "slow": 0.0, "splash": 0.0, "explosion": 0.0 }, "aura": null }
   ],
   "levels": [
     { "name": "L1", "route": { "waypoints": [[0, 0], [1, 0]] },
-      "waves": [ { "count": 1, "spawnInterval": 1.0, "hpScale": 1.0, "composition": { "Grunt": 1 } } ] }
+      "waves": [ { "count": 1, "spawnInterval": 1.0, "hpScale": 1.0, "composition": { "Cardboard": 1 } } ] }
   ],
   "colors": {
     "background": "#021A01", "path": "#328A2E", "build": "#12520F", "gridLine": "#00000040", "enemy": "#ED7477",

@@ -15,7 +15,7 @@ class JournalTest extends munit.FunSuite:
   test("save/load round-trips entries, biomes, twists") {
     val path = tmpPath("roundtrip")
     val data = JournalData(
-      entries = Vector(JournalEntry("Brute", "resist.Kinetic", Precision.Studied, Some("0.35")),
+      entries = Vector(JournalEntry("Brick", "resist.Kinetic", Precision.Studied, Some("0.35")),
                        JournalEntry("Ember", "resist.Fire", Precision.Sighting, Some("resists"))),
       biomes = Vector("cube-farm"),
       twists = Vector("brittle")
@@ -25,12 +25,12 @@ class JournalTest extends munit.FunSuite:
   }
 
   test("applyEvent upgrades Sighting to Studied and never downgrades") {
-    val d1 = JournalData.empty.applyEvent(DiscoveryEvent("Brute", "resist.Kinetic", Precision.Sighting, "resists"))
+    val d1 = JournalData.empty.applyEvent(DiscoveryEvent("Brick", "resist.Kinetic", Precision.Sighting, "resists"))
     assertEquals(d1.entries.head.tier, Precision.Sighting)
-    val d2 = d1.applyEvent(DiscoveryEvent("Brute", "resist.Kinetic", Precision.Studied, "0.35"))
+    val d2 = d1.applyEvent(DiscoveryEvent("Brick", "resist.Kinetic", Precision.Studied, "0.35"))
     assertEquals(d2.entries.head.tier, Precision.Studied)
     assertEquals(d2.entries.head.value, Some("0.35"))
-    val d3 = d2.applyEvent(DiscoveryEvent("Brute", "resist.Kinetic", Precision.Sighting, "resists"))
+    val d3 = d2.applyEvent(DiscoveryEvent("Brick", "resist.Kinetic", Precision.Sighting, "resists"))
     assertEquals(d3.entries.head.tier, Precision.Studied)
   }
 
@@ -42,7 +42,7 @@ class JournalTest extends munit.FunSuite:
   }
 
   test("first hit emits Sighting; Nth hit emits Studied with the exact value") {
-    val collected = fire("Brute", DamageKind.Kinetic, Config.StudyHits)
+    val collected = fire("Brick", DamageKind.Kinetic, Config.StudyHits)
     assert(collected.exists(e => e.tier == Precision.Sighting && e.value == "resists"))
     assert(collected.exists(e => e.tier == Precision.Studied && e.value == "0.35"))
   }

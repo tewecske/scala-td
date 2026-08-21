@@ -190,7 +190,9 @@ object ConfigLoader:
       sidePreference =
         val sideVal = v.get("sidePreference")
         if sideVal == null || sideVal.isNull then None
-        else Some(enumValue(sideVal.asString(), "side preference", RouteSide.values))
+        else Some(enumValue(sideVal.asString(), "side preference", RouteSide.values)),
+      killReward = fo(v, "killReward", 1f),
+      speedVariance = fo(v, "speedVariance", 0f)
     )
 
   private def parseLevels(root: JsonValue, known: Set[String]): Vector[LevelConfig] =
@@ -369,6 +371,10 @@ object ConfigLoader:
     val child = v.get(name)
     if child == null then throw IllegalArgumentException(s"missing field '$name'")
     child.asFloat()
+
+  private def fo(v: JsonValue, name: String, default: Float): Float =
+    val child = v.get(name)
+    if child == null then default else child.asFloat()
 
   private def i(v: JsonValue, name: String): Int =
     val child = v.get(name)

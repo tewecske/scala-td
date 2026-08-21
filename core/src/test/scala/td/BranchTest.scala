@@ -19,7 +19,7 @@ class BranchTest extends munit.FunSuite:
     assert(route.branches.nonEmpty)
     assertEquals(route.branches.head.side, RouteSide.Right)
     assertEquals(Config.enemySpec("Edgelord").sidePreference, Some(RouteSide.Left))
-    assert(Config.enemySpec("Grunt").sidePreference.isEmpty)
+    assert(Config.enemySpec("Cardboard").sidePreference.isEmpty)
   }
 
   test("branch with an out-of-range fork index is rejected") {
@@ -76,7 +76,7 @@ class BranchTest extends munit.FunSuite:
     val run = RunGen.tutorial(1L)
     val fork = Grid.forks(BranchLevel).head
     val start = fork.forkProgress - 0.5f
-    val ws = world(run, (1 to 40).map(i => enemy("Grunt", i.toLong, start)).toVector)
+    val ws = world(run, (1 to 40).map(i => enemy("Cardboard", i.toLong, start)).toVector)
     val stepped = Sim.step(ws, Config.MaxStepDt, Vector.empty)
     val lanes = stepped.enemies.map(_.lane).toSet
     assert(lanes.contains(None), s"expected some enemies on the trunk, got $lanes")
@@ -87,7 +87,7 @@ class BranchTest extends munit.FunSuite:
     val run = RunGen.tutorial(1L)
     val fork = Grid.forks(BranchLevel).head
     val start = fork.forkProgress - 0.5f
-    val ws = world(run, (1 to 20).map(i => enemy("Grunt", i.toLong, start)).toVector)
+    val ws = world(run, (1 to 20).map(i => enemy("Cardboard", i.toLong, start)).toVector)
     val a = Sim.step(ws, Config.MaxStepDt, Vector.empty)
     val b = Sim.step(ws, Config.MaxStepDt, Vector.empty)
     assertEquals(a, b)
@@ -128,12 +128,12 @@ class BranchTest extends munit.FunSuite:
   "i18n": { "lang": "en", "showCodes": false },
   "towers": [],
   "enemies": [
-    { "name": "Grunt", "baseHp": 22.0, "baseSpeed": 42.0, "color": "#ED7477", "size": 16.0,
+    { "name": "Cardboard", "baseHp": 22.0, "baseSpeed": 42.0, "color": "#ED7477", "size": 16.0,
       "resist": { "kinetic": 0.0, "fire": 0.0, "slow": 0.0, "splash": 0.0, "explosion": 0.0 }, "aura": null }
   ],
   "levels": [
     { "name": "L1", "route": { "waypoints": [[0, 0], [1, 0], [2, 0]], "branches": $branches },
-      "waves": [ { "count": 1, "spawnInterval": 1.0, "hpScale": 1.0, "composition": { "Grunt": 1 } } ] }
+      "waves": [ { "count": 1, "spawnInterval": 1.0, "hpScale": 1.0, "composition": { "Cardboard": 1 } } ] }
   ],
   "colors": {
     "background": "#021A01", "path": "#328A2E", "build": "#12520F", "gridLine": "#00000040", "enemy": "#ED7477",
@@ -142,7 +142,7 @@ class BranchTest extends munit.FunSuite:
     "hoverBad": "#ED747780", "range": "#9CA2E166", "buttonFill": "#323875", "hpBarBack": "#030516", "hpBarFill": "#9DEC99",
     "text": "#FFE6A5", "dimText": "#5C63A5"
   },
-  "biomes": [ { "id": "tutorial", "name": "T", "roster": ["Grunt"], "environment": null,
+  "biomes": [ { "id": "tutorial", "name": "T", "roster": ["Cardboard"], "environment": null,
       "resistTheme": { "primary": "Kinetic", "primaryAmount": 0.0, "secondary": "Fire", "secondaryAmount": 0.0 } } ],
   "twists": [],
   "relics": [],

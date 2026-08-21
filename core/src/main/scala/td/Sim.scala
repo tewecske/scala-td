@@ -183,6 +183,12 @@ object Sim:
     (Config.KillReward + envParam(w, "recycling", "killGoldBonus") + relicKillBonus(w)) *
       effects(w).goldMult * relicGoldMult(w)
 
+  /** Total gold for a wave of kills, summed per-enemy via `EnemySpec.killReward`
+    * so bosses can pay proportionally more than baseline fodder.
+    */
+  private def killRewardTotal(w: World, dead: Vector[Enemy]): Int =
+    dead.map(e => math.round(killReward(w) * Config.enemySpec(e.tpe).killReward)).sum.toInt
+
   /** Multiplicative gold multiplier from owned `squareDeal` relics. */
   private def relicGoldMult(w: World): Float =
     w.run.relics.foldLeft(1f) { (acc, id) =>
@@ -258,7 +264,7 @@ object Sim:
           progress = 0f,
           hp = hp,
           maxHp = hp,
-          speed = spec.baseSpeed,
+          speed = spec.baseSpeed * w.run.speedMults.getOrElse(spec.name, 1f),
           tpe = spec.name,
           level = w.level,
           resist = spec.resist.layered(w.run.resistTheme)
@@ -420,7 +426,7 @@ object Sim:
       else
         noteReveals(base, dead).copy(
           enemies = alive,
-          gold = base.gold + math.round(dead.size * killReward(base)),
+          gold = base.gold + killRewardTotal(base, dead),
           kills = base.kills + dead.size,
           hazards = base.hazards ++ crushedHazards(base, dead)
         )
@@ -658,7 +664,7 @@ object Sim:
     noteReveals(withResist, dead).copy(
       shots = fs.result(),
       enemies = alive,
-      gold = w.gold + math.round(dead.size * killReward(w)),
+      gold = w.gold + killRewardTotal(w, dead),
       kills = w.kills + dead.size,
       hazards = w.hazards ++ crushedHazards(w, dead),
       hitFeedback = w.hitFeedback ++ fb.result()

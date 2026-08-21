@@ -4,7 +4,7 @@ class TwistTest extends munit.FunSuite:
 
   private val towerCell = GridPos(0, 16)
 
-  private def startEnemy(id: Long, hp: Float = 100f, tpe: String = "Grunt"): Enemy =
+  private def startEnemy(id: Long, hp: Float = 100f, tpe: String = "Cardboard"): Enemy =
     Enemy(id = id, progress = 0f, hp = hp, maxHp = 100f, speed = 0f, tpe = tpe,
       level = 0, resist = Config.enemySpec(tpe).resist)
 

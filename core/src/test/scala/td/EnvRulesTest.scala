@@ -45,8 +45,8 @@ class EnvRulesTest extends munit.FunSuite:
 
   test("openFloorPlan grants armor while enemies cluster") {
     val run = runFor("cube-farm")
-    val e1  = enemy(run, "Grunt", 1L)
-    val e2  = enemy(run, "Grunt", 2L)
+    val e1  = enemy(run, "Cardboard", 1L)
+    val e2  = enemy(run, "Cardboard", 2L)
     val w   = Sim.initial(run).copy(enemies = Vector(e1, e2), spawnQueue = Vector.empty, breakTimer = 999f)
     val stepped = Sim.step(w, Config.MaxStepDt, Vector.empty)
     assert(stepped.enemies.forall(_.armor > 0f))
@@ -56,8 +56,8 @@ class EnvRulesTest extends munit.FunSuite:
 
   test("crushed: a dying heavy leaves a temporary hazard") {
     val run   = runFor("shipping-yard")
-    assert(Config.enemySpec("Brute").heavy)
-    val dying = enemy(run, "Brute", 1L).copy(hp = 1f, burnDps = 100f, burnUntil = 10f)
+    assert(Config.enemySpec("Brick").heavy)
+    val dying = enemy(run, "Brick", 1L).copy(hp = 1f, burnDps = 100f, burnUntil = 10f)
     val w     = Sim.initial(run).copy(enemies = Vector(dying), spawnQueue = Vector.empty, breakTimer = 999f)
     val stepped = Sim.step(w, Config.MaxStepDt, Vector.empty)
     assert(stepped.enemies.isEmpty)
@@ -76,7 +76,7 @@ class EnvRulesTest extends munit.FunSuite:
   test("recycling: leaks cost fewer lives") {
     val run = runFor("cardboard-wastes")
     val len = Grid.length(0)
-    val e   = enemy(run, "Swift", 1L, progress = len - 1f).copy(speed = 100f)
+    val e   = enemy(run, "Paper Cut", 1L, progress = len - 1f).copy(speed = 100f)
     val w   = Sim.initial(run).copy(enemies = Vector(e), spawnQueue = Vector.empty, breakTimer = 999f)
     val stepped = Sim.step(w, Config.MaxStepDt, Vector.empty)
     assertEquals(stepped.leaks, 1)

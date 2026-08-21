@@ -130,7 +130,9 @@ object ConfigWriter:
       ),
       "aura"     -> aura,
       "heavy"    -> bool(e.heavy),
-      "sidePreference" -> side
+      "sidePreference" -> side,
+      "killReward" -> num(e.killReward),
+      "speedVariance" -> num(e.speedVariance)
     )
 
   private def level(l: LevelConfig): JsonValue =

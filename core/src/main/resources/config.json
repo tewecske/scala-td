@@ -23,58 +23,62 @@
     { "name": "Bombard", "cost": 140, "color": "#A8383B", "range": 4.0, "fireInterval": 1.10, "damage": 22.0, "projectileSpeed": 320.0, "kind": "Explosion", "splashRadius": 1.6 }
   ],
   "enemies": [
-    { "name": "Grunt",        "baseHp": 22.0, "baseSpeed": 42.0, "color": "#ED7477", "size": 16.0,
+    { "name": "Cardboard", "baseHp": 22.0, "baseSpeed": 42.0, "color": "#ED7477", "size": 16.0,
       "resist": { "kinetic": 0.0, "fire": 0.0, "slow": 0.0, "splash": 0.0, "explosion": 0.0 }, "aura": null },
-    { "name": "Swift",        "baseHp": 10.0, "baseSpeed": 70.0, "color": "#FEA4A6", "size": 12.0,
+    { "name": "Paper Cut", "baseHp": 10.0, "baseSpeed": 70.0, "color": "#FEA4A6", "size": 12.0,
       "resist": { "kinetic": 0.0, "fire": 0.0, "slow": 0.0, "splash": 0.0, "explosion": 0.0 }, "aura": null },
-    { "name": "Brute",        "baseHp": 90.0, "baseSpeed": 24.0, "color": "#A8383B", "size": 26.0, "heavy": true,
+    { "name": "Brick", "baseHp": 90.0, "baseSpeed": 24.0, "color": "#A8383B", "size": 26.0, "heavy": true,
       "resist": { "kinetic": 0.35, "fire": 0.0, "slow": 0.0, "splash": 0.0, "explosion": 0.0 }, "aura": null },
-    { "name": "Ember",        "baseHp": 26.0, "baseSpeed": 40.0, "color": "#EFCE75", "size": 16.0,
+    { "name": "Ember", "baseHp": 26.0, "baseSpeed": 40.0, "color": "#EFCE75", "size": 16.0,
       "resist": { "kinetic": 0.0, "fire": 0.6, "slow": 0.0, "splash": 0.0, "explosion": 0.0 }, "aura": null },
-    { "name": "Frostling",    "baseHp": 24.0, "baseSpeed": 42.0, "color": "#9CA2E1", "size": 16.0,
+    { "name": "Frostling", "baseHp": 24.0, "baseSpeed": 42.0, "color": "#9CA2E1", "size": 16.0,
       "resist": { "kinetic": 0.0, "fire": 0.0, "slow": 0.7, "splash": 0.0, "explosion": 0.0 }, "aura": null },
-    { "name": "Commander",    "baseHp": 60.0, "baseSpeed": 30.0, "color": "#5C63A5", "size": 18.0,
+    { "name": "Commander", "baseHp": 60.0, "baseSpeed": 30.0, "color": "#5C63A5", "size": 18.0,
       "resist": { "kinetic": 0.0, "fire": 0.0, "slow": 0.0, "splash": 0.0, "explosion": 0.0 },
       "aura": { "kind": "SpeedBoost", "radius": 2.5, "magnitude": 0.25 } },
     { "name": "Shieldbearer", "baseHp": 55.0, "baseSpeed": 32.0, "color": "#323875", "size": 18.0, "heavy": true,
       "resist": { "kinetic": 0.2, "fire": 0.0, "slow": 0.0, "splash": 0.0, "explosion": 0.0 },
       "aura": { "kind": "Armor", "radius": 2.0, "magnitude": 0.3 } },
     { "name": "Edgelord", "baseHp": 30.0, "baseSpeed": 60.0, "color": "#C9A8E1", "size": 14.0, "sidePreference": "Left",
-      "resist": { "kinetic": 0.0, "fire": 0.0, "slow": 0.0, "splash": 0.0, "explosion": 0.0 }, "aura": null }
+      "resist": { "kinetic": 0.0, "fire": 0.0, "slow": 0.0, "splash": 0.0, "explosion": 0.0 }, "aura": null },
+    { "name": "Cardboard II", "baseHp": 30.0, "baseSpeed": 52.0, "color": "#ED7477", "size": 16.0,
+      "resist": { "kinetic": 0.0, "fire": 0.0, "slow": 0.0, "splash": 0.0, "explosion": 0.0 }, "aura": null },
+    { "name": "Paper Cut II", "baseHp": 10.0, "baseSpeed": 90.0, "color": "#FEA4A6", "size": 12.0, "speedVariance": 0.35,
+      "resist": { "kinetic": 0.0, "fire": 0.0, "slow": 0.0, "splash": 0.0, "explosion": 0.0 }, "aura": null },
+    { "name": "Brick II", "baseHp": 130.0, "baseSpeed": 24.0, "color": "#A8383B", "size": 26.0, "heavy": true,
+      "resist": { "kinetic": 0.5, "fire": 0.0, "slow": 0.0, "splash": 0.0, "explosion": 0.0 }, "aura": null },
+    { "name": "Crate", "baseHp": 300.0, "baseSpeed": 14.0, "color": "#8D6E63", "size": 30.0, "killReward": 4.0,
+      "resist": { "kinetic": 0.0, "fire": 0.0, "slow": 0.0, "splash": 0.0, "explosion": 0.0 }, "aura": null },
+    { "name": "Crate II", "baseHp": 450.0, "baseSpeed": 14.0, "color": "#6D4C41", "size": 32.0, "killReward": 6.0,
+      "resist": { "kinetic": 0.0, "fire": 0.0, "slow": -0.3, "splash": 0.0, "explosion": 0.0 }, "aura": null }
   ],
   "levels": [
     {
-      "name": "Verdant Valley",
-      "route": { "waypoints": [[0, 17], [17, 17], [17, 13], [2, 13], [2, 9], [17, 9], [17, 5], [2, 5], [2, 1], [19, 1]] },
+      "name": "The Front Lawn",
+      "route": { "waypoints": [[0,17],[17,17],[17,13],[2,13],[2,9],[17,9],[17,5],[2,5],[2,1],[19,1]] },
       "waves": [
-        { "count": 8,  "spawnInterval": 0.85, "hpScale": 1.0,  "composition": { "Grunt": 6, "Swift": 2 } },
-        { "count": 10, "spawnInterval": 0.80, "hpScale": 1.1,  "composition": { "Grunt": 7, "Swift": 3 } },
-        { "count": 12, "spawnInterval": 0.75, "hpScale": 1.25, "composition": { "Grunt": 6, "Swift": 2, "Ember": 2, "Frostling": 2 } },
-        { "count": 14, "spawnInterval": 0.70, "hpScale": 1.4,  "composition": { "Grunt": 8, "Swift": 2, "Ember": 2, "Frostling": 2 } }
+        { "count": 8,  "spawnInterval": 0.85, "hpScale": 1.0, "composition": { "Cardboard": 6, "Paper Cut": 2 } },
+        { "count": 10, "spawnInterval": 0.80, "hpScale": 1.15, "composition": { "Cardboard": 6, "Paper Cut": 4 } },
+        { "count": 11, "spawnInterval": 0.75, "hpScale": 1.3, "composition": { "Cardboard": 6, "Paper Cut": 2, "Brick": 2, "Crate": 1 } }
       ]
     },
     {
-      "name": "Ashen Ridge",
+      "name": "The Back Path",
       "route": { "waypoints": [[0, 1], [0, 9], [8, 9], [8, 17], [16, 17], [16, 3], [19, 3]],
         "branches": [ { "side": "Right", "from": 2, "to": 5, "waypoints": [[8, 3]] } ] },
       "waves": [
-        { "count": 10, "spawnInterval": 0.80, "hpScale": 1.2, "composition": { "Grunt": 6, "Ember": 4 } },
-        { "count": 12, "spawnInterval": 0.75, "hpScale": 1.4, "composition": { "Swift": 4, "Ember": 4, "Frostling": 4 } },
-        { "count": 14, "spawnInterval": 0.70, "hpScale": 1.6, "composition": { "Grunt": 6, "Brute": 2, "Ember": 4, "Frostling": 2 } },
-        { "count": 16, "spawnInterval": 0.65, "hpScale": 1.8, "composition": { "Brute": 4, "Ember": 4, "Commander": 2, "Frostling": 4, "Swift": 2 } },
-        { "count": 20, "spawnInterval": 0.60, "hpScale": 2.0, "composition": { "Brute": 4, "Commander": 3, "Shieldbearer": 3, "Ember": 4, "Swift": 4, "Edgelord": 2 } }
+        { "count": 12, "spawnInterval": 0.80, "hpScale": 1.3, "composition": { "Paper Cut II": 10, "Cardboard": 2 } },
+        { "count": 13, "spawnInterval": 0.75, "hpScale": 1.5, "composition": { "Cardboard": 6, "Paper Cut II": 4, "Brick": 2, "Crate": 1 } },
+        { "count": 11, "spawnInterval": 0.70, "hpScale": 1.7, "composition": { "Brick": 2, "Cardboard": 4, "Paper Cut II": 4, "Crate II": 1 } }
       ]
     },
     {
-      "name": "The Citadel",
-      "route": { "waypoints": [[19, 0], [19, 10], [2, 10], [2, 2], [17, 2], [17, 6], [6, 6], [6, 14], [19, 14]] },
+      "name": "The Base",
+      "route": { "waypoints": [[0,9],[19,9],[19,3],[3,3],[3,15],[19,15]] },
       "waves": [
-        { "count": 12, "spawnInterval": 0.75, "hpScale": 1.5, "composition": { "Grunt": 6, "Frostling": 6 } },
-        { "count": 14, "spawnInterval": 0.70, "hpScale": 1.8, "composition": { "Brute": 3, "Ember": 5, "Swift": 6 } },
-        { "count": 16, "spawnInterval": 0.65, "hpScale": 2.1, "composition": { "Commander": 3, "Brute": 4, "Shieldbearer": 3, "Grunt": 6 } },
-        { "count": 18, "spawnInterval": 0.60, "hpScale": 2.5, "composition": { "Commander": 4, "Shieldbearer": 4, "Brute": 5, "Ember": 5 } },
-        { "count": 20, "spawnInterval": 0.55, "hpScale": 2.9, "composition": { "Commander": 5, "Shieldbearer": 5, "Brute": 5, "Frostling": 5 } },
-        { "count": 22, "spawnInterval": 0.50, "hpScale": 3.3, "composition": { "Commander": 6, "Shieldbearer": 6, "Brute": 6, "Ember": 4 } }
+        { "count": 14, "spawnInterval": 0.75, "hpScale": 1.6, "composition": { "Cardboard II": 8, "Paper Cut II": 6 } },
+        { "count": 14, "spawnInterval": 0.70, "hpScale": 1.8, "composition": { "Brick II": 3, "Cardboard II": 6, "Paper Cut II": 4, "Crate": 1 } },
+        { "count": 15, "spawnInterval": 0.65, "hpScale": 2.0, "composition": { "Brick II": 4, "Cardboard II": 6, "Paper Cut II": 4, "Crate II": 1 } }
       ]
     }
   ],
@@ -93,7 +97,7 @@
     "slowTint": "#9CA2E1",
     "buffTint": "#9DEC99",
     "panel": "#030516",
-    "hoverOk": "#64C15F99",
+    "hoverOk": "#64C15D99",
     "hoverBad": "#ED747780",
     "range": "#9CA2E166",
     "buttonFill": "#323875",
@@ -106,28 +110,35 @@
     {
       "id": "tutorial",
       "name": "The Sandbox",
-      "roster": ["Grunt", "Swift", "Ember", "Frostling"],
+      "roster": ["Cardboard", "Paper Cut", "Ember", "Frostling"],
+      "environment": null,
+      "resistTheme": { "primary": "Kinetic", "primaryAmount": 0.0, "secondary": "Fire", "secondaryAmount": 0.0 }
+    },
+    {
+      "id": "front-lawn",
+      "name": "The Front Lawn",
+      "roster": ["Cardboard", "Paper Cut", "Brick", "Crate"],
       "environment": null,
       "resistTheme": { "primary": "Kinetic", "primaryAmount": 0.0, "secondary": "Fire", "secondaryAmount": 0.0 }
     },
     {
       "id": "cube-farm",
       "name": "The Cube Farm",
-      "roster": ["Grunt", "Swift", "Frostling", "Commander"],
+      "roster": ["Cardboard", "Paper Cut", "Frostling", "Commander"],
       "environment": { "kind": "openFloorPlan", "params": { "armorPerNeighbor": 0.15, "radius": 1.5 } },
       "resistTheme": { "primary": "Slow", "primaryAmount": 0.4, "secondary": "Kinetic", "secondaryAmount": 0.2 }
     },
     {
       "id": "shipping-yard",
       "name": "The Shipping Yard",
-      "roster": ["Brute", "Shieldbearer", "Ember", "Commander"],
+      "roster": ["Brick", "Shieldbearer", "Ember", "Commander"],
       "environment": { "kind": "crushed", "params": { "hazardDuration": 3.0, "slowFactor": 0.4, "radius": 1.0 } },
       "resistTheme": { "primary": "Fire", "primaryAmount": 0.4, "secondary": "Kinetic", "secondaryAmount": 0.3 }
     },
     {
       "id": "cardboard-wastes",
       "name": "The Cardboard Wastes",
-      "roster": ["Swift", "Grunt", "Ember", "Brute"],
+      "roster": ["Paper Cut", "Cardboard", "Ember", "Brick"],
       "environment": { "kind": "recycling", "params": { "livesLossMult": 0.5, "killGoldBonus": 1.0, "swarmSizeMult": 1.4 } },
       "resistTheme": { "primary": "Splash", "primaryAmount": 0.35, "secondary": "Explosion", "secondaryAmount": 0.25 }
     }

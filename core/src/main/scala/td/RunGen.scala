@@ -10,11 +10,24 @@ object RunGen:
     */
   private val TwistsPerRun = 1
 
+  /** Pre-roll one speed multiplier per enemy type that opts into variance, once
+   * at run start. `Sim.spawn` reads it; the value is `1 + variance * rand` in
+   * [1, 1+variance], so a "faster runner" stays an upgrade but plays out a
+   * little differently every run. Deterministic per seed.
+   */
+  private def rollSpeedMults(rng: Rng): Map[String, Float] =
+    Config.game.enemies
+      .filter(_.speedVariance > 0f)
+      .foldLeft((Map.empty[String, Float], rng)) { case ((acc, r), e) =>
+        val (x, r2) = r.nextFloat()
+        (acc + (e.name -> (1f + e.speedVariance * x)), r2)
+      }._1
+
   /** Pre-roll one lane choice per enemy expected across the whole run. An enemy
-    * reads the value for its id (modulo) at the first fork it meets, so `Sim`
-    * never consumes RNG inside a step. Wraps safely if swarm-multiplied waves
-    * exceed the estimate.
-    */
+   * reads the value for its id (modulo) at the first fork it meets, so `Sim`
+   * never consumes RNG inside a step. Wraps safely if swarm-multiplied waves
+   * exceed the estimate.
+   */
   private def rollLaneChoices(rng: Rng): Vector[Long] =
     val n = math.max(1, Config.levels.map(_.waves.map(_.count).sum).sum)
     (0 until n).foldLeft((Vector.empty[Long], rng)) { case ((acc, r), _) =>
@@ -29,6 +42,7 @@ object RunGen:
     val (biomeRng, twistRng) = Rng(seed).split()
     val (draftRng, laneRng)  = twistRng.split()
     val biome = pickBiome(biomeRng)
+    val (speedRng, laneRng2) = laneRng.split()
     RunContext(
       seed = seed,
       biome = biome.id,
@@ -37,7 +51,8 @@ object RunGen:
       roster = biome.roster,
       talents = talents,
       draftPool = DraftGen.rollPool(draftRng, talents),
-      laneChoices = rollLaneChoices(laneRng)
+      laneChoices = rollLaneChoices(laneRng2),
+      speedMults = rollSpeedMults(speedRng)
     )
 
   /** The fixed tutorial: always the "tutorial" biome, no twists, its own roster.

@@ -80,7 +80,7 @@ class MetaTest extends munit.FunSuite:
     def shotDamage(talents: Vector[String]): Float =
       val run = RunGen.tutorial(1L).copy(talents = talents)
       val e = Enemy(id = 1L, progress = 50f, hp = 100f, maxHp = 100f, speed = 0f,
-        tpe = "Grunt", level = 0, resist = Config.enemySpec("Grunt").resist)
+        tpe = "Cardboard", level = 0, resist = Config.enemySpec("Cardboard").resist)
       val w = Sim.initial(run).copy(
         towers = Vector(Tower(GridPos(0, 16), 0f, "Basic")),
         enemies = Vector(e),
@@ -96,7 +96,7 @@ class MetaTest extends munit.FunSuite:
     def goldAfterKill(talents: Vector[String]): Int =
       val run = RunGen.tutorial(1L).copy(talents = talents)
       val e = Enemy(id = 1L, progress = 0f, hp = 1f, maxHp = 100f, speed = 0f,
-        tpe = "Grunt", level = 0, resist = Config.enemySpec("Grunt").resist)
+        tpe = "Cardboard", level = 0, resist = Config.enemySpec("Cardboard").resist)
       val (ex, ey) = e.pos
       val p = Projectile(ex, ey, 1L, DamageKind.Kinetic, 1f, 1e6f, 0f, None)
       val w = Sim.initial(run).copy(enemies = Vector(e), shots = Vector(p),

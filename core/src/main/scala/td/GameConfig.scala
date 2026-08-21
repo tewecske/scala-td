@@ -38,7 +38,9 @@ case class EnemySpec(
     resist: Resistances,
     aura: Option[Aura],
     heavy: Boolean = false,
-    sidePreference: Option[RouteSide] = None
+    sidePreference: Option[RouteSide] = None,
+    killReward: Float = 1f,
+    speedVariance: Float = 0f
 )
 
 case class BoardConfig(gridSize: Int, cellPx: Float, panelPx: Float)

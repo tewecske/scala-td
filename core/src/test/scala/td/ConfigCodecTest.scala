@@ -2,7 +2,7 @@ package td
 
 class ConfigCodecTest extends munit.FunSuite:
   test("composition format/parse round-trip") {
-    val c = Vector("Grunt" -> 6, "Swift" -> 2)
+    val c = Vector("Cardboard" -> 6, "Paper Cut" -> 2)
     assertEquals(ConfigCodec.parseComposition(ConfigCodec.formatComposition(c)), Right(c))
   }
 
@@ -19,7 +19,7 @@ class ConfigCodecTest extends munit.FunSuite:
   }
 
   test("names and branches round-trip") {
-    assertEquals(ConfigCodec.parseNames("Grunt, Swift ,Ember"), Vector("Grunt", "Swift", "Ember"))
+    assertEquals(ConfigCodec.parseNames("Cardboard, Paper Cut ,Ember"), Vector("Cardboard", "Paper Cut", "Ember"))
     val b = Vector(Branch(RouteSide.Right, 2, 5, Vector(GridPos(8, 3))))
     assertEquals(ConfigCodec.parseBranches(ConfigCodec.formatBranches(b)), Right(b))
   }

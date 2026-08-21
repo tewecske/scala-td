@@ -28,7 +28,7 @@ case class Resistances(
       else if theme.secondary == kind then theme.secondaryAmount
       else 0f
     def c(base: Float, kind: DamageKind): Float =
-      math.min(1f, math.max(0f, base + addFor(kind)))
+      math.min(1f, math.max(-1f, base + addFor(kind)))
     Resistances(
       c(kinetic, DamageKind.Kinetic),
       c(fire, DamageKind.Fire),
@@ -145,8 +145,9 @@ case class RunContext(
     augments: Vector[String] = Vector.empty,
     talents: Vector[String] = Vector.empty,
     draftPool: Vector[DraftOffer] = Vector.empty,
-    laneChoices: Vector[Long] = Vector.empty
-)
+    laneChoices: Vector[Long] = Vector.empty,
+    speedMults: Map[String, Float] = Map.empty
+  )
 
 case class World(
     level: Int,
