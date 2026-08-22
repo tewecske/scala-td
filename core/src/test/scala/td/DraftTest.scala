@@ -81,7 +81,7 @@ class DraftTest extends munit.FunSuite:
   test("augment attaches to exactly one tower; second socket refused") {
     val cell = GridPos(5, 5)
     val base = Sim.initial(tutorialRun()).copy(
-      towers = Vector(Tower(cell, 0f, "Basic")),
+      towers = Vector(Tower(cell, 0f, "Cuboid")),
       pendingAugment = Some("sharpened-edge"),
       breakTimer = 999f,
       spawnQueue = Vector.empty,

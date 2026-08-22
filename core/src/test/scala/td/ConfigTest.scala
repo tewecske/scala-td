@@ -35,15 +35,15 @@ class ConfigTest extends munit.FunSuite:
     cfg.twists.foreach(t => assert(towerNames.contains(t.targetTower)))
   }
 
-  test("loadout config: max 3, Basic default, Cannon locked, rest unlocked") {
+  test("loadout config: max 3, Cuboid default, Hole Punch locked, rest unlocked") {
     assertEquals(cfg.loadout.maxSelected, 3)
-    assertEquals(cfg.loadout.defaultSelected, Vector("Basic"))
-    assertEquals(cfg.loadout.locked, Vector("Cannon"))
+    assertEquals(cfg.loadout.defaultSelected, Vector("Cuboid"))
+    assertEquals(cfg.loadout.locked, Vector("Hole Punch"))
     val unlocked = cfg.loadout.unlocked.toSet
-    assert(unlocked.contains("Basic"))
-    assert(unlocked.contains("Fire"))
-    assert(unlocked.contains("Frost"))
-    assert(unlocked.contains("Bombard"))
+    assert(unlocked.contains("Cuboid"))
+    assert(unlocked.contains("Matchbox"))
+    assert(unlocked.contains("Ice Cube"))
+    assert(unlocked.contains("Jack-in-the-Box"))
     // every tower is either unlocked or locked, with no gaps or overlaps
     assertEquals((unlocked ++ cfg.loadout.locked.toSet), cfg.towers.map(_.name).toSet)
   }

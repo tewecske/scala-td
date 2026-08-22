@@ -27,7 +27,7 @@ class TwistTest extends munit.FunSuite:
 
   test("brittle shortens frost slow duration") {
     val e     = startEnemy(1L)
-    val t     = Tower(towerCell, 0f, "Frost")
+    val t     = Tower(towerCell, 0f, "Ice Cube")
     val fired = Sim.step(worldWith(Vector("brittle"), Vector(t), Vector(e)), Config.MaxStepDt, Vector.empty)
     assert(fired.shots.nonEmpty)
     assertEquals(fired.shots.head.slow, Some((Config.SlowFactor, Config.SlowDuration * 0.5f)))
@@ -35,7 +35,7 @@ class TwistTest extends munit.FunSuite:
 
   test("backdraft bakes faster, non-stacking burns into fire shots") {
     val e     = startEnemy(1L)
-    val t     = Tower(towerCell, 0f, "Fire")
+    val t     = Tower(towerCell, 0f, "Matchbox")
     val fired = Sim.step(worldWith(Vector("backdraft"), Vector(t), Vector(e)), Config.MaxStepDt, Vector.empty)
     assert(fired.shots.nonEmpty)
     assertEquals(fired.shots.head.burnTickRate, 2f)
@@ -61,11 +61,11 @@ class TwistTest extends munit.FunSuite:
 
   test("shaped charge shrinks radius and pierces armor") {
     val e     = startEnemy(1L)
-    val t     = Tower(towerCell, 0f, "Bombard")
+    val t     = Tower(towerCell, 0f, "Jack-in-the-Box")
     val fired = Sim.step(worldWith(Vector("shaped-charge"), Vector(t), Vector(e)), Config.MaxStepDt, Vector.empty)
     assert(fired.shots.nonEmpty)
     val p = fired.shots.head
-    assert(p.splashRadius < Config.towerSpec("Bombard").splashRadius)
+    assert(p.splashRadius < Config.towerSpec("Jack-in-the-Box").splashRadius)
     assert(p.splashRadius > 0f)
     assert(p.armorPierce)
   }
@@ -83,11 +83,11 @@ class TwistTest extends munit.FunSuite:
 
   test("ricochet slows fire rate and every 3rd shot bounces") {
     val e     = startEnemy(1L)
-    val t     = Tower(towerCell, 0f, "Basic", shotsFired = 2)
+    val t     = Tower(towerCell, 0f, "Cuboid", shotsFired = 2)
     val fired = Sim.step(worldWith(Vector("ricochet"), Vector(t), Vector(e)), Config.MaxStepDt, Vector.empty)
     assert(fired.shots.nonEmpty)
     assert(fired.shots.head.bounce)
-    assert(fired.towers.head.cooldown > Config.towerSpec("Basic").fireInterval)
+    assert(fired.towers.head.cooldown > Config.towerSpec("Cuboid").fireInterval)
   }
 
   test("ricochet bounce hits a second target") {
@@ -102,9 +102,9 @@ class TwistTest extends munit.FunSuite:
 
   test("a twist on a kind the player didn't bring has no effect") {
     val e     = startEnemy(1L)
-    val t     = Tower(towerCell, 0f, "Frost")
+    val t     = Tower(towerCell, 0f, "Ice Cube")
     val fired = Sim.step(worldWith(Vector("ricochet"), Vector(t), Vector(e)), Config.MaxStepDt, Vector.empty)
     assert(fired.shots.nonEmpty)
     assert(!fired.shots.head.bounce)
-    assertEquals(fired.towers.head.cooldown, Config.towerSpec("Frost").fireInterval)
+    assertEquals(fired.towers.head.cooldown, Config.towerSpec("Ice Cube").fireInterval)
   }

@@ -181,14 +181,16 @@ class Render:
     beginScene()
     shapes.begin(ShapeType.Filled)
     button(Ui.Play)
+    button(Ui.Tutorial)
     button(Ui.Talents)
     shapes.end()
 
     val towers = Config.game.towers.size
     batch.begin()
-    centered("TOWER DEFENSE", Config.WorldW / 2, 440f, 3f)
+    centered(Messages.t("game.title"), Config.WorldW / 2, 440f, 3f)
     centered(s"${Config.GridSize} x ${Config.GridSize} · hold the line", Config.WorldW / 2, 390f, 1.2f, Config.DimText)
     buttonLabel(Ui.Play, "PLAY")
+    buttonLabel(Ui.Tutorial, "TUTORIAL")
     buttonLabel(Ui.Talents, "TALENTS")
     centered(s"1-$towers to pick a tower · click green to build · F to fast-forward · R to reload config · ESC to pause",
       Config.WorldW / 2, 120f, 1f, Config.DimText)
@@ -324,7 +326,7 @@ class Render:
     w.run.twists.foreach { id =>
       Config.twists.find(_.id == id).foreach { tw =>
         centered(s"${Messages.t("briefing.twist")}: ${tw.name} - ${Messages.t(s"twist.${tw.id}")}",
-          Config.WorldW / 2, 156f, 1f, Config.ShotColor)
+          Config.WorldW / 2, 430f, 1f, Config.ShotColor)
       }
     }
 

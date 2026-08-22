@@ -17,16 +17,16 @@
   "i18n": { "lang": "en", "showCodes": false },
   "loadout": {
     "maxSelected": 3,
-    "defaultSelected": ["Basic"],
-    "unlocked": ["Basic", "Fire", "Frost", "Bombard"],
-    "locked": ["Cannon"]
+    "defaultSelected": ["Cuboid"],
+    "unlocked": ["Cuboid", "Matchbox", "Ice Cube", "Jack-in-the-Box"],
+    "locked": ["Hole Punch"]
   },
   "towers": [
-    { "name": "Basic",   "cost": 50,  "color": "#5C63A5", "range": 3.2, "fireInterval": 0.55, "damage": 12.0, "projectileSpeed": 420.0, "kind": "Kinetic",   "splashRadius": 0.0 },
-    { "name": "Fire",    "cost": 80,  "color": "#ED7477", "range": 2.8, "fireInterval": 0.50, "damage": 8.0,  "projectileSpeed": 480.0, "kind": "Fire",      "splashRadius": 0.0 },
-    { "name": "Frost",   "cost": 70,  "color": "#9CA2E1", "range": 3.0, "fireInterval": 0.60, "damage": 5.0,  "projectileSpeed": 440.0, "kind": "Slow",      "splashRadius": 0.0 },
-    { "name": "Cannon",  "cost": 100, "color": "#EFCE75", "range": 3.4, "fireInterval": 0.80, "damage": 10.0, "projectileSpeed": 400.0, "kind": "Splash",    "splashRadius": 1.2 },
-    { "name": "Bombard", "cost": 140, "color": "#A8383B", "range": 4.0, "fireInterval": 1.10, "damage": 22.0, "projectileSpeed": 320.0, "kind": "Explosion", "splashRadius": 1.6 }
+    { "name": "Cuboid",   "cost": 50,  "color": "#5C63A5", "range": 3.2, "fireInterval": 0.55, "damage": 12.0, "projectileSpeed": 420.0, "kind": "Kinetic",   "splashRadius": 0.0 },
+    { "name": "Matchbox",    "cost": 80,  "color": "#ED7477", "range": 2.8, "fireInterval": 0.50, "damage": 8.0,  "projectileSpeed": 480.0, "kind": "Fire",      "splashRadius": 0.0 },
+    { "name": "Ice Cube",   "cost": 70,  "color": "#9CA2E1", "range": 3.0, "fireInterval": 0.60, "damage": 5.0,  "projectileSpeed": 440.0, "kind": "Slow",      "splashRadius": 0.0 },
+    { "name": "Hole Punch",  "cost": 100, "color": "#EFCE75", "range": 3.4, "fireInterval": 0.80, "damage": 10.0, "projectileSpeed": 400.0, "kind": "Splash",    "splashRadius": 1.2 },
+    { "name": "Jack-in-the-Box", "cost": 140, "color": "#A8383B", "range": 4.0, "fireInterval": 1.10, "damage": 22.0, "projectileSpeed": 320.0, "kind": "Explosion", "splashRadius": 1.6 }
   ],
   "enemies": [
     { "name": "Cardboard", "baseHp": 22.0, "baseSpeed": 42.0, "color": "#ED7477", "size": 16.0,
@@ -60,7 +60,7 @@
   ],
   "levels": [
     {
-      "name": "The Front Lawn",
+      "name": "The Quadrangle",
       "route": { "waypoints": [[0,17],[17,17],[17,13],[2,13],[2,9],[17,9],[17,5],[2,5],[2,1],[19,1]] },
       "waves": [
         { "count": 8,  "spawnInterval": 0.85, "hpScale": 1.0, "composition": { "Cardboard": 6, "Paper Cut": 2 } },
@@ -69,7 +69,7 @@
       ]
     },
     {
-      "name": "The Back Path",
+      "name": "The Loading Dock",
       "route": { "waypoints": [[0, 1], [0, 9], [8, 9], [8, 17], [16, 17], [16, 3], [19, 3]],
         "branches": [ { "side": "Right", "from": 2, "to": 5, "waypoints": [[8, 3]] } ] },
       "waves": [
@@ -79,7 +79,7 @@
       ]
     },
     {
-      "name": "The Base",
+      "name": "The Corner Office",
       "route": { "waypoints": [[0,9],[19,9],[19,3],[3,3],[3,15],[19,15]] },
       "waves": [
         { "count": 14, "spawnInterval": 0.75, "hpScale": 1.6, "composition": { "Cardboard II": 8, "Paper Cut II": 6 } },
@@ -122,7 +122,7 @@
     },
     {
       "id": "front-lawn",
-      "name": "The Front Lawn",
+      "name": "The Mailroom",
       "roster": ["Cardboard", "Paper Cut", "Brick", "Crate"],
       "environment": null,
       "resistTheme": { "primary": "Kinetic", "primaryAmount": 0.0, "secondary": "Fire", "secondaryAmount": 0.0 }
@@ -150,13 +150,13 @@
     }
   ],
   "twists": [
-    { "id": "brittle", "name": "Brittle", "targetTower": "Frost",
+    { "id": "brittle", "name": "Brittle", "targetTower": "Ice Cube",
       "effect": { "kind": "brittle", "params": { "slowDurationMult": 0.5, "kineticDamageVsSlowed": 1.5 } } },
-    { "id": "backdraft", "name": "Backdraft", "targetTower": "Fire",
+    { "id": "backdraft", "name": "Backdraft", "targetTower": "Matchbox",
       "effect": { "kind": "backdraft", "params": { "burnTickRateMult": 2.0, "maxBurnStacks": 1.0 } } },
-    { "id": "shaped-charge", "name": "Shaped Charge", "targetTower": "Bombard",
+    { "id": "shaped-charge", "name": "Shaped Charge", "targetTower": "Jack-in-the-Box",
       "effect": { "kind": "shapedCharge", "params": { "radiusMult": 0.6, "armorPierce": 1.0 } } },
-    { "id": "ricochet", "name": "Ricochet", "targetTower": "Basic",
+    { "id": "ricochet", "name": "Ricochet", "targetTower": "Cuboid",
       "effect": { "kind": "ricochet", "params": { "bounceEvery": 3.0, "fireIntervalMult": 1.25, "bounceRadius": 2.0 } } }
   ],
   "relics": [

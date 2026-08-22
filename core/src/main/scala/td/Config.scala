@@ -153,7 +153,8 @@ object Ui:
   private def cx = Config.WorldW / 2 - bw / 2
 
   def Play  = Rect(cx, 300f, bw, bh)
-  def Talents = Rect(cx, 240f, bw, bh)
+  def Tutorial = Rect(cx, 240f, bw, bh)
+  def Talents = Rect(cx, 180f, bw, bh)
   def Retry = Rect(cx, 250f, bw, bh)
   def Menu  = Rect(cx, 180f, bw, bh)
   def PlayAgain = Rect(cx, 250f, bw, bh)

@@ -82,7 +82,7 @@ class MetaTest extends munit.FunSuite:
       val e = Enemy(id = 1L, progress = 50f, hp = 100f, maxHp = 100f, speed = 0f,
         tpe = "Cardboard", level = 0, resist = Config.enemySpec("Cardboard").resist)
       val w = Sim.initial(run).copy(
-        towers = Vector(Tower(GridPos(0, 16), 0f, "Basic")),
+        towers = Vector(Tower(GridPos(0, 16), 0f, "Cuboid")),
         enemies = Vector(e),
         spawnQueue = Vector.empty,
         breakTimer = 999f

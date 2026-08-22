@@ -6,7 +6,7 @@ import com.badlogic.gdx.backends.lwjgl3.{Lwjgl3Application, Lwjgl3ApplicationCon
 object Main:
   def main(args: Array[String]): Unit =
     val config = new Lwjgl3ApplicationConfiguration()
-    config.setTitle("Tower Defense")
+    config.setTitle(Messages.t("game.title"))
     config.setWindowedMode(Config.WorldW.toInt, Config.WorldH.toInt)
     config.setWindowSizeLimits(640, 480, -1, -1)
     config.useVsync(true)
@@ -51,6 +51,7 @@ class TdGame extends ApplicationAdapter:
       case Phase.Menu =>
         gfx.drawMenu()
         if clicked && Ui.Play.contains(mx, my) then newRun()
+        else if clicked && Ui.Tutorial.contains(mx, my) then startTutorial()
         else if clicked && Ui.Talents.contains(mx, my) then Phase.Talents(Meta.active())
         else if Gdx.input.isKeyJustPressed(Input.Keys.T) then startTutorial()
         else Phase.Menu
@@ -139,7 +140,10 @@ class TdGame extends ApplicationAdapter:
                 else Vector.empty
               val next = Sim.step(w, dt, cmds)
               gfx.updateFx(dt)
-              gfx.drawDraft(next)
+              if next.draft.isDefined then gfx.drawDraft(next)
+              else
+                val psel = Config.LoadoutPool(w.run.loadout)(math.min(selected, Config.LoadoutPool(w.run.loadout).size - 1))
+                gfx.drawGame(next, None, fast, psel)
               if next.won || next.isOver then toRecap(next)
               else Phase.Playing(next)
 

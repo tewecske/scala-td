@@ -9,8 +9,8 @@ class ConfigWriterTest extends munit.FunSuite:
 
   test("cell-scaled range/splash/aura radius are divided back to cell units") {
     val json = ConfigWriter.toJson(cfg)
-    assert(json.contains("\"range\": 3.2"))          // tower Basic range (cells)
-    assert(json.contains("\"splashRadius\": 1.2"))   // Cannon (cells)
+    assert(json.contains("\"range\": 3.2"))          // tower Cuboid range (cells)
+    assert(json.contains("\"splashRadius\": 1.2"))   // Hole Punch (cells)
   }
 
   test("colorHex round-trips alpha and opaque colors") {
