@@ -1,6 +1,6 @@
 package td
 
-class MessagesTest extends munit.FunSuite:
+class MessagesTest extends TestBase:
   test("en messages load and resolve") {
     Messages.showCodes = false
     assertEquals(Messages.t("notice.showCodes", "on"), "show codes: on")

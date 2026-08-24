@@ -1,8 +1,24 @@
 package td
 
-class BranchTest extends munit.FunSuite:
+class BranchTest extends TestBase:
+  // Config/Grid resolve board/levels off a global active-biome singleton; reset
+  // it so a prior suite's run can't leak its biome into this suite's reads.
   // Ashen Ridge (level 1) is the single branched route in the bundled config.
   private val BranchLevel = 1
+
+  // The tutorial now has its own (small, unbranched) map, so branch tests use a
+  // real biome that falls back to the global branched levels, with no environment
+  // rule (which would grant non-deterministic armor) and pre-rolled lane choices
+  // so non-specialists actually split at the fork.
+  private def branchRun: RunContext =
+    val b = Config.biome("front-lawn")
+    RunContext(
+      seed = 1L,
+      biome = b.id,
+      resistTheme = b.resistTheme,
+      roster = b.roster,
+      laneChoices = (0 until 64).map(i => if i % 2 == 0 then 0L else 1L).toVector
+    )
 
   private def enemy(tpe: String, id: Long, progress: Float, speed: Float = 1000f): Enemy =
     val spec = Config.enemySpec(tpe)
@@ -63,7 +79,7 @@ class BranchTest extends munit.FunSuite:
   // -- movement --------------------------------------------------------------
 
   test("Edgelord always takes the left fork (the trunk, opposite the right branch)") {
-    val run = RunGen.tutorial(1L)
+    val run = branchRun
     val fork = Grid.forks(BranchLevel).head
     val start = fork.forkProgress - 0.5f
     val ws = world(run, (1 to 5).map(i => enemy("Edgelord", i.toLong, start)).toVector)
@@ -73,7 +89,7 @@ class BranchTest extends munit.FunSuite:
   }
 
   test("non-specialist enemies split across the two lanes at the fork") {
-    val run = RunGen.tutorial(1L)
+    val run = branchRun
     val fork = Grid.forks(BranchLevel).head
     val start = fork.forkProgress - 0.5f
     val ws = world(run, (1 to 40).map(i => enemy("Cardboard", i.toLong, start)).toVector)
@@ -84,7 +100,7 @@ class BranchTest extends munit.FunSuite:
   }
 
   test("movement is deterministic: same seed -> identical lanes") {
-    val run = RunGen.tutorial(1L)
+    val run = branchRun
     val fork = Grid.forks(BranchLevel).head
     val start = fork.forkProgress - 0.5f
     val ws = world(run, (1 to 20).map(i => enemy("Cardboard", i.toLong, start)).toVector)
@@ -105,7 +121,7 @@ class BranchTest extends munit.FunSuite:
   // -- journal ---------------------------------------------------------------
 
   test("side-taking preference is discovered: Sighting then Studied after N observations") {
-    val run = RunGen.tutorial(1L)
+    val run = branchRun
     val fork = Grid.forks(BranchLevel).head
     val start = fork.forkProgress - 0.5f
     val n = Config.StudyHits

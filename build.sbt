@@ -6,6 +6,13 @@ lazy val commonSettings = Seq(
   scalacOptions ++= Seq("-deprecation", "-feature", "-unchecked")
 )
 
+// The simulation reads tuning from the global `Config` singleton (and `Grid`
+// caches derived routes per the active biome). Those are process-global, so
+// parallel test suites would trample each other's active-biome state. Run the
+// tests sequentially to keep that shared state consistent. Scoped to ThisBuild
+// so every subproject (the tests live in `core`) inherits it.
+ThisBuild / Test / parallelExecution := false
+
 lazy val core = (project in file("core"))
   .settings(commonSettings)
   .settings(

@@ -60,6 +60,8 @@ object ConfigWriter:
       "levels"   -> arr(cfg.levels.map(level)),
       "loadout"  -> loadout(cfg.loadout),
       "colors"   -> colors(cfg.colors),
+      "lighting" -> lighting(cfg.lighting),
+      "effects"  -> effects(cfg.effects),
       "biomes"   -> arr(cfg.biomes.map(biome)),
       "twists"   -> arr(cfg.twists.map(twist)),
       "relics"   -> arr(cfg.relics.map(relic)),
@@ -181,6 +183,31 @@ object ConfigWriter:
       "text" -> str(colorHex(c.text)), "dimText" -> str(colorHex(c.dimText))
     )
 
+  private def lighting(l: LightingConfig): JsonValue =
+    obj("ambient" -> str(colorHex(l.ambient)), "ambientIntensity" -> num(l.ambientIntensity))
+
+  private def effects(e: EffectsConfig): JsonValue =
+    obj(
+      "vignette" -> vignette(e.vignette),
+      "sparks"   -> sparks(e.sparks),
+      "shadow"   -> shadow(e.shadow),
+      "shake"    -> shake(e.shake)
+    )
+
+  private def vignette(v: VignetteConfig): JsonValue =
+    obj("color" -> str(colorHex(v.color)), "strength" -> num(v.strength), "radius" -> num(v.radius))
+
+  private def sparks(s: SparksConfig): JsonValue =
+    obj("color" -> str(colorHex(s.color)), "life" -> num(s.life), "speed" -> num(s.speed),
+        "size" -> num(s.size), "count" -> num(s.count))
+
+  private def shadow(s: ShadowConfig): JsonValue =
+    obj("color" -> str(colorHex(s.color)), "alpha" -> num(s.alpha),
+        "offsetX" -> num(s.offsetX), "offsetY" -> num(s.offsetY), "scale" -> num(s.scale))
+
+  private def shake(s: ShakeConfig): JsonValue =
+    obj("magnitude" -> num(s.magnitude), "duration" -> num(s.duration))
+
   private def effect(e: Effect): JsonValue =
     obj("kind" -> str(e.kind), "params" -> params(e.params))
 
@@ -191,13 +218,23 @@ object ConfigWriter:
 
   private def biome(b: Biome): JsonValue =
     val env = b.environment.map(effect).getOrElse(nullV)
-    obj("id" -> str(b.id), "name" -> str(b.name), "roster" -> arr(b.roster.map(str)),
-        "environment" -> env,
-        "resistTheme" -> obj(
-          "primary" -> str(b.resistTheme.primary.toString),
-          "primaryAmount" -> num(b.resistTheme.primaryAmount),
-          "secondary" -> str(b.resistTheme.secondary.toString),
-          "secondaryAmount" -> num(b.resistTheme.secondaryAmount)))
+    val fields = Seq(
+      "id" -> str(b.id),
+      "name" -> str(b.name),
+      "roster" -> arr(b.roster.map(str)),
+      "environment" -> env,
+      "resistTheme" -> obj(
+        "primary" -> str(b.resistTheme.primary.toString),
+        "primaryAmount" -> num(b.resistTheme.primaryAmount),
+        "secondary" -> str(b.resistTheme.secondary.toString),
+        "secondaryAmount" -> num(b.resistTheme.secondaryAmount))
+    ) ++ b.gridSize.map(g => "gridSize" -> num(g)) ++
+      (if b.levels.nonEmpty then Seq("levels" -> arr(b.levels.map(level))) else Seq.empty) ++
+      b.background.map(c => "background" -> str(colorHex(c))) ++
+      b.path.map(c => "path" -> str(colorHex(c))) ++
+      b.build.map(c => "build" -> str(colorHex(c))) ++
+      b.gridLine.map(c => "gridLine" -> str(colorHex(c)))
+    obj(fields*)
 
   private def twist(t: Twist): JsonValue =
     obj("id" -> str(t.id), "name" -> str(t.name),

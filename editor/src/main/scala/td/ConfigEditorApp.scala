@@ -87,6 +87,8 @@ final class ConfigEditorFrame extends JFrame:
   private var enemiesFs: Vector[Vector[Field]]       = Vector.empty
   private var levelsFs: Vector[(Vector[Field], Int)] = Vector.empty
   private var colorsFs: Vector[Field]                = Vector.empty
+  private var lightingFs: Vector[Field]              = Vector.empty
+  private var effectsFs: Vector[Field]               = Vector.empty
   private var biomesFs: Vector[(Vector[Field], Vector[String])] = Vector.empty
   private var twistsFs: Vector[(Vector[Field], Vector[String])] = Vector.empty
   private var relicsFs: Vector[(Vector[Field], Vector[String])] = Vector.empty
@@ -125,6 +127,8 @@ final class ConfigEditorFrame extends JFrame:
     enemiesFs = cfg.enemies.map(buildEnemy(cfg.board.cellPx, _))
     levelsFs  = cfg.levels.map(l => (buildLevel(l), l.waves.size))
     colorsFs  = buildColors(cfg.colors)
+    lightingFs = buildLighting(cfg.lighting)
+    effectsFs  = buildEffects(cfg.effects)
     biomesFs  = cfg.biomes.map(b => (buildBiome(b), b.environment.map(_.params.keys.toVector.sorted).getOrElse(Vector.empty)))
     twistsFs  = cfg.twists.map(t => (buildTwist(t), t.effect.params.keys.toVector.sorted))
     relicsFs  = cfg.relics.map(r => (buildRelic(r), r.effect.params.keys.toVector.sorted))
@@ -143,6 +147,8 @@ final class ConfigEditorFrame extends JFrame:
     tabs.addTab("Enemies", collectionPanel(cfg.enemies.map(_.name), enemiesFs))
     tabs.addTab("Levels", collectionPanel(cfg.levels.map(_.name), levelsFs.map(_._1)))
     tabs.addTab("Colors", sectionPanel(colorsFs))
+    tabs.addTab("Lighting", sectionPanel(lightingFs))
+    tabs.addTab("Effects", sectionPanel(effectsFs))
     tabs.addTab("Biomes", collectionPanel(cfg.biomes.map(b => s"${b.id} (${b.name})"), biomesFs.map(_._1)))
     tabs.addTab("Twists", collectionPanel(cfg.twists.map(t => s"${t.id} (${t.name})"), twistsFs.map(_._1)))
     tabs.addTab("Relics", collectionPanel(cfg.relics.map(r => s"${r.id} (${r.name})"), relicsFs.map(_._1)))
@@ -203,14 +209,16 @@ final class ConfigEditorFrame extends JFrame:
       towers  <- sequence(towersFs.map(readTower(px, _)))
       enemies <- sequence(enemiesFs.map(readEnemy(px, _)))
       levels  <- sequence(levelsFs.map { (fs, wc) => readLevel(fs, wc) })
-      colors  <- readColors(colorsFs)
+       colors  <- readColors(colorsFs)
+      lighting <- readLighting(lightingFs)
+      effects  <- readEffects(effectsFs)
       biomes  <- sequence(biomesFs.map { (fs, keys) => readBiome(fs, keys) })
       twists  <- sequence(twistsFs.map { (fs, keys) => readTwist(fs, keys) })
       relics  <- sequence(relicsFs.map { (fs, keys) => readRelic(fs, keys) })
       augments <- sequence(augmentsFs.map { (fs, keys) => readAugment(fs, keys) })
       talents <- sequence(talentsFs.map { (fs, keys) => readTalent(fs, keys) })
     yield GameConfig(board, economy, meta, combat, draft, i18n, towers, enemies,
-                      levels, loadoutCfg, colors, biomes, twists, relics, augments, talents)
+                      levels, loadoutCfg, colors, lighting, effects, biomes, twists, relics, augments, talents)
 
   private def sequence[A](xs: Vector[Either[String, A]]): Either[String, Vector[A]] =
     xs.foldLeft[Either[String, Vector[A]]](Right(Vector.empty)) {
@@ -503,6 +511,63 @@ final class ConfigEditorFrame extends JFrame:
       c21 <- fs(21).asInstanceOf[ColorField].read
     yield Colors(c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13,
                  c14, c15, c16, c17, c18, c19, c20, c21)
+
+  // -- lighting ---------------------------------------------------------------
+
+  private def buildLighting(l: LightingConfig): Vector[Field] = Vector(
+    ColorField("ambient", l.ambient),
+    FloatField("ambientIntensity", 0f, 2f, l.ambientIntensity)
+  )
+
+  private def readLighting(fs: Vector[Field]): Either[String, LightingConfig] =
+    for
+      a   <- fs(0).asInstanceOf[ColorField].read
+      ai  <- fs(1).asInstanceOf[FloatField].read
+    yield LightingConfig(a, ai)
+
+  // -- effects ----------------------------------------------------------------
+
+  private def buildEffects(e: EffectsConfig): Vector[Field] = Vector(
+    ColorField("vignette.color", e.vignette.color),
+    FloatField("vignette.strength", 0f, 1f, e.vignette.strength),
+    FloatField("vignette.radius", 0f, 1f, e.vignette.radius),
+    ColorField("sparks.color", e.sparks.color),
+    FloatField("sparks.life", 0f, 5f, e.sparks.life),
+    FloatField("sparks.speed", 0f, 1000f, e.sparks.speed),
+    FloatField("sparks.size", 0f, 50f, e.sparks.size),
+    IntField("sparks.count", 0, 50, e.sparks.count),
+    ColorField("shadow.color", e.shadow.color),
+    FloatField("shadow.alpha", 0f, 1f, e.shadow.alpha),
+    FloatField("shadow.offsetX", -50f, 50f, e.shadow.offsetX),
+    FloatField("shadow.offsetY", -50f, 50f, e.shadow.offsetY),
+    FloatField("shadow.scale", 0f, 4f, e.shadow.scale),
+    FloatField("shake.magnitude", 0f, 50f, e.shake.magnitude),
+    FloatField("shake.duration", 0f, 5f, e.shake.duration)
+  )
+
+  private def readEffects(fs: Vector[Field]): Either[String, EffectsConfig] =
+    for
+      vc  <- fs(0).asInstanceOf[ColorField].read
+      vs  <- fs(1).asInstanceOf[FloatField].read
+      vr  <- fs(2).asInstanceOf[FloatField].read
+      sc  <- fs(3).asInstanceOf[ColorField].read
+      sl  <- fs(4).asInstanceOf[FloatField].read
+      ss  <- fs(5).asInstanceOf[FloatField].read
+      sz  <- fs(6).asInstanceOf[FloatField].read
+      sn  <- fs(7).asInstanceOf[IntField].read
+      shc <- fs(8).asInstanceOf[ColorField].read
+      sha <- fs(9).asInstanceOf[FloatField].read
+      shx <- fs(10).asInstanceOf[FloatField].read
+      shy <- fs(11).asInstanceOf[FloatField].read
+      shs <- fs(12).asInstanceOf[FloatField].read
+      m   <- fs(13).asInstanceOf[FloatField].read
+      d   <- fs(14).asInstanceOf[FloatField].read
+    yield EffectsConfig(
+      VignetteConfig(vc, vs, vr),
+      SparksConfig(sc, sl, ss, sz, sn),
+      ShadowConfig(shc, sha, shx, shy, shs),
+      ShakeConfig(m, d)
+    )
 
   // -- effect-bearing collections ---------------------------------------------
 

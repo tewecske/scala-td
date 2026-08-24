@@ -26,8 +26,30 @@ object Config:
       case Right(cfg) => current = cfg; true
       case Left(_)    => false
 
+  // -- active biome (per-run board/level/color overrides) ---------------------
+  // Most of the game is played on the global board/levels/colors; a few biomes
+  // (the tutorial) override them with their own smaller map. The active biome
+  // is the run's biome, set from Sim/Render/RunGen so the right source of truth
+  // resolves; when None the global values are used (the menu, real biomes).
+
+  @volatile private var _activeBiomeId: Option[String] = None
+
+  def activeBiomeId: Option[String] = _activeBiomeId
+
+  def setActiveBiome(id: String): Unit = _activeBiomeId = Some(id)
+  def clearActiveBiome(): Unit         = _activeBiomeId = None
+
+  /** Runs `f` with `id` active, restoring the previous active biome afterwards. */
+  def withBiome[A](id: String)(f: => A): A =
+    val prev = _activeBiomeId
+    _activeBiomeId = Some(id)
+    try f finally _activeBiomeId = prev
+
+  private def activeBiome: Option[Biome] =
+    activeBiomeId.flatMap(id => current.biomes.find(_.id == id))
+
   // -- board -----------------------------------------------------------------
-  def GridSize: Int  = current.board.gridSize
+  def GridSize: Int  = activeBiome.flatMap(_.gridSize).getOrElse(current.board.gridSize)
   def CellPx: Float  = current.board.cellPx
   def BoardPx: Float = GridSize * CellPx
   def PanelPx: Float = current.board.panelPx
@@ -104,20 +126,23 @@ object Config:
     else current.towers.filter(t => loadout.contains(t.name))
 
   // -- levels -----------------------------------------------------------------
-  def levels: Vector[LevelConfig] = current.levels
-  def levelCount: Int             = current.levels.size
+  def levels: Vector[LevelConfig] = activeBiome.filter(_.levels.nonEmpty).map(_.levels).getOrElse(current.levels)
+  def levelCount: Int             = levels.size
 
   /** Clamped level lookup so the sim can never index out of bounds on a reload
     * or a config that shrank mid-run.
     */
   def levelAt(idx: Int): LevelConfig =
-    current.levels(math.max(0, math.min(idx, current.levels.size - 1)))
+    levels(math.max(0, math.min(idx, levels.size - 1)))
 
   // -- colors ----------------------------------------------------------------
-  def Background: Color   = current.colors.background
-  def PathColor: Color    = current.colors.path
-  def BuildColor: Color   = current.colors.build
-  def GridLine: Color     = current.colors.gridLine
+  // The board palette (background / path / build / grid line) can be overridden
+  // per biome; the rest of the palette is shared.
+
+  def Background: Color   = activeBiome.flatMap(_.background).getOrElse(current.colors.background)
+  def PathColor: Color    = activeBiome.flatMap(_.path).getOrElse(current.colors.path)
+  def BuildColor: Color   = activeBiome.flatMap(_.build).getOrElse(current.colors.build)
+  def GridLine: Color     = activeBiome.flatMap(_.gridLine).getOrElse(current.colors.gridLine)
   def EnemyColor: Color   = current.colors.enemy
   def ShotColor: Color    = current.colors.shot
   def ShotFireColor: Color    = current.colors.shotFire
@@ -136,6 +161,30 @@ object Config:
   def HpBarFill: Color    = current.colors.hpBarFill
   def TextColor: Color    = current.colors.text
   def DimText: Color      = current.colors.dimText
+
+  // -- lighting (ambient-only global illumination) ----------------------------
+  def LightingAmbient: Color      = current.lighting.ambient
+  def LightingIntensity: Float    = current.lighting.ambientIntensity
+
+  // -- effects ----------------------------------------------------------------
+  def VignetteColor: Color   = current.effects.vignette.color
+  def VignetteStrength: Float = current.effects.vignette.strength
+  def VignetteRadius: Float  = current.effects.vignette.radius
+
+  def SparkColor: Color   = current.effects.sparks.color
+  def SparkLife: Float    = current.effects.sparks.life
+  def SparkSpeed: Float   = current.effects.sparks.speed
+  def SparkSize: Float    = current.effects.sparks.size
+  def SparkCount: Int     = current.effects.sparks.count
+
+  def ShadowColor: Color   = current.effects.shadow.color
+  def ShadowAlpha: Float   = current.effects.shadow.alpha
+  def ShadowOffsetX: Float = current.effects.shadow.offsetX
+  def ShadowOffsetY: Float = current.effects.shadow.offsetY
+  def ShadowScale: Float   = current.effects.shadow.scale
+
+  def ShakeMagnitude: Float = current.effects.shake.magnitude
+  def ShakeDuration: Float  = current.effects.shake.duration
 
 /** Axis-aligned rectangle in world units, y-up like the rest of libGDX. */
 case class Rect(x: Float, y: Float, w: Float, h: Float):
@@ -193,3 +242,12 @@ object Ui:
     Rect(x, y, 260f, 54f)
 
   def TalentsBack: Rect = Rect(cx, 56f, bw, bh)
+
+  /** Developer overlay: a column of cheat buttons on the right panel, toggled
+    * with the back-quote key. Drawn on every screen while dev mode is on.
+    */
+  def DevGold100      = Rect(Config.BoardPx + 18f, 540f, Config.PanelPx - 36f, 38f)
+  def DevGold1000     = Rect(Config.BoardPx + 18f, 492f, Config.PanelPx - 36f, 38f)
+  def DevMeta100      = Rect(Config.BoardPx + 18f, 444f, Config.PanelPx - 36f, 38f)
+  def DevUnlockTowers = Rect(Config.BoardPx + 18f, 396f, Config.PanelPx - 36f, 38f)
+  def DevUnlockTalents= Rect(Config.BoardPx + 18f, 348f, Config.PanelPx - 36f, 38f)

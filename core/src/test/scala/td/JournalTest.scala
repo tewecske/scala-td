@@ -2,7 +2,7 @@ package td
 
 import java.nio.file.Files
 
-class JournalTest extends munit.FunSuite:
+class JournalTest extends TestBase:
   private def tmpPath(suffix: String): String =
     Files.createTempFile(s"journal-$suffix", ".json").toString
 

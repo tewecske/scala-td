@@ -21,6 +21,15 @@ class Render:
   private val font     = new BitmapFont()
   private val layout   = new GlyphLayout()
   private val scratch  = new Vector2()
+  private val rng      = new scala.util.Random()
+
+  // -- camera shake (life loss) ----------------------------------------------
+  private var shakeTime: Float = 0f
+  private var shakeMag: Float  = 0f
+
+  // -- hit sparks -------------------------------------------------------------
+  private case class Spark(x: Float, y: Float, vx: Float, vy: Float, life: Float, maxLife: Float)
+  private val sparks = scala.collection.mutable.ArrayBuffer[Spark]()
 
   // -- bloom tuning -----------------------------------------------------------
 
@@ -48,7 +57,7 @@ class Render:
   private case class Floating(x: Float, y: Float, label: String, color: Color, life: Float, maxLife: Float, big: Boolean)
   private val floating = scala.collection.mutable.ArrayBuffer[Floating]()
 
-  /** Register a landed hit as a floating damage/status label. */
+  /** Register a landed hit as a floating damage/status label + a spark burst. */
   def feedHits(hits: Vector[HitFeedback]): Unit =
     hits.foreach { h =>
       val (label, color) =
@@ -56,6 +65,13 @@ class Render:
         else if h.resistFrac > 0f then (Messages.t("popup.resist"), Config.EnemyColor)
         else (math.round(h.dealt).toString, Config.TextColor)
       floating += Floating(h.x, h.y + 14f, label, color, PopupLife, PopupLife, big = false)
+      // sparks: a small radial burst at the impact point
+      val n = Config.SparkCount
+      for i <- 0 until n do
+        val ang  = rng.nextFloat() * math.Pi * 2f
+        val spd  = Config.SparkSpeed * (0.4f + rng.nextFloat() * 0.6f)
+        sparks += Spark(h.x, h.y, math.cos(ang).toFloat * spd, math.sin(ang).toFloat * spd,
+          Config.SparkLife, Config.SparkLife)
     }
 
   /** Register a first-meet / name-reveal flash. Unknown names show "???" until
@@ -70,14 +86,23 @@ class Render:
       floating += Floating(n.x, n.y + 26f, label, Config.TextColor, FlashLife, FlashLife, big = true)
     }
 
-  /** Ages the floating labels once per frame (call even when not drawing them). */
+  /** Ages the floating labels + sparks and decays the shake once per frame. */
   def updateFx(dt: Float): Unit =
     if floating.nonEmpty then
       val aged = floating.map(f => f.copy(life = f.life - dt)).filter(_.life > 0f)
       floating.clear()
       floating ++= aged
+    if sparks.nonEmpty then
+      val aged = sparks.map(s => Spark(s.x + s.vx * dt, s.y + s.vy * dt, s.vx, s.vy, s.life - dt, s.maxLife))
+        .filter(_.life > 0f)
+      sparks.clear()
+      sparks ++= aged
+    if shakeTime > 0f then shakeTime = math.max(0f, shakeTime - dt)
 
-  def clearFx(): Unit = floating.clear()
+  def clearFx(): Unit =
+    floating.clear()
+    sparks.clear()
+    shakeTime = 0f
 
   private def drawFloating(): Unit =
     floating.foreach { f =>
@@ -113,11 +138,35 @@ class Render:
   private def beginScene(): Unit =
     ensureBloom()
     if bloomOk then sceneFbo.begin()
+    // The board (and thus the world size) can differ per biome (the tutorial is
+    // smaller), so re-sync the viewport's world dimensions before drawing.
+    viewport.setWorldSize(Config.WorldW, Config.WorldH)
+    // camera shake: jitter the centered ortho camera while a shake is active
+    if shakeTime > 0f then
+      val k = shakeMag * (shakeTime / math.max(1e-3f, ShakeDurationRef))
+      camera.position.set(Config.WorldW / 2f + (rng.nextFloat() * 2f - 1f) * k,
+                          Config.WorldH / 2f + (rng.nextFloat() * 2f - 1f) * k, 0f)
+    else camera.position.set(Config.WorldW / 2f, Config.WorldH / 2f, 0f)
     viewport.apply()
     ScreenUtils.clear(Config.Background)
     Gdx.gl.glEnable(GL20.GL_BLEND)
     shapes.setProjectionMatrix(camera.combined)
     batch.setProjectionMatrix(camera.combined)
+
+  /** Ambient-only global illumination: scale a surface color by the ambient
+    * light tint * intensity. White at intensity 1 is a no-op.
+    */
+  private def lit(c: Color): Color =
+    val a = Config.LightingAmbient
+    val k = Config.LightingIntensity
+    new Color(c.r * a.r * k, c.g * a.g * k, c.b * a.b * k, c.a)
+
+  /** Triggers a camera shake (called when a life is lost). */
+  def shake(): Unit =
+    shakeTime = Config.ShakeDuration
+    shakeMag  = Config.ShakeMagnitude
+
+  private def ShakeDurationRef: Float = Config.ShakeDuration
 
   private def present(): Unit =
     if bloomOk then
@@ -177,7 +226,8 @@ class Render:
 
   // -- screens ---------------------------------------------------------------
 
-  def drawMenu(): Unit =
+  def drawMenu(dev: Boolean = false): Unit =
+    Config.clearActiveBiome()
     beginScene()
     shapes.begin(ShapeType.Filled)
     button(Ui.Play)
@@ -195,6 +245,7 @@ class Render:
     centered(s"1-$towers to pick a tower · click green to build · F to fast-forward · R to reload config · ESC to pause",
       Config.WorldW / 2, 120f, 1f, Config.DimText)
     batch.end()
+    if dev then drawDevOverlay()
     present()
 
   /** Meta progression: spend currency to unlock talent-tree nodes. Rows are
@@ -202,7 +253,8 @@ class Render:
     * are tinted, locked ones (unmet prereq) and unaffordable ones are dimmed.
     * The footer summarizes the active effects those talents grant in-run.
     */
-  def drawTalents(data: MetaData): Unit =
+  def drawTalents(data: MetaData, dev: Boolean = false): Unit =
+    Config.clearActiveBiome()
     beginScene()
     val order  = Ui.talentOrder
     val owned  = data.talents.toSet
@@ -264,6 +316,7 @@ class Render:
 
     buttonLabel(Ui.TalentsBack, Messages.t("talents.back"))
     batch.end()
+    if dev then drawDevOverlay()
     present()
 
   /** Signed percentage of a multiplier relative to 1.0 (1.1 -> +10%). */
@@ -274,7 +327,7 @@ class Render:
   /** Pre-run briefing: a vague painted field with a road, the biome's name, a
     * one-line description, and a BEGIN button. Pure flavor — no sim is stepped.
     */
-  def drawBriefing(w: World): Unit =
+  def drawBriefing(w: World, dev: Boolean = false): Unit =
     beginScene()
 
     val biome = Config.biome(w.run.biome)
@@ -333,13 +386,14 @@ class Render:
     buttonLabel(Ui.BriefingBegin, Messages.t("briefing.begin"))
     buttonLabel(Ui.BriefingBack, Messages.t("briefing.back"))
     batch.end()
+    if dev then drawDevOverlay()
     present()
 
   /** Pre-run loadout picker: every tower as a row; unlocked rows are clickable
     * and toggle a highlight border, locked rows render as a "?" and ignore
     * clicks. The run starts with exactly the selected towers in its loadout.
     */
-  def drawLoadout(run: RunContext, selected: Vector[String]): Unit =
+  def drawLoadout(run: RunContext, selected: Vector[String], dev: Boolean = false): Unit =
     beginScene()
     val towers  = Config.game.towers
     val locked  = Config.Loadout.locked.toSet
@@ -382,6 +436,7 @@ class Render:
     buttonLabel(Ui.LoadoutConfirm, "CONFIRM")
     buttonLabel(Ui.LoadoutBack, "BACK")
     batch.end()
+    if dev then drawDevOverlay()
     present()
 
   def drawRecap(
@@ -392,7 +447,8 @@ class Render:
       gold: Int,
       newEntries: Vector[JournalEntry],
       knownEntries: Vector[JournalEntry],
-      death: Option[DeathRecap]
+      death: Option[DeathRecap],
+      dev: Boolean = false
   ): Unit =
     beginScene()
     shapes.begin(ShapeType.Filled)
@@ -440,17 +496,21 @@ class Render:
     buttonLabel(Ui.Retry, if won then "PLAY AGAIN" else "RETRY")
     buttonLabel(Ui.Menu, "MENU")
     batch.end()
+    if dev then drawDevOverlay()
     present()
 
-  def drawGame(w: World, hover: Option[GridPos], fast: Boolean, selected: TowerSpec, notice: Option[String] = None): Unit =
+  def drawGame(w: World, hover: Option[GridPos], fast: Boolean, selected: TowerSpec, notice: Option[String] = None, dev: Boolean = false): Unit =
+    Config.setActiveBiome(w.run.biome)
     beginScene()
     drawScene(w, hover, fast, selected, notice)
+    if dev then drawDevOverlay()
     present()
 
   /** The between-level draft: the offers on the table plus the reroll button and
     * the player's gold. No sim is stepped while this is on screen.
     */
-  def drawDraft(w: World): Unit =
+  def drawDraft(w: World, dev: Boolean = false): Unit =
+    Config.setActiveBiome(w.run.biome)
     beginScene()
     val d = w.draft.get
     val unlocked = Meta.effects(w.run.talents).rerollUnlocked
@@ -481,10 +541,12 @@ class Render:
       if canReroll then Config.TextColor else Config.DimText)
     centered(s"GOLD ${w.gold}", Config.WorldW / 2, 90f, 1.4f, Config.ShotColor)
     batch.end()
+    if dev then drawDevOverlay()
     present()
 
   /** Frozen game view under a dim overlay plus the pause panel and its buttons. */
-  def drawPaused(w: World, fast: Boolean, selected: TowerSpec): Unit =
+  def drawPaused(w: World, fast: Boolean, selected: TowerSpec, dev: Boolean = false): Unit =
+    Config.setActiveBiome(w.run.biome)
     beginScene()
     drawScene(w, None, fast, selected, None)
 
@@ -505,7 +567,33 @@ class Render:
     buttonLabel(Ui.Exit, "EXIT")
     batch.end()
 
+    if dev then drawDevOverlay()
     present()
+
+  /** Developer overlay: a panel of cheat buttons drawn on top of the live game.
+    * Call it between the scene and [[present]] so it is captured by the bloom
+    * composite. Pure drawing — no sim is touched here.
+    */
+  def drawDevOverlay(): Unit =
+    val panel = Rect(Config.BoardPx, 330f, Config.PanelPx, 290f)
+    shapes.begin(ShapeType.Filled)
+    shapes.setColor(0f, 0f, 0f, 0.6f)
+    shapes.rect(panel.x, panel.y, panel.w, panel.h)
+    button(Ui.DevGold100)
+    button(Ui.DevGold1000)
+    button(Ui.DevMeta100)
+    button(Ui.DevUnlockTowers)
+    button(Ui.DevUnlockTalents)
+    shapes.end()
+
+    batch.begin()
+    centered(Messages.t("dev.title"), panel.centerX, panel.y + panel.h - 18f, 1.8f, Config.ShotColor)
+    buttonLabel(Ui.DevGold100, Messages.t("dev.gold100"))
+    buttonLabel(Ui.DevGold1000, Messages.t("dev.gold1000"))
+    buttonLabel(Ui.DevMeta100, Messages.t("dev.meta100"))
+    buttonLabel(Ui.DevUnlockTowers, Messages.t("dev.unlockTowers"))
+    buttonLabel(Ui.DevUnlockTalents, Messages.t("dev.unlockTalents"))
+    batch.end()
 
   /** The in-game scene: board, actors, shots, overlays and the HUD. */
   private def drawScene(w: World, hover: Option[GridPos], fast: Boolean, selected: TowerSpec, notice: Option[String]): Unit =
@@ -514,6 +602,7 @@ class Render:
     drawTowers(w)
     drawEnemies(w)
     drawShots(w)
+    drawSparks()
     drawHover(w, hover, selected)
     shapes.setColor(Config.PanelColor)
     shapes.rect(Config.BoardPx, 0f, Config.PanelPx, Config.WorldH)
@@ -532,21 +621,34 @@ class Render:
 
   // -- board pieces ----------------------------------------------------------
 
-  /** Cells are drawn inset by one unit, which leaves the dark background
-    * showing through as grid lines for free.
+  /** The board is filled with the grid-line color, then cells are drawn inset
+    * by one unit so the grid line shows through as the gap between them. The
+    * field cells are lit by the ambient (global-illumination) term.
     */
   private def drawBoard(level: Int): Unit =
     val path = Grid.pathCells(level)
+    shapes.setColor(Config.GridLine)
+    shapes.rect(0f, 0f, Config.BoardPx, Config.BoardPx)
     for
       gx <- 0 until Config.GridSize
       gy <- 0 until Config.GridSize
     do
       val cell = GridPos(gx, gy)
-      shapes.setColor(if path.contains(cell) then Config.PathColor else Config.BuildColor)
+      val base = if path.contains(cell) then Config.PathColor else Config.BuildColor
+      shapes.setColor(lit(base))
       shapes.rect(gx * Config.CellPx + 1f, gy * Config.CellPx + 1f, Config.CellPx - 2f, Config.CellPx - 2f)
 
   private def drawTowers(w: World): Unit =
     w.towers.foreach { t =>
+      // soft drop shadow: two fading circles offset under the tower
+      val cx = t.cell.centerX + Config.ShadowOffsetX
+      val cy = t.cell.centerY + Config.ShadowOffsetY
+      val r  = Config.CellPx * 0.42f * Config.ShadowScale
+      val sc = Config.ShadowColor
+      shapes.setColor(sc.r, sc.g, sc.b, Config.ShadowAlpha * 0.5f)
+      shapes.circle(cx, cy, r)
+      shapes.setColor(sc.r, sc.g, sc.b, Config.ShadowAlpha)
+      shapes.circle(cx, cy, r * 0.6f)
       glow(t.cell.centerX, t.cell.centerY, Config.CellPx * 0.65f, t.spec.color)
       shapes.setColor(t.spec.color)
       shapes.rect(
@@ -559,6 +661,16 @@ class Render:
       if w.pendingAugment.isDefined && t.augment.isEmpty then
         shapes.setColor(Config.HoverOk)
         shapes.rect(t.cell.x * Config.CellPx, t.cell.y * Config.CellPx, Config.CellPx, Config.CellPx)
+    }
+
+  /** Draws the live spark particles. Call within the Filled pass. */
+  private def drawSparks(): Unit =
+    val c = Config.SparkColor
+    val s = Config.SparkSize
+    sparks.foreach { p =>
+      val a = math.min(1f, p.life / p.maxLife)
+      shapes.setColor(c.r, c.g, c.b, a)
+      shapes.rect(p.x - s / 2f, p.y - s / 2f, s, s)
     }
 
   private def drawEnemies(w: World): Unit =
@@ -758,6 +870,10 @@ class Render:
     combine.setUniformi("u_scene", 0)
     combine.setUniformi("u_bloom", 1)
     combine.setUniformf("u_strength", BloomStrength)
+    val vc = Config.VignetteColor
+    combine.setUniformf("u_vigColor", vc.r, vc.g, vc.b)
+    combine.setUniformf("u_vigStrength", Config.VignetteStrength)
+    combine.setUniformf("u_vigRadius", Config.VignetteRadius)
     sceneFbo.getColorBufferTexture.bind(0)
     bloomA.getColorBufferTexture.bind(1)
     Gdx.gl.glActiveTexture(GL20.GL_TEXTURE0)
@@ -807,8 +923,15 @@ class Render:
       |uniform sampler2D u_scene;
       |uniform sampler2D u_bloom;
       |uniform float u_strength;
+      |uniform vec3 u_vigColor;
+      |uniform float u_vigStrength;
+      |uniform float u_vigRadius;
       |void main() {
       |  vec4 s = texture2D(u_scene, v_texCoords);
       |  vec4 b = texture2D(u_bloom, v_texCoords);
-      |  gl_FragColor = vec4(s.rgb + b.rgb * u_strength, 1.0);
+      |  vec3 col = s.rgb + b.rgb * u_strength;
+      |  float d = distance(v_texCoords, vec2(0.5));
+      |  float vig = 1.0 - u_vigStrength * smoothstep(u_vigRadius, 1.0, d);
+      |  col = mix(u_vigColor, col, clamp(vig, 0.0, 1.0));
+      |  gl_FragColor = vec4(col, 1.0);
       |}""".stripMargin

@@ -83,6 +83,7 @@ object HeadlessMain:
     println(summary(world, steps))
 
   private def summary(w: World, steps: Long): String =
+    Config.setActiveBiome(w.run.biome)
     val levelsCleared = if w.won then Config.levelCount else w.level
     val state = if w.won then "WON" else if w.isOver then "LOST" else "STOPPED"
     List(

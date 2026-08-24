@@ -135,7 +135,7 @@ object RunContext:
 /** The seed and player-selected run modifiers that shape one playthrough. */
 case class RunContext(
     seed: Long,
-    biome: String = "tutorial",
+    biome: String = "front-lawn",
     resistTheme: ResistTheme = ResistTheme(DamageKind.Kinetic, 0f, DamageKind.Fire, 0f),
     twists: Vector[String] = Vector.empty,
     roster: Vector[String] = Vector.empty,
@@ -190,6 +190,8 @@ enum Command:
   case PickAugment(augmentId: String)
   case AttachAugment(cell: GridPos)
   case Reroll()
+  case GrantGold(amount: Int)
+  case UnlockTowers()
 
 /** Which screen the game is on. */
 enum Phase:

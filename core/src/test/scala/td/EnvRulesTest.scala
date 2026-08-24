@@ -1,6 +1,6 @@
 package td
 
-class EnvRulesTest extends munit.FunSuite:
+class EnvRulesTest extends TestBase:
 
   private def runFor(biomeId: String): RunContext =
     val b = Config.biome(biomeId)
@@ -88,6 +88,6 @@ class EnvRulesTest extends munit.FunSuite:
     def waveQueueSize(biomeId: String): Int =
       val w = Sim.initial(runFor(biomeId)).copy(breakTimer = Config.MaxStepDt)
       Sim.step(w, Config.MaxStepDt, Vector.empty).spawnQueue.size
-    assertEquals(waveQueueSize("tutorial"), 8)
+    assertEquals(waveQueueSize("tutorial"), 6)
     assertEquals(waveQueueSize("cardboard-wastes"), 11)
   }

@@ -1,6 +1,6 @@
 package td
 
-class SimSmokeTest extends munit.FunSuite:
+class SimSmokeTest extends TestBase:
   test("config loads and initial world is valid") {
     val w = Sim.initial(RunContext.DefaultSeed)
     assertEquals(w.level, 0)

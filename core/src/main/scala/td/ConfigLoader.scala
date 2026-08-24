@@ -116,6 +116,8 @@ object ConfigLoader:
     val meta  = obj(root, "meta")
     val draft = obj(root, "draft")
     val loadout = parseLoadout(obj(root, "loadout"), towerNames)
+    val lighting = parseLighting(optObj(root, "lighting"))
+    val effects = parseEffects(optObj(root, "effects"))
     GameConfig(
       board = BoardConfig(i(board, "gridSize"), cellPx, f(board, "panelPx")),
       economy = EconomyConfig(i(econ, "startGold"), i(econ, "startLives"), i(econ, "killReward"), i(econ, "levelBonus")),
@@ -138,6 +140,8 @@ object ConfigLoader:
       levels = levels,
       loadout = loadout,
       colors = colors,
+      lighting = lighting,
+      effects = effects,
       biomes = biomes,
       twists = twists,
       relics = relics,
@@ -312,6 +316,43 @@ object ConfigLoader:
       dimText = c(v, "dimText")
     )
 
+  /** Ambient-only global illumination. Optional; defaults keep the current look. */
+  private def parseLighting(v: JsonValue): LightingConfig =
+    if v == null then LightingConfig(ambient = Color.WHITE, ambientIntensity = 1f)
+    else LightingConfig(ambient = c(v, "ambient"), ambientIntensity = fo(v, "ambientIntensity", 1f))
+
+  private def parseEffects(v: JsonValue): EffectsConfig =
+    if v == null then EffectsConfig(
+      vignette = VignetteConfig(Color.BLACK, 0.35f, 0.85f),
+      sparks   = SparksConfig(Color(1f, 0.9f, 0.65f, 1f), 0.5f, 120f, 3f, 6),
+      shadow   = ShadowConfig(Color.BLACK, 0.35f, 3f, -3f, 1.1f),
+      shake    = ShakeConfig(6f, 0.25f)
+    )
+    else EffectsConfig(
+      vignette = parseVignette(optObj(v, "vignette")),
+      sparks   = parseSparks(optObj(v, "sparks")),
+      shadow   = parseShadow(optObj(v, "shadow")),
+      shake    = parseShake(optObj(v, "shake"))
+    )
+
+  private def parseVignette(v: JsonValue): VignetteConfig =
+    if v == null then VignetteConfig(Color.BLACK, 0.35f, 0.85f)
+    else VignetteConfig(c(v, "color"), fo(v, "strength", 0.35f), fo(v, "radius", 0.85f))
+
+  private def parseSparks(v: JsonValue): SparksConfig =
+    if v == null then SparksConfig(Color(1f, 0.9f, 0.65f, 1f), 0.5f, 120f, 3f, 6)
+    else SparksConfig(c(v, "color"), fo(v, "life", 0.5f), fo(v, "speed", 120f),
+      fo(v, "size", 3f), i(v, "count"))
+
+  private def parseShadow(v: JsonValue): ShadowConfig =
+    if v == null then ShadowConfig(Color.BLACK, 0.35f, 3f, -3f, 1.1f)
+    else ShadowConfig(c(v, "color"), fo(v, "alpha", 0.35f), fo(v, "offsetX", 3f),
+      fo(v, "offsetY", -3f), fo(v, "scale", 1.1f))
+
+  private def parseShake(v: JsonValue): ShakeConfig =
+    if v == null then ShakeConfig(6f, 0.25f)
+    else ShakeConfig(fo(v, "magnitude", 6f), fo(v, "duration", 0.25f))
+
   private def parseEffect(v: JsonValue): Effect =
     Effect(kind = s(v, "kind"), params = parseFloatMap(obj(v, "params")))
 
@@ -339,7 +380,37 @@ object ConfigLoader:
     val theme = parseResistTheme(obj(v, "resistTheme"))
     if theme.primary == theme.secondary then
       throw IllegalArgumentException(s"biome '$id' resist theme primary and secondary must differ")
-    Biome(id, name = s(v, "name"), roster, environment, theme)
+    val gridSize  = v.get("gridSize")
+    val gridSizeOpt = if gridSize == null then None else Some(gridSize.asInt())
+    val hasLevels = v.get("levels")
+    val levels =
+      if hasLevels == null || !hasLevels.isArray then Vector.empty
+      else arr(v, "levels").map { lv =>
+        val name  = s(lv, "name")
+        val route = parseRoute(obj(lv, "route"))
+        val waves = arr(lv, "waves").map(parseWave(_, enemyNames))
+        if route.waypoints.isEmpty then
+          throw IllegalArgumentException(s"biome '$id' level '$name' has an empty route")
+        if waves.isEmpty then
+          throw IllegalArgumentException(s"biome '$id' level '$name' has no waves")
+        LevelConfig(name, waves, route)
+      }
+    val colorOpt = (name: String) =>
+      val c = v.get(name)
+      if c == null then None else Some(parseColor(c.asString()))
+    Biome(
+      id,
+      name = s(v, "name"),
+      roster,
+      environment,
+      theme,
+      gridSize = gridSizeOpt,
+      levels = levels,
+      background = colorOpt("background"),
+      path = colorOpt("path"),
+      build = colorOpt("build"),
+      gridLine = colorOpt("gridLine")
+    )
 
   private def parseTwist(v: JsonValue, towerNames: Set[String]): Twist =
     val id     = s(v, "id")
@@ -385,6 +456,13 @@ object ConfigLoader:
     if child == null || !child.isObject then
       throw IllegalArgumentException(s"missing object '$name'")
     child
+
+  /** Like [[obj]] but returns null when the field is absent, so callers can
+    * fall back to defaults (used for the optional lighting/effects blocks).
+    */
+  private def optObj(v: JsonValue, name: String): JsonValue =
+    val child = v.get(name)
+    if child == null || !child.isObject then null else child
 
   private def arr(v: JsonValue, name: String): Vector[JsonValue] =
     val child = v.get(name)

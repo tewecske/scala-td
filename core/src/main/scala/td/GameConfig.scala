@@ -45,6 +45,31 @@ case class EnemySpec(
 
 case class BoardConfig(gridSize: Int, cellPx: Float, panelPx: Float)
 
+/** "Ambient only" global illumination: a single uniform light tint + intensity
+  * that scales the field's lit brightness. White at intensity 1 is a no-op.
+  */
+case class LightingConfig(ambient: Color, ambientIntensity: Float)
+
+/** A soft radial darkening at the screen edges (focus / depth). */
+case class VignetteConfig(color: Color, strength: Float, radius: Float)
+
+/** Burst of small particles when a shot lands. */
+case class SparksConfig(color: Color, life: Float, speed: Float, size: Float, count: Int)
+
+/** Soft drop shadow under each tower for grounding. */
+case class ShadowConfig(color: Color, alpha: Float, offsetX: Float, offsetY: Float, scale: Float)
+
+/** Camera kick when a life is lost. */
+case class ShakeConfig(magnitude: Float, duration: Float)
+
+/** All post/render effects, every value from config. */
+case class EffectsConfig(
+    vignette: VignetteConfig,
+    sparks: SparksConfig,
+    shadow: ShadowConfig,
+    shake: ShakeConfig
+)
+
 /** I18N tuning: the active language and whether debug code-display starts on. */
 case class I18nConfig(lang: String, showCodes: Boolean)
 
@@ -159,13 +184,25 @@ case class ResistTheme(
 
 /** A biome: a themed package of roster, environment rule, and resist theme.
   * `roster` holds enemy NAME ids; `environment` is None for "no rule".
+  *
+  * A biome may override the board layout and palette for its own map. When any
+  * of these are None/empty the global config values are used, so only biomes
+  * that want a distinct map (the tutorial) need to specify them. `gridSize`
+  * changes the walkable board; `levels` replaces the global level table; the
+  * color overrides tint the board (background / path / build / grid line).
   */
 case class Biome(
     id: String,
     name: String,
     roster: Vector[String],
     environment: Option[Effect],
-    resistTheme: ResistTheme
+    resistTheme: ResistTheme,
+    gridSize: Option[Int] = None,
+    levels: Vector[LevelConfig] = Vector.empty,
+    background: Option[Color] = None,
+    path: Option[Color] = None,
+    build: Option[Color] = None,
+    gridLine: Option[Color] = None
 )
 
 /** A twist that reroutes one tower kind: a nerf plus a silver-lining buff,
@@ -221,6 +258,8 @@ case class GameConfig(
     levels: Vector[LevelConfig],
     loadout: LoadoutConfig,
     colors: Colors,
+    lighting: LightingConfig,
+    effects: EffectsConfig,
     biomes: Vector[Biome],
     twists: Vector[Twist],
     relics: Vector[Relic],

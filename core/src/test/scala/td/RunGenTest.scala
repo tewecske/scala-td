@@ -1,6 +1,6 @@
 package td
 
-class RunGenTest extends munit.FunSuite:
+class RunGenTest extends TestBase:
 
   test("same seed rolls the same run") {
     Seq(0x5EEDL, 1L, 42L, 0L, 123456789L).foreach { s =>

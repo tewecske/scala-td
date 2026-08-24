@@ -28,8 +28,8 @@ object RunGen:
    * never consumes RNG inside a step. Wraps safely if swarm-multiplied waves
    * exceed the estimate.
    */
-  private def rollLaneChoices(rng: Rng): Vector[Long] =
-    val n = math.max(1, Config.levels.map(_.waves.map(_.count).sum).sum)
+  private def rollLaneChoices(rng: Rng, biomeId: String): Vector[Long] =
+    val n = Config.withBiome(biomeId)(math.max(1, Config.levels.map(_.waves.map(_.count).sum).sum))
     (0 until n).foldLeft((Vector.empty[Long], rng)) { case ((acc, r), _) =>
       val (v, r2) = r.nextLong()
       (acc :+ (v & Long.MaxValue), r2)
@@ -51,7 +51,7 @@ object RunGen:
       roster = biome.roster,
       talents = talents,
       draftPool = DraftGen.rollPool(draftRng, talents),
-      laneChoices = rollLaneChoices(laneRng2),
+      laneChoices = rollLaneChoices(laneRng2, biome.id),
       speedMults = rollSpeedMults(speedRng)
     )
 
@@ -68,7 +68,7 @@ object RunGen:
       roster = biome.roster,
       talents = talents,
       draftPool = DraftGen.rollPool(Rng(DraftGen.TutorialPoolSeed), talents),
-      laneChoices = rollLaneChoices(Rng(DraftGen.TutorialPoolSeed))
+      laneChoices = rollLaneChoices(Rng(DraftGen.TutorialPoolSeed), biome.id)
     )
 
   private def pickBiome(rng: Rng): Biome =

@@ -1,6 +1,6 @@
 package td
 
-class TwistTest extends munit.FunSuite:
+class TwistTest extends TestBase:
 
   private val towerCell = GridPos(0, 16)
 

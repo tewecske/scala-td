@@ -1,6 +1,6 @@
 package td
 
-class ConfigCodecTest extends munit.FunSuite:
+class ConfigCodecTest extends TestBase:
   test("composition format/parse round-trip") {
     val c = Vector("Cardboard" -> 6, "Paper Cut" -> 2)
     assertEquals(ConfigCodec.parseComposition(ConfigCodec.formatComposition(c)), Right(c))

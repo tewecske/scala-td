@@ -1,6 +1,6 @@
 package td
 
-class DraftTest extends munit.FunSuite:
+class DraftTest extends TestBase:
 
   private def tutorialRun(talents: Vector[String] = Vector.empty): RunContext =
     RunGen.tutorial(1L, talents)

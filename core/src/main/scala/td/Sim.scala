@@ -28,17 +28,23 @@ object Sim:
   )
 
   def step(w0: World, dt: Float, cmds: Vector[Command]): World =
-    if w0.isOver || w0.won then w0
-    else if w0.draft.isDefined then cmds.foldLeft(w0)(applyCommand)
-    else
-      val withCmds = cmds.foldLeft(w0)(applyCommand)
-      val spawned  = spawn(withCmds, dt)
-      val auras    = applyAuras(spawned)
-      val effected = tickEffects(auras, dt)
-      val moved    = moveEnemies(effected, dt)
-      val fired    = fireTowers(moved, dt)
-      val resolved = moveProjectiles(fired, dt)
-      advanceWave(resolved, dt)
+    // Resolve the run's biome so route/level/palette lookups inside the step
+    // (and downstream callers) see the right board. Cleared afterwards so the
+    // global state never carries a stale biome between steps/runs.
+    Config.setActiveBiome(w0.run.biome)
+    try
+      if w0.isOver || w0.won then w0
+      else if w0.draft.isDefined then cmds.foldLeft(w0)(applyCommand)
+      else
+        val withCmds = cmds.foldLeft(w0)(applyCommand)
+        val spawned  = spawn(withCmds, dt)
+        val auras    = applyAuras(spawned)
+        val effected = tickEffects(auras, dt)
+        val moved    = moveEnemies(effected, dt)
+        val fired    = fireTowers(moved, dt)
+        val resolved = moveProjectiles(fired, dt)
+        advanceWave(resolved, dt)
+    finally Config.clearActiveBiome()
 
   // -- input -----------------------------------------------------------------
 
@@ -86,6 +92,13 @@ object Sim:
           pendingAugment = None
         )
       else w
+
+    case Command.GrantGold(amount) =>
+      w.copy(gold = w.gold + amount)
+
+    case Command.UnlockTowers() =>
+      val names = Config.game.towers.map(_.name)
+      w.copy(run = w.run.copy(loadout = (w.run.loadout ++ names).distinct))
 
   /** Whether a build command would be accepted — used by the renderer to colour
     * the placement preview, so preview and rule can never disagree.

@@ -1,6 +1,6 @@
 package td
 
-class ConfigWriterTest extends munit.FunSuite:
+class ConfigWriterTest extends TestBase:
   private val cfg = Config.game
 
   test("bundled config round-trips through toJson -> parse") {

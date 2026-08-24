@@ -2,7 +2,7 @@ package td
 
 import java.nio.file.Files
 
-class MetaTest extends munit.FunSuite:
+class MetaTest extends TestBase:
   private def tmpPath(suffix: String): String =
     Files.createTempFile(s"meta-$suffix", ".json").toString
 
@@ -33,7 +33,7 @@ class MetaTest extends munit.FunSuite:
   }
 
   test("losing a run banks partial currency") {
-    var w = tutorialRun()
+    var w = Sim.initial(RunGen.roll(1L))
     var guard = 0
     while !w.isOver && guard < 200000 do
       w = Sim.step(w, Config.MaxStepDt, Vector.empty)
@@ -78,7 +78,7 @@ class MetaTest extends munit.FunSuite:
 
   test("damageBonus multiplies tower shot damage") {
     def shotDamage(talents: Vector[String]): Float =
-      val run = RunGen.tutorial(1L).copy(talents = talents)
+      val run = RunContext(seed = 1L, talents = talents)
       val e = Enemy(id = 1L, progress = 50f, hp = 100f, maxHp = 100f, speed = 0f,
         tpe = "Cardboard", level = 0, resist = Config.enemySpec("Cardboard").resist)
       val w = Sim.initial(run).copy(
@@ -94,7 +94,7 @@ class MetaTest extends munit.FunSuite:
 
   test("goldBonus increases kill reward") {
     def goldAfterKill(talents: Vector[String]): Int =
-      val run = RunGen.tutorial(1L).copy(talents = talents)
+      val run = RunContext(seed = 1L, talents = talents)
       val e = Enemy(id = 1L, progress = 0f, hp = 1f, maxHp = 100f, speed = 0f,
         tpe = "Cardboard", level = 0, resist = Config.enemySpec("Cardboard").resist)
       val (ex, ey) = e.pos

@@ -27,6 +27,35 @@ class TdGame extends ApplicationAdapter:
   private var noticeTimer: Float     = 0f
   private var knownNames: Set[String]     = Set.empty
   private var startEntries: Vector[JournalEntry] = Vector.empty
+  private var dev: Boolean                = false
+  private var softPause: Boolean           = false
+
+  /** Which cheat button a dev-overlay click landed on. */
+  private sealed trait DevAction
+  private case object Gold100       extends DevAction
+  private case object Gold1000      extends DevAction
+  private case object Meta100       extends DevAction
+  private case object UnlockTowers  extends DevAction
+  private case object UnlockTalents extends DevAction
+
+  private def devButtonAt(mx: Float, my: Float): Option[DevAction] =
+    if Ui.DevGold100.contains(mx, my) then Some(Gold100)
+    else if Ui.DevGold1000.contains(mx, my) then Some(Gold1000)
+    else if Ui.DevMeta100.contains(mx, my) then Some(Meta100)
+    else if Ui.DevUnlockTowers.contains(mx, my) then Some(UnlockTowers)
+    else if Ui.DevUnlockTalents.contains(mx, my) then Some(UnlockTalents)
+    else None
+
+  /** Adds meta currency to the persistent balance (used by the dev overlay). */
+  private def grantMeta(amount: Int): Unit =
+    val data = Meta.load().getOrElse(MetaData.empty)
+    Meta.save(data.copy(balance = data.balance + amount))
+
+  /** Grants every talent, bypassing cost/prereqs (used by the dev overlay). */
+  private def grantAllTalents(): Unit =
+    val data    = Meta.load().getOrElse(MetaData.empty)
+    val missing = Config.talents.map(_.id).filterNot(data.talents.contains)
+    Meta.save(data.copy(talents = data.talents ++ missing))
 
   override def create(): Unit =
     gfx = new Render
@@ -39,17 +68,40 @@ class TdGame extends ApplicationAdapter:
 
   override def render(): Unit =
     // Clamped so a stalled frame can't teleport enemies through the defence.
-    val dt      = math.min(Gdx.graphics.getDeltaTime, Config.MaxStepDt)
-    val clicked = Gdx.input.justTouched()
+    val dt        = math.min(Gdx.graphics.getDeltaTime, Config.MaxStepDt)
+    val rawClicked = Gdx.input.justTouched()
     val (mx, my) = gfx.toWorld(Gdx.input.getX, Gdx.input.getY)
 
     if notice.isDefined then
       noticeTimer -= dt
       if noticeTimer <= 0f then notice = None
 
+    // Age FX (shake, sparks, floating labels) every frame so a shake that
+    // fires on the final life loss still decays once we leave Playing.
+    gfx.updateFx(dt)
+
+    // Dev overlay toggle works on every screen, not just in-game.
+    if Gdx.input.isKeyJustPressed(Input.Keys.GRAVE) then
+      dev = !dev
+      notice = Some(Messages.t(if dev then "dev.on" else "dev.off"))
+      noticeTimer = NoticeTime
+
+    // Dev-bar clicks: meta cheats apply on any screen; gold/towers become
+    // commands only while Playing. Always swallow the click so it can't hit UI under the bar.
+    val devAct = if dev && rawClicked then devButtonAt(mx, my) else None
+    val devCmd: Option[Command] = devAct.flatMap {
+      case Gold100       => Some(Command.GrantGold(100))
+      case Gold1000      => Some(Command.GrantGold(1000))
+      case UnlockTowers  => Some(Command.UnlockTowers())
+      case Meta100       => grantMeta(100); None
+      case UnlockTalents => grantAllTalents(); None
+    }
+    val devClicked = devAct.isDefined
+    val clicked    = rawClicked && !devClicked
+
     phase = phase match
       case Phase.Menu =>
-        gfx.drawMenu()
+        gfx.drawMenu(dev)
         if clicked && Ui.Play.contains(mx, my) then newRun()
         else if clicked && Ui.Tutorial.contains(mx, my) then startTutorial()
         else if clicked && Ui.Talents.contains(mx, my) then Phase.Talents(Meta.active())
@@ -57,33 +109,35 @@ class TdGame extends ApplicationAdapter:
         else Phase.Menu
 
       case Phase.Talents(data) =>
-        gfx.drawTalents(data)
+        // Refresh after UnlockTalents so newly granted nodes show immediately.
+        val shown = if devAct.contains(UnlockTalents) then Meta.active() else data
+        gfx.drawTalents(shown, dev)
         if clicked && Ui.TalentsBack.contains(mx, my) then Phase.Menu
         else if clicked then
           Ui.talentOrder.zipWithIndex.collectFirst {
             case (t, i) if Ui.TalentRow(i).contains(mx, my) => t
           } match
             case Some(t) =>
-              Meta.purchase(data, t.id) match
+              Meta.purchase(shown, t.id) match
                 case Right(next) =>
                   Meta.save(next)
                   Phase.Talents(next)
                 case Left(err) =>
                   notice = Some(err)
                   noticeTimer = NoticeTime
-                  Phase.Talents(data)
-            case None => Phase.Talents(data)
-        else Phase.Talents(data)
+                  Phase.Talents(shown)
+            case None => Phase.Talents(shown)
+        else Phase.Talents(shown)
 
       case Phase.Briefing(w) =>
-        gfx.drawBriefing(w)
+        gfx.drawBriefing(w, dev)
         if clicked && Ui.BriefingBegin.contains(mx, my) then Phase.Loadout(w.run, Config.Loadout.defaultSelected)
         else if clicked && Ui.BriefingBack.contains(mx, my) then Phase.Menu
         else if Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) then Phase.Menu
         else Phase.Briefing(w)
 
       case Phase.Loadout(run, sel) =>
-        gfx.drawLoadout(run, sel)
+        gfx.drawLoadout(run, sel, dev)
         if clicked && Ui.LoadoutConfirm.contains(mx, my) then
           Phase.Playing(Sim.initial(run.copy(loadout = sel)))
         else if clicked && Ui.LoadoutBack.contains(mx, my) then Phase.Menu
@@ -103,15 +157,27 @@ class TdGame extends ApplicationAdapter:
         else Phase.Loadout(run, sel)
 
       case Phase.Recap(won, level, wave, lives, gold, newEntries, knownEntries, death) =>
-        gfx.drawRecap(won, level, wave, lives, gold, newEntries, knownEntries, death)
+        gfx.drawRecap(won, level, wave, lives, gold, newEntries, knownEntries, death, dev)
         if clicked && Ui.Retry.contains(mx, my) then newRun()
         else if clicked && Ui.Menu.contains(mx, my) then Phase.Menu
         else Phase.Recap(won, level, wave, lives, gold, newEntries, knownEntries, death)
 
       case Phase.Playing(w) =>
-        // While paused nothing steps and only the pause keys / buttons act.
-        if pausePressed then Phase.Paused(w)
+        // The board (size/route/colors) is biome-specific, so resolve the active
+        // biome before any grid math (hover, build validity) or the sim step.
+        Config.setActiveBiome(w.run.biome)
+        // ESC opens the pause menu (Phase.Paused). P does a *soft* pause: the
+        // sim freezes but the screen stays live and every action (build, draft,
+        // dev cheats) still works.
+        if Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) then
+          softPause = false
+          Phase.Paused(w)
         else
+          if Gdx.input.isKeyJustPressed(Input.Keys.P) then
+            softPause = !softPause
+            notice = Some(Messages.t(if softPause then "pause.on" else "pause.off"))
+            noticeTimer = NoticeTime
+
           if Gdx.input.isKeyJustPressed(Input.Keys.F) then fast = !fast
 
           if Gdx.input.isKeyJustPressed(Input.Keys.R) then
@@ -124,11 +190,15 @@ class TdGame extends ApplicationAdapter:
             notice = Some(Messages.t("notice.showCodes", if Messages.showCodes then "on" else "off"))
             noticeTimer = NoticeTime
 
+          // Soft pause freezes time but still applies commands (build/draft/cheats).
+          val stepDt = if softPause then 0f else dt
+
           w.draft match
             case Some(d) =>
               // Between levels: only draft commands apply; the sim never steps.
               val cmds =
-                if clicked then
+                if devClicked then devCmd.toVector
+                else if clicked then
                   if Ui.DraftReroll.contains(mx, my) &&
                       Meta.effects(w.run.talents).rerollUnlocked && w.gold >= d.rerollCost then
                     Vector(Command.Reroll())
@@ -138,12 +208,11 @@ class TdGame extends ApplicationAdapter:
                       case (DraftOffer.Augment(id), i) if Ui.DraftOffer(i).contains(mx, my) => Command.PickAugment(id)
                     }.toVector
                 else Vector.empty
-              val next = Sim.step(w, dt, cmds)
-              gfx.updateFx(dt)
-              if next.draft.isDefined then gfx.drawDraft(next)
+              val next = Sim.step(w, stepDt, cmds)
+              if next.draft.isDefined then gfx.drawDraft(next, dev)
               else
                 val psel = Config.LoadoutPool(w.run.loadout)(math.min(selected, Config.LoadoutPool(w.run.loadout).size - 1))
-                gfx.drawGame(next, None, fast, psel)
+                gfx.drawGame(next, None, fast, psel, notice = None, dev = dev)
               if next.won || next.isOver then toRecap(next)
               else Phase.Playing(next)
 
@@ -154,24 +223,27 @@ class TdGame extends ApplicationAdapter:
               }
               selected = math.min(selected, pool.size - 1)
               val sel   = pool(selected)
-              val hover = Some(Grid.cellAt(mx, my)).filter(Grid.inBounds)
-              val cmds  = hover.filter(_ => clicked).map { cell =>
-                if w.pendingAugment.isDefined && Sim.canAttachAugment(w, cell) then Command.AttachAugment(cell)
-                else Command.Build(cell, sel.name)
-              }.toVector
+              val hover = if devClicked then None else Some(Grid.cellAt(mx, my)).filter(Grid.inBounds)
+              val cmds  =
+                if devClicked then devCmd.toVector
+                else hover.filter(_ => clicked).map { cell =>
+                  if w.pendingAugment.isDefined && Sim.canAttachAugment(w, cell) then Command.AttachAugment(cell)
+                  else Command.Build(cell, sel.name)
+                }.toVector
 
               // Fast-forward runs extra whole steps rather than a bigger dt, so the
-              // rules behave identically at any speed.
-              val steps  = if fast then Config.FastForward else 1
-              val first  = Sim.step(w, dt, cmds)
-              val next   = (1 until steps).foldLeft(first)((acc, _) => Sim.step(acc, dt, Vector.empty))
+              // rules behave identically at any speed. Soft pause keeps a single
+              // zero-dt step so commands still apply.
+              val steps  = if softPause then 1 else if fast then Config.FastForward else 1
+              val first  = Sim.step(w, stepDt, cmds)
+              val next   = (1 until steps).foldLeft(first)((acc, _) => Sim.step(acc, stepDt, Vector.empty))
               next.events.foreach(Journal.record)
               gfx.feedHits(next.hitFeedback)
               gfx.feedNames(next.nameEvents, knownNames)
-              gfx.updateFx(dt)
+              if next.lives < w.lives then gfx.shake()
               val drained = next.copy(events = Vector.empty, hitFeedback = Vector.empty, nameEvents = Vector.empty)
 
-              gfx.drawGame(drained, hover, fast, sel, notice)
+              gfx.drawGame(drained, hover, fast, sel, notice, dev)
 
               if drained.won || drained.isOver then toRecap(drained)
               else Phase.Playing(drained)
@@ -179,7 +251,7 @@ class TdGame extends ApplicationAdapter:
       case Phase.Paused(w) =>
         val pool = Config.LoadoutPool(w.run.loadout)
         val sel = pool(math.min(selected, pool.size - 1))
-        gfx.drawPaused(w, fast, sel)
+        gfx.drawPaused(w, fast, sel, dev)
 
         if pausePressed then Phase.Playing(w)
         else if clicked && Ui.Resume.contains(mx, my) then Phase.Playing(w)
@@ -209,6 +281,7 @@ class TdGame extends ApplicationAdapter:
 
   /** Run ended: build the recap (new vs known entries, plus a death summary). */
   private def toRecap(w: World): Phase =
+    Config.setActiveBiome(w.run.biome)
     Meta.bankRun(w)
     val after = Journal.load().getOrElse(JournalData.empty).entries
     val newEntries   = after.filterNot(startEntries.contains)

@@ -33,25 +33,35 @@ object Grid:
       branches: Vector[BranchLane]
   )
 
-  @volatile private var cachedSizeFor: GameConfig | Null = null
-  @volatile private var cachedSize: Int                  = 0
+  @volatile private var cachedSizeFor: (GameConfig, Option[String]) | Null = null
+  @volatile private var cachedSize: Int                                       = 0
 
-  @volatile private var cachedRouteFor: (GameConfig, Int) | Null = null
-  @volatile private var cachedRoute: Derived | Null              = null
+  @volatile private var cachedRouteFor: (GameConfig, Option[String], Int) | Null = null
+  @volatile private var cachedRoute: Derived | Null                              = null
+
+  /** Drops all cached derived routes/sizes. Used by tests between cases so a
+    * stale active-biome key can never leak a prior run's map into the next.
+    */
+  def reset(): Unit =
+    cachedSizeFor = null
+    cachedSize    = 0
+    cachedRouteFor = null
+    cachedRoute    = null
 
   private def size: Int =
     val cfg = Config.game
-    if (cachedSizeFor eq cfg) then cachedSize
+    val key = (cfg, Config.activeBiomeId)
+    if (cachedSizeFor != null) && (cachedSizeFor.nn == key) then cachedSize
     else
-      val s = cfg.board.gridSize
-      cachedSizeFor = cfg
+      val s = Config.GridSize
+      cachedSizeFor = key
       cachedSize = s
       s
 
   private def routeDerived(level: Int): Derived =
     val cfg = Config.game
-    val key = (cfg, level)
-    if (cachedRouteFor eq key) && cachedRoute != null then cachedRoute.nn
+    val key = (cfg, Config.activeBiomeId, level)
+    if (cachedRouteFor != null) && (cachedRouteFor.nn == key) && cachedRoute != null then cachedRoute.nn
     else
       val d = build(cfg, level)
       cachedRouteFor = key
@@ -98,7 +108,7 @@ object Grid:
       laneWp.indices.dropRight(1).flatMap(i => cellsBetween(laneWp(i), laneWp(i + 1)))
     }.toSet
 
-    Derived(cfg.board.gridSize, trunkCells ++ branchCells, points, cumulative, length, branches)
+    Derived(Config.GridSize, trunkCells ++ branchCells, points, cumulative, length, branches)
 
   def Size: Int = size
 

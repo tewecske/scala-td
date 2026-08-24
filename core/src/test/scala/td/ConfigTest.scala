@@ -1,6 +1,6 @@
 package td
 
-class ConfigTest extends munit.FunSuite:
+class ConfigTest extends TestBase:
   private val cfg = Config.game
 
   test("new collections load from bundled config") {

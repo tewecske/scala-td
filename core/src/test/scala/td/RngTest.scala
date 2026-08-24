@@ -1,6 +1,6 @@
 package td
 
-class RngTest extends munit.FunSuite:
+class RngTest extends TestBase:
   private val seeds = Seq(0x5EEDL, 1L, 42L, 0L)
 
   test("same seed yields identical nextLong sequences") {
