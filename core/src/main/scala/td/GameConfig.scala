@@ -2,9 +2,8 @@ package td
 
 import com.badlogic.gdx.graphics.Color
 
-/** A buildable tower's tuning. `range` and `splashRadius` are stored in world
-  * units (the JSON author writes them in cells; the loader multiplies by the
-  * cell size).
+/** A buildable tower's tuning. Distances and speeds are in cells (and cells per
+  * second); the simulation scales them by the active level's cell size.
   */
 case class TowerSpec(
     name: String,
@@ -24,10 +23,12 @@ case class TowerSpec(
 enum RouteSide:
   case Left, Right
 
-/** An enemy archetype's tuning. `baseHp`/`baseSpeed` are the wave-1 baselines
-  * (hp is scaled by the owning wave's [[WaveSpec.hpScale]]); resistances and the
-  * optional aura come straight from here. [[sidePreference]] marks a specialist
-  * that always takes that side of a fork (None = random), a discoverable trait.
+/** An enemy type's fixed tuning. `baseSpeed` is in cells per second. Every enemy
+  * of one type has the same stats wherever it appears; tougher versions are separate
+  * types (variants) linked by [[promotesTo]], so balancing can move units up the ladder
+  * instead of changing stats. [[onDeath]] spawns enemies where this one dies;
+  * [[boss]] marks the boss of a level. [[leakCost]] is how many lives it takes when
+  * it gets through, so bigger units hurt more.
   */
 case class EnemySpec(
     name: String,
@@ -40,10 +41,17 @@ case class EnemySpec(
     heavy: Boolean = false,
     sidePreference: Option[RouteSide] = None,
     killReward: Float = 1f,
-    speedVariance: Float = 0f
+    speedVariance: Float = 0f,
+    boss: Boolean = false,
+    onDeath: Option[(String, Int)] = None,
+    promotesTo: Option[String] = None,
+    leakCost: Int = 1
 )
 
-case class BoardConfig(gridSize: Int, cellPx: Float, panelPx: Float)
+/** The window is always `boardPx` square. Each level's grid divides it, so bigger
+  * grids mean smaller cells. `gridSize` is the default when neither level nor biome sets one.
+  */
+case class BoardConfig(gridSize: Int, boardPx: Float, panelPx: Float)
 
 /** "Ambient only" global illumination: a single uniform light tint + intensity
   * that scales the field's lit brightness. White at intensity 1 is a no-op.
@@ -73,7 +81,10 @@ case class EffectsConfig(
 /** I18N tuning: the active language and whether debug code-display starts on. */
 case class I18nConfig(lang: String, showCodes: Boolean)
 
-case class EconomyConfig(startGold: Int, startLives: Int, killReward: Int, levelBonus: Int)
+/** `startGold` is the default gold at the start of every level; a level can set
+  * its own. Gold does not carry over between levels.
+  */
+case class EconomyConfig(startGold: Int, startLives: Int, killReward: Int)
 
 /** Pre-run loadout: which towers the player may bring, how many at most, and
   * the default pick. Towers outside `unlocked`/`locked` are rejected at load
@@ -83,7 +94,8 @@ case class LoadoutConfig(
     maxSelected: Int,
     defaultSelected: Vector[String],
     unlocked: Vector[String],
-    locked: Vector[String]
+    locked: Vector[String],
+    unlockCosts: Map[String, Int] = Map.empty
 )
 
 /** Out-of-run meta-progression economy: how a finished run converts progress
@@ -105,7 +117,8 @@ case class CombatConfig(
     slowFactor: Float,
     slowDuration: Float,
     breakTime: Float,
-    studyHits: Int
+    studyHits: Int,
+    puddleShockMult: Float = 1.5f
 )
 
 /** One wave of a level: a fixed enemy mix and its pacing. [[composition]] lists
@@ -119,8 +132,22 @@ case class WaveSpec(
     composition: Vector[(String, Int)]
 )
 
-/** One level: a named route plus its own explicit wave table. */
-case class LevelConfig(name: String, waves: Vector[WaveSpec], route: Route)
+/** A ground patch that amplifies shock damage while an enemy stands in it. Centre
+  * and radius are in cells.
+  */
+case class Puddle(x: Float, y: Float, radius: Float)
+
+/** One level: a named route plus its own explicit wave table. `gridSize` (cells per
+  * side) overrides the biome and board sizes when set.
+  */
+case class LevelConfig(
+    name: String,
+    waves: Vector[WaveSpec],
+    route: Route,
+    gridSize: Option[Int] = None,
+    puddles: Vector[Puddle] = Vector.empty,
+    startGold: Option[Int] = None
+)
 
 /** A fork's alternative lane. It leaves the trunk at waypoint index [[from]]
   * and re-joins it at [[to]] (`from < to`); the lane itself runs
@@ -158,7 +185,8 @@ case class Colors(
     hpBarBack: Color,
     hpBarFill: Color,
     text: Color,
-    dimText: Color
+    dimText: Color,
+    shotShock: Color = Color(0.5f, 0.85f, 1f, 1f)
 )
 
 enum Rarity:

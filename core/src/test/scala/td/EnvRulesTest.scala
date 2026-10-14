@@ -8,7 +8,7 @@ class EnvRulesTest extends TestBase:
 
   private def enemy(run: RunContext, tpe: String, id: Long, progress: Float = 0f, hp: Float = 100f): Enemy =
     val spec = Config.enemySpec(tpe)
-    Enemy(id = id, progress = progress, hp = hp, maxHp = 100f, speed = spec.baseSpeed,
+    Enemy(id = id, progress = progress, hp = hp, maxHp = 100f, speed = spec.baseSpeed * Config.CellPx,
       tpe = tpe, level = 0, resist = spec.resist.layered(run.resistTheme))
 
   test("resist theme layers additively and leaves other kinds untouched") {
@@ -89,5 +89,9 @@ class EnvRulesTest extends TestBase:
       val w = Sim.initial(runFor(biomeId)).copy(breakTimer = Config.MaxStepDt)
       Sim.step(w, Config.MaxStepDt, Vector.empty).spawnQueue.size
     assertEquals(waveQueueSize("tutorial"), 6)
-    assertEquals(waveQueueSize("cardboard-wastes"), 11)
+    // Recycling scales each group of the first global wave by swarmSizeMult.
+    val mult     = Config.game.biomes.find(_.id == "cardboard-wastes").flatMap(_.environment).get.params("swarmSizeMult")
+    val expected = Config.game.levels.head.waves.head.composition.map((_, n) => math.round(n * mult)).sum
+    assert(expected > Config.game.levels.head.waves.head.count)
+    assertEquals(waveQueueSize("cardboard-wastes"), expected)
   }

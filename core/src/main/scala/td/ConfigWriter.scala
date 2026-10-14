@@ -70,11 +70,11 @@ object ConfigWriter:
     )
 
   private def board(b: BoardConfig): JsonValue =
-    obj("gridSize" -> num(b.gridSize), "cellPx" -> num(b.cellPx), "panelPx" -> num(b.panelPx))
+    obj("gridSize" -> num(b.gridSize), "boardPx" -> num(b.boardPx), "panelPx" -> num(b.panelPx))
 
   private def economy(e: EconomyConfig): JsonValue =
     obj("startGold" -> num(e.startGold), "startLives" -> num(e.startLives),
-        "killReward" -> num(e.killReward), "levelBonus" -> num(e.levelBonus))
+        "killReward" -> num(e.killReward))
 
   private def meta(m: MetaConfig): JsonValue =
     obj("payoutPerLevel" -> num(m.payoutPerLevel), "payoutPerWave" -> num(m.payoutPerWave),
@@ -94,7 +94,8 @@ object ConfigWriter:
       "slowFactor"  -> num(c.slowFactor),
       "slowDuration" -> num(c.slowDuration),
       "breakTime"   -> num(c.breakTime),
-      "studyHits"   -> num(c.studyHits)
+      "studyHits"   -> num(c.studyHits),
+      "puddleShockMult" -> num(c.puddleShockMult)
     )
 
   private def i18n(i: I18nConfig): JsonValue =
@@ -105,28 +106,29 @@ object ConfigWriter:
       "maxSelected"     -> num(l.maxSelected),
       "defaultSelected" -> arr(l.defaultSelected.map(str)),
       "unlocked"        -> arr(l.unlocked.map(str)),
-      "locked"          -> arr(l.locked.map(str))
+      "locked"          -> arr(l.locked.map(str)),
+      "unlockCosts"     -> obj(l.locked.flatMap(t => l.unlockCosts.get(t).map(c => t -> num(c)))*)
     )
 
   private def tower(cfg: GameConfig, t: TowerSpec): JsonValue =
-    val px = cfg.board.cellPx
     obj(
       "name"            -> str(t.name),
       "cost"            -> num(t.cost),
       "color"           -> str(colorHex(t.color)),
-      "range"           -> num(t.range / px),
+      "range"           -> num(t.range),
       "fireInterval"    -> num(t.fireInterval),
       "damage"          -> num(t.damage),
       "projectileSpeed" -> num(t.projectileSpeed),
       "kind"            -> str(t.kind.toString),
-      "splashRadius"    -> num(t.splashRadius / px)
+      "splashRadius"    -> num(t.splashRadius)
     )
 
   private def enemy(cfg: GameConfig, e: EnemySpec): JsonValue =
-    val px = cfg.board.cellPx
     val aura = e.aura.map(a => obj(
-      "kind" -> str(a.kind.toString), "radius" -> num(a.radius / px), "magnitude" -> num(a.magnitude)
+      "kind" -> str(a.kind.toString), "radius" -> num(a.radius), "magnitude" -> num(a.magnitude)
     )).getOrElse(nullV)
+    val onDeath = e.onDeath.map { case (n, c) => obj("enemy" -> str(n), "count" -> num(c)) }.getOrElse(nullV)
+    val promotes = e.promotesTo.map(str).getOrElse(nullV)
     val side = e.sidePreference.map(s => str(s.toString)).getOrElse(nullV)
     obj(
       "name"     -> str(e.name),
@@ -137,18 +139,25 @@ object ConfigWriter:
       "resist"   -> obj(
         "kinetic" -> num(e.resist.kinetic), "fire" -> num(e.resist.fire),
         "slow" -> num(e.resist.slow), "splash" -> num(e.resist.splash),
-        "explosion" -> num(e.resist.explosion)
+        "explosion" -> num(e.resist.explosion), "shock" -> num(e.resist.shock)
       ),
       "aura"     -> aura,
       "heavy"    -> bool(e.heavy),
       "sidePreference" -> side,
       "killReward" -> num(e.killReward),
-      "speedVariance" -> num(e.speedVariance)
+      "speedVariance" -> num(e.speedVariance),
+      "boss" -> bool(e.boss),
+      "onDeath" -> onDeath,
+      "promotesTo" -> promotes,
+      "leakCost" -> num(e.leakCost)
     )
 
   private def level(l: LevelConfig): JsonValue =
+    val size    = l.gridSize.map(g => num(g)).getOrElse(nullV)
+    val puddles = arr(l.puddles.map(p => obj("x" -> num(p.x), "y" -> num(p.y), "radius" -> num(p.radius))))
     obj("name" -> str(l.name), "route" -> route(l.route),
-        "waves" -> arr(l.waves.map(wave)))
+        "waves" -> arr(l.waves.map(wave)), "gridSize" -> size, "puddles" -> puddles,
+        "startGold" -> l.startGold.map(g => num(g)).getOrElse(nullV))
 
   private def route(r: Route): JsonValue =
     obj("waypoints" -> arr(r.waypoints.map(pos)), "branches" -> arr(r.branches.map(branch)))
@@ -180,7 +189,8 @@ object ConfigWriter:
       "hoverOk" -> str(colorHex(c.hoverOk)), "hoverBad" -> str(colorHex(c.hoverBad)),
       "range" -> str(colorHex(c.range)), "buttonFill" -> str(colorHex(c.buttonFill)),
       "hpBarBack" -> str(colorHex(c.hpBarBack)), "hpBarFill" -> str(colorHex(c.hpBarFill)),
-      "text" -> str(colorHex(c.text)), "dimText" -> str(colorHex(c.dimText))
+      "text" -> str(colorHex(c.text)), "dimText" -> str(colorHex(c.dimText)),
+      "shotShock" -> str(colorHex(c.shotShock))
     )
 
   private def lighting(l: LightingConfig): JsonValue =

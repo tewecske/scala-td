@@ -2,7 +2,8 @@ package td
 
 class TwistTest extends TestBase:
 
-  private val towerCell = GridPos(0, 16)
+  /** A tower a couple of cells from where a fresh enemy starts on level one. */
+  private def towerCell: GridPos = cellNear(Grid.cellAt(Grid.positionAt(0f, 0)._1, Grid.positionAt(0f, 0)._2))
 
   private def startEnemy(id: Long, hp: Float = 100f, tpe: String = "Cardboard"): Enemy =
     Enemy(id = id, progress = 0f, hp = hp, maxHp = 100f, speed = 0f, tpe = tpe,
@@ -65,7 +66,7 @@ class TwistTest extends TestBase:
     val fired = Sim.step(worldWith(Vector("shaped-charge"), Vector(t), Vector(e)), Config.MaxStepDt, Vector.empty)
     assert(fired.shots.nonEmpty)
     val p = fired.shots.head
-    assert(p.splashRadius < Config.towerSpec("Jack-in-the-Box").splashRadius)
+    assert(p.splashRadius < Config.towerSpec("Jack-in-the-Box").splashRadius * Config.CellPx)
     assert(p.splashRadius > 0f)
     assert(p.armorPierce)
   }

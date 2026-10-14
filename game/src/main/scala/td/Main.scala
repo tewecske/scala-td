@@ -105,6 +105,8 @@ class TdGame extends ApplicationAdapter:
         if clicked && Ui.Play.contains(mx, my) then newRun()
         else if clicked && Ui.Tutorial.contains(mx, my) then startTutorial()
         else if clicked && Ui.Talents.contains(mx, my) then Phase.Talents(Meta.active())
+        else if clicked && Ui.Replays.contains(mx, my) then replayList(0)
+        else if clicked && Ui.Progress.contains(mx, my) then progressView(0)
         else if Gdx.input.isKeyJustPressed(Input.Keys.T) then startTutorial()
         else Phase.Menu
 
@@ -131,13 +133,17 @@ class TdGame extends ApplicationAdapter:
 
       case Phase.Briefing(w) =>
         gfx.drawBriefing(w, dev)
-        if clicked && Ui.BriefingBegin.contains(mx, my) then Phase.Loadout(w.run, Config.Loadout.defaultSelected)
+        if clicked && Ui.BriefingBegin.contains(mx, my) then Phase.Loadout(w.run, Config.Loadout.defaultSelected, Meta.active())
         else if clicked && Ui.BriefingBack.contains(mx, my) then Phase.Menu
         else if Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) then Phase.Menu
         else Phase.Briefing(w)
 
-      case Phase.Loadout(run, sel) =>
-        gfx.drawLoadout(run, sel, dev)
+      case Phase.Loadout(run, sel, meta) =>
+        gfx.drawLoadout(run, sel, meta, dev)
+        val unlocked = Meta.unlockedTowers(meta)
+        def flash(msg: String): Unit =
+          notice = Some(msg)
+          noticeTimer = NoticeTime
         if clicked && Ui.LoadoutConfirm.contains(mx, my) then
           Phase.Playing(Sim.initial(run.copy(loadout = sel)))
         else if clicked && Ui.LoadoutBack.contains(mx, my) then Phase.Menu
@@ -146,15 +152,22 @@ class TdGame extends ApplicationAdapter:
           clickedRow match
             case Some(i) =>
               val t = Config.game.towers(i)
-              if Config.Loadout.locked.contains(t.name) then Phase.Loadout(run, sel)
-              else if sel.contains(t.name) then Phase.Loadout(run, sel.filter(_ != t.name))
-              else if sel.size < Config.Loadout.maxSelected then Phase.Loadout(run, sel :+ t.name)
+              if !unlocked.contains(t.name) then
+                Meta.purchaseTower(meta, t.name) match
+                  case Right(next) =>
+                    Meta.save(next)
+                    flash(s"${t.name} unlocked")
+                    Phase.Loadout(run, sel, next)
+                  case Left(err) =>
+                    flash(err)
+                    Phase.Loadout(run, sel, meta)
+              else if sel.contains(t.name) then Phase.Loadout(run, sel.filter(_ != t.name), meta)
+              else if sel.size < Config.Loadout.maxSelected then Phase.Loadout(run, sel :+ t.name, meta)
               else
-                notice = Some("loadout is full")
-                noticeTimer = NoticeTime
-                Phase.Loadout(run, sel)
-            case None => Phase.Loadout(run, sel)
-        else Phase.Loadout(run, sel)
+                flash("loadout is full")
+                Phase.Loadout(run, sel, meta)
+            case None => Phase.Loadout(run, sel, meta)
+        else Phase.Loadout(run, sel, meta)
 
       case Phase.Recap(won, level, wave, lives, gold, newEntries, knownEntries, death) =>
         gfx.drawRecap(won, level, wave, lives, gold, newEntries, knownEntries, death, dev)
@@ -162,10 +175,55 @@ class TdGame extends ApplicationAdapter:
         else if clicked && Ui.Menu.contains(mx, my) then Phase.Menu
         else Phase.Recap(won, level, wave, lives, gold, newEntries, knownEntries, death)
 
+      case Phase.ProgressView(rows, page) =>
+        gfx.drawProgress(rows, page, dev)
+        if clicked && Ui.ReplayBack.contains(mx, my) then Phase.Menu
+        else if clicked && Ui.ReplayPrev.contains(mx, my) && page > 0 then Phase.ProgressView(rows, page - 1)
+        else if clicked && Ui.ReplayNext.contains(mx, my) && page < Ui.replayPages(rows.size) - 1 then
+          Phase.ProgressView(rows, page + 1)
+        else Phase.ProgressView(rows, page)
+
+      case Phase.ReplayList(files, page) =>
+        gfx.drawReplays(files, page, dev)
+        val rowAt = (0 until Ui.ReplaysPerPage).find { i =>
+          Ui.ReplayRow(i).contains(mx, my) && page * Ui.ReplaysPerPage + i < files.size
+        }
+        if clicked && Ui.ReplayBack.contains(mx, my) then Phase.Menu
+        else if clicked && Ui.ReplayPrev.contains(mx, my) && page > 0 then Phase.ReplayList(files, page - 1)
+        else if clicked && Ui.ReplayNext.contains(mx, my) && page < Ui.replayPages(files.size) - 1 then
+          Phase.ReplayList(files, page + 1)
+        else if clicked && rowAt.isDefined then startReplay(files, page, files(page * Ui.ReplaysPerPage + rowAt.get)._2)
+        else Phase.ReplayList(files, page)
+
+      case Phase.Replaying(pb0) =>
+        if Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) then
+          Config.reload()
+          replayList(0)
+        else
+          val pb1 =
+            if Gdx.input.isKeyJustPressed(Input.Keys.SPACE) then pb0.copy(paused = !pb0.paused)
+            else pb0
+          val pb2 =
+            if Gdx.input.isKeyJustPressed(Input.Keys.RIGHT) then pb1.copy(speed = stepSpeed(pb1.speed, 1))
+            else if Gdx.input.isKeyJustPressed(Input.Keys.LEFT) then pb1.copy(speed = stepSpeed(pb1.speed, -1))
+            else pb1
+          val (pb3, hits, names) = pb2.advance(dt)
+          gfx.feedHits(hits)
+          gfx.feedNames(names, knownNames)
+          val hud    = Messages.t("replay.hud", s"${pb3.speed}x")
+          val status =
+            if pb3.finished then Messages.t("replay.finished")
+            else if pb3.paused then Messages.t("replay.paused")
+            else ""
+          val line = if status.isEmpty then hud else s"$hud  $status"
+          if pb3.world.draft.isDefined then gfx.drawDraft(pb3.world, dev)
+          else gfx.drawGame(pb3.world, None, false, Config.game.towers.head, Some(line), dev)
+          Phase.Replaying(pb3)
+
       case Phase.Playing(w) =>
         // The board (size/route/colors) is biome-specific, so resolve the active
         // biome before any grid math (hover, build validity) or the sim step.
-        Config.setActiveBiome(w.run.biome)
+        Config.setActive(w.run.biome, w.level)
         // ESC opens the pause menu (Phase.Paused). P does a *soft* pause: the
         // sim freezes but the screen stays live and every action (build, draft,
         // dev cheats) still works.
@@ -258,6 +316,35 @@ class TdGame extends ApplicationAdapter:
         else if clicked && Ui.Exit.contains(mx, my) then Phase.Menu
         else Phase.Paused(w)
 
+  private def progressView(page: Int): Phase =
+    val rows = ProgressLog.summarize(ProgressLog.DefaultPath, None, None).getOrElse(Vector.empty)
+    Phase.ProgressView(rows, page)
+
+  private def replayList(page: Int): Phase =
+    Phase.ReplayList(ReplayStore.list(ReplayStore.DefaultDir), page)
+
+  /** Plays a saved game on its own config snapshot. The snapshot is restored when
+    * the player leaves the replay (ESC), so the rest of the game is untouched.
+    */
+  private def startReplay(files: Vector[(String, Replay)], page: Int, r: Replay): Phase =
+    ReplayStore.loadConfig(ReplayStore.DefaultDir, r.config) match
+      case Right(cfg) =>
+        Config.use(cfg)
+        Config.clearActiveBiome()
+        Grid.reset()
+        gfx.clearFx()
+        Phase.Replaying(Playback.start(r))
+      case Left(_) =>
+        notice = Some(Messages.t("replay.configMissing"))
+        noticeTimer = NoticeTime
+        Phase.ReplayList(files, page)
+
+  private def stepSpeed(speed: Double, dir: Int): Double =
+    val i = Playback.Speeds.indexWhere(_ == speed) match
+      case -1 => Playback.Speeds.indexOf(1.0)
+      case k  => k
+    Playback.Speeds(math.max(0, math.min(Playback.Speeds.size - 1, i + dir)))
+
   /** Every run starts from a clean World, so nothing leaks across retries. */
   private def newRun(): Phase =
     fast = false
@@ -281,7 +368,7 @@ class TdGame extends ApplicationAdapter:
 
   /** Run ended: build the recap (new vs known entries, plus a death summary). */
   private def toRecap(w: World): Phase =
-    Config.setActiveBiome(w.run.biome)
+    Config.setActive(w.run.biome, w.level)
     Meta.bankRun(w)
     val after = Journal.load().getOrElse(JournalData.empty).entries
     val newEntries   = after.filterNot(startEntries.contains)
@@ -290,7 +377,7 @@ class TdGame extends ApplicationAdapter:
     Phase.Recap(w.won, w.level, w.wave, w.lives, w.gold, newEntries, knownEntries, death)
 
   private def damageKinds: Vector[DamageKind] =
-    Vector(DamageKind.Kinetic, DamageKind.Fire, DamageKind.Slow, DamageKind.Splash, DamageKind.Explosion)
+    Vector(DamageKind.Kinetic, DamageKind.Fire, DamageKind.Slow, DamageKind.Splash, DamageKind.Explosion, DamageKind.Shock)
 
   private def dominantKind(res: Resistances): Option[DamageKind] =
     damageKinds.maxBy(res(_)) match

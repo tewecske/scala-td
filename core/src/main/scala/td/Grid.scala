@@ -30,33 +30,19 @@ object Grid:
       points: Vector[(Float, Float)],
       cumulative: Vector[Float],
       length: Float,
-      branches: Vector[BranchLane]
+      branches: Vector[BranchLane],
+      puddles: Vector[(Float, Float, Float)]
   )
-
-  @volatile private var cachedSizeFor: (GameConfig, Option[String]) | Null = null
-  @volatile private var cachedSize: Int                                       = 0
 
   @volatile private var cachedRouteFor: (GameConfig, Option[String], Int) | Null = null
   @volatile private var cachedRoute: Derived | Null                              = null
 
-  /** Drops all cached derived routes/sizes. Used by tests between cases so a
-    * stale active-biome key can never leak a prior run's map into the next.
+  /** Drops all cached derived routes. Used by tests between cases so a stale
+    * active-biome key can never leak a prior run's map into the next.
     */
   def reset(): Unit =
-    cachedSizeFor = null
-    cachedSize    = 0
     cachedRouteFor = null
     cachedRoute    = null
-
-  private def size: Int =
-    val cfg = Config.game
-    val key = (cfg, Config.activeBiomeId)
-    if (cachedSizeFor != null) && (cachedSizeFor.nn == key) then cachedSize
-    else
-      val s = Config.GridSize
-      cachedSizeFor = key
-      cachedSize = s
-      s
 
   private def routeDerived(level: Int): Derived =
     val cfg = Config.game
@@ -69,14 +55,17 @@ object Grid:
       d
 
   private def build(cfg: GameConfig, level: Int): Derived =
-    val route = Config.levelAt(level).route
+    val lvl   = Config.levelAt(level)
+    val route = lvl.route
     val wp    = route.waypoints
+    val cell  = Config.cellPxOf(level)
+    def px(p: GridPos): (Float, Float) = ((p.x + 0.5f) * cell, (p.y + 0.5f) * cell)
 
     val trunkCells = wp.indices
       .dropRight(1)
       .flatMap(i => cellsBetween(wp(i), wp(i + 1)))
       .toSet
-    val points = wp.map(p => (p.centerX, p.centerY))
+    val points = wp.map(px)
     val cumulative = points.indices
       .dropRight(1)
       .map { i =>
@@ -90,7 +79,7 @@ object Grid:
 
     val branches = route.branches.map { b =>
       val laneWp        = wp(b.from) +: b.waypoints :+ wp(b.to)
-      val lanePoints    = laneWp.map(p => (p.centerX, p.centerY))
+      val lanePoints    = laneWp.map(px)
       val laneCumulative = lanePoints.indices
         .dropRight(1)
         .map { i =>
@@ -108,9 +97,14 @@ object Grid:
       laneWp.indices.dropRight(1).flatMap(i => cellsBetween(laneWp(i), laneWp(i + 1)))
     }.toSet
 
-    Derived(Config.GridSize, trunkCells ++ branchCells, points, cumulative, length, branches)
+    val puddles = lvl.puddles.map(p => (p.x * cell, p.y * cell, p.radius * cell))
 
-  def Size: Int = size
+    Derived(Config.gridSizeOf(level), trunkCells ++ branchCells, points, cumulative, length, branches, puddles)
+
+  def Size: Int = Config.GridSize
+
+  /** Ground patches of a level as (centre x, centre y, radius) in world units. */
+  def puddles(level: Int): Vector[(Float, Float, Float)] = routeDerived(level).puddles
 
   def inBounds(p: GridPos): Boolean =
     p.x >= 0 && p.x < Size && p.y >= 0 && p.y < Size

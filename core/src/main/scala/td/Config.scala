@@ -26,32 +26,63 @@ object Config:
       case Right(cfg) => current = cfg; true
       case Left(_)    => false
 
-  // -- active biome (per-run board/level/color overrides) ---------------------
-  // Most of the game is played on the global board/levels/colors; a few biomes
-  // (the tutorial) override them with their own smaller map. The active biome
-  // is the run's biome, set from Sim/Render/RunGen so the right source of truth
-  // resolves; when None the global values are used (the menu, real biomes).
+  /** Swaps in an in-memory config without touching disk (balance experiments). */
+  def use(cfg: GameConfig): Unit = current = cfg
+
+  // -- active context (per-run board/level/color overrides) ------------------
+  // Most of the game is played on the global levels; biomes can override the
+  // level list, and levels can override the grid size. The active context is the
+  // run's biome and the current level, set by the simulation (and the renderer and
+  // input) before any grid math. When unset, the global values are used.
 
   @volatile private var _activeBiomeId: Option[String] = None
+  @volatile private var _activeLevel: Option[Int] = None
 
   def activeBiomeId: Option[String] = _activeBiomeId
 
-  def setActiveBiome(id: String): Unit = _activeBiomeId = Some(id)
-  def clearActiveBiome(): Unit         = _activeBiomeId = None
+  def setActive(biome: String, level: Int): Unit =
+    _activeBiomeId = Some(biome)
+    _activeLevel = Some(level)
 
-  /** Runs `f` with `id` active, restoring the previous active biome afterwards. */
+  def setActiveBiome(id: String): Unit = _activeBiomeId = Some(id)
+  def clearActiveBiome(): Unit =
+    _activeBiomeId = None
+    _activeLevel = None
+
+  /** Runs `f` in the given context, restoring the previous one afterwards. */
+  def withContext[A](biome: String, level: Int)(f: => A): A =
+    val prevBiome = _activeBiomeId
+    val prevLevel = _activeLevel
+    setActive(biome, level)
+    try f finally
+      _activeBiomeId = prevBiome
+      _activeLevel = prevLevel
+
   def withBiome[A](id: String)(f: => A): A =
-    val prev = _activeBiomeId
+    val prevBiome = _activeBiomeId
+    val prevLevel = _activeLevel
     _activeBiomeId = Some(id)
-    try f finally _activeBiomeId = prev
+    _activeLevel = None
+    try f finally
+      _activeBiomeId = prevBiome
+      _activeLevel = prevLevel
 
   private def activeBiome: Option[Biome] =
     activeBiomeId.flatMap(id => current.biomes.find(_.id == id))
 
   // -- board -----------------------------------------------------------------
-  def GridSize: Int  = activeBiome.flatMap(_.gridSize).getOrElse(current.board.gridSize)
-  def CellPx: Float  = current.board.cellPx
-  def BoardPx: Float = GridSize * CellPx
+  // The window is fixed: every level's grid divides the same square board.
+  /** Cells per side of the given level in the active biome (level, then biome, then board). */
+  def gridSizeOf(level: Int): Int =
+    levels.lift(level).flatMap(_.gridSize)
+      .orElse(activeBiome.flatMap(_.gridSize))
+      .getOrElse(current.board.gridSize)
+  def GridSize: Int =
+    _activeLevel.map(gridSizeOf).getOrElse(
+      activeBiome.flatMap(_.gridSize).orElse(levels.headOption.flatMap(_.gridSize)).getOrElse(current.board.gridSize))
+  def BoardPx: Float = current.board.boardPx
+  def CellPx: Float  = BoardPx / GridSize
+  def cellPxOf(level: Int): Float = BoardPx / gridSizeOf(level)
   def PanelPx: Float = current.board.panelPx
   def WorldW: Float  = BoardPx + PanelPx
   def WorldH: Float  = BoardPx
@@ -60,7 +91,6 @@ object Config:
   def StartGold: Int  = current.economy.startGold
   def StartLives: Int = current.economy.startLives
   def KillReward: Int = current.economy.killReward
-  def LevelBonus: Int = current.economy.levelBonus
 
   // -- meta progression --------------------------------------------------------
   def PayoutPerLevel: Int = current.meta.payoutPerLevel
@@ -83,6 +113,7 @@ object Config:
   def FastForward: Int    = current.combat.fastForward
   def BreakTime: Float    = current.combat.breakTime
   def StudyHits: Int      = current.combat.studyHits
+  def PuddleShockMult: Float = current.combat.puddleShockMult
 
   // -- specs ------------------------------------------------------------------
   def towerSpec(name: String): TowerSpec =
@@ -129,6 +160,9 @@ object Config:
   def levels: Vector[LevelConfig] = activeBiome.filter(_.levels.nonEmpty).map(_.levels).getOrElse(current.levels)
   def levelCount: Int             = levels.size
 
+  /** Gold the player starts the given level with (gold is reset every level). */
+  def levelStartGold(idx: Int): Int = levelAt(idx).startGold.getOrElse(StartGold)
+
   /** Clamped level lookup so the sim can never index out of bounds on a reload
     * or a config that shrank mid-run.
     */
@@ -150,6 +184,7 @@ object Config:
   def ShotSplashColor: Color  = current.colors.shotSplash
   def ShotBoomColor: Color    = current.colors.shotBoom
   def BurnTint: Color     = current.colors.burnTint
+  def ShotShockColor: Color = current.colors.shotShock
   def SlowTint: Color     = current.colors.slowTint
   def BuffTint: Color     = current.colors.buffTint
   def PanelColor: Color   = current.colors.panel
@@ -201,14 +236,24 @@ object Ui:
   private def bh = 52f
   private def cx = Config.WorldW / 2 - bw / 2
 
-  def Play  = Rect(cx, 300f, bw, bh)
-  def Tutorial = Rect(cx, 240f, bw, bh)
-  def Talents = Rect(cx, 180f, bw, bh)
+  def Play  = Rect(cx, 320f, bw, bh)
+  def Tutorial = Rect(cx, 262f, bw, bh)
+  def Talents = Rect(cx, 204f, bw, bh)
   def Retry = Rect(cx, 250f, bw, bh)
   def Menu  = Rect(cx, 180f, bw, bh)
   def PlayAgain = Rect(cx, 250f, bw, bh)
   def Resume = Rect(cx, 250f, bw, bh)
   def Exit   = Rect(cx, 180f, bw, bh)
+
+  /** Saved-replay list: eight rows per page, with paging and a back button. */
+  def Replays = Rect(cx, 146f, bw, bh)
+  def Progress = Rect(cx, 88f, bw, bh)
+  def ReplayRow(i: Int): Rect = Rect(cx - 220f, 470f - i * 48f, 440f, 40f)
+  def ReplayPrev: Rect = Rect(cx - 240f, 56f, 140f, bh)
+  def ReplayBack: Rect = Rect(cx - 70f, 56f, 140f, bh)
+  def ReplayNext: Rect = Rect(cx + 100f, 56f, 140f, bh)
+  val ReplaysPerPage: Int = 8
+  def replayPages(count: Int): Int = math.max(1, (count + ReplaysPerPage - 1) / ReplaysPerPage)
 
   /** Pre-run briefing: a BEGIN button and a back-to-menu escape. */
   def BriefingBegin = Rect(cx, 120f, bw, bh)
@@ -219,7 +264,7 @@ object Ui:
   def DraftReroll: Rect        = Rect(cx, 120f, bw, bh)
 
   /** Pre-run loadout picker: one row per tower plus confirm/back buttons. */
-  def LoadoutRow(i: Int): Rect = Rect(cx - 200f, 430f - i * 72f, 400f, 56f)
+  def LoadoutRow(i: Int): Rect = Rect(cx - 200f, 456f - i * 58f, 400f, 50f)
   def LoadoutConfirm: Rect     = Rect(cx, 110f, bw, bh)
   def LoadoutBack: Rect        = Rect(cx, 56f, bw, bh)
 

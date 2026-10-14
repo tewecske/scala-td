@@ -1,0 +1,6 @@
+# Balance levels 1 and 2 against the spender, then record games to watch in the GUI.
+# Run with:  scripts/td.sh batch scripts/stage-pipeline.txt
+stage --level 1,2
+bench --config data/balance/config.json --bot spender --level 1 --games 50 --record 2
+bench --config data/balance/config.json --bot spender --level 2 --games 50 --record 2
+run --config data/balance/config.json --bot spender --record

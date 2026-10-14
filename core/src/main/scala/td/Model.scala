@@ -10,7 +10,8 @@ case class Resistances(
     fire: Float = 0f,
     slow: Float = 0f,
     splash: Float = 0f,
-    explosion: Float = 0f
+    explosion: Float = 0f,
+    shock: Float = 0f
 ):
   def apply(kind: DamageKind): Float = kind match
     case DamageKind.Kinetic   => kinetic
@@ -18,6 +19,7 @@ case class Resistances(
     case DamageKind.Slow      => slow
     case DamageKind.Splash    => splash
     case DamageKind.Explosion => explosion
+    case DamageKind.Shock     => shock
 
   /** Base resist plus the run's resist theme, clamped to [0, 1] (1 = immune).
     * Only the primary/secondary kinds gain; all others pass through untouched.
@@ -34,11 +36,12 @@ case class Resistances(
       c(fire, DamageKind.Fire),
       c(slow, DamageKind.Slow),
       c(splash, DamageKind.Splash),
-      c(explosion, DamageKind.Explosion)
+      c(explosion, DamageKind.Explosion),
+      c(shock, DamageKind.Shock)
     )
 
 enum AuraKind:
-  case SpeedBoost, Armor
+  case SpeedBoost, Armor, TowerChill
 
 /** A passive radiating from a buffing enemy to nearby allies. [[magnitude]] is
   * a +fraction for speed (0.25 = +25%) or a damage-reduction fraction for armor
@@ -48,7 +51,7 @@ case class Aura(kind: AuraKind, radius: Float, magnitude: Float)
 
 /** What a projectile does when it lands. */
 enum DamageKind:
-  case Kinetic, Fire, Slow, Splash, Explosion
+  case Kinetic, Fire, Slow, Splash, Explosion, Shock
 
 /** An enemy is located by how far it has walked along the route, not by a tile.
   * That makes movement smooth, "furthest along" targeting a `maxBy`, and a leak
@@ -197,8 +200,11 @@ enum Command:
 enum Phase:
   case Menu
   case Briefing(w: World)
-  case Loadout(run: RunContext, selected: Vector[String])
+  case Loadout(run: RunContext, selected: Vector[String], meta: MetaData)
   case Talents(data: MetaData)
+  case ProgressView(rows: Vector[ProgressLog.Summary], page: Int)
+  case ReplayList(files: Vector[(String, Replay)], page: Int)
+  case Replaying(playback: Playback)
   case Playing(w: World)
   case Paused(w: World)
   case Recap(

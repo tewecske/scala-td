@@ -30,6 +30,9 @@ lazy val game = (project in file("game"))
     name := "game",
     // LWJGL3 needs its own JVM; running inside sbt's process is unreliable.
     fork := true,
+    // Forked runs start in the repo root so save data (data/) and the config
+    // override are shared by the GUI and the headless tools.
+    run / baseDirectory := (ThisBuild / baseDirectory).value,
     libraryDependencies ++= Seq(
       "com.badlogicgames.gdx" % "gdx-backend-lwjgl3" % gdxVersion,
       "com.badlogicgames.gdx" % "gdx-platform"       % gdxVersion classifier "natives-desktop"
@@ -51,7 +54,9 @@ lazy val headless = (project in file("headless"))
     name := "headless",
     // Separate JVM so sys.exit(code) kills only the run, not sbt.
     fork := true,
-    Compile / mainClass := Some("td.HeadlessMain")
+    Compile / mainClass := Some("td.HeadlessMain"),
+    run / baseDirectory := (ThisBuild / baseDirectory).value,
+    libraryDependencies += "org.scalameta" %% "munit" % "1.0.4" % Test
   )
 
 lazy val root = (project in file("."))

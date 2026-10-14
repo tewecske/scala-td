@@ -81,8 +81,9 @@ class MetaTest extends TestBase:
       val run = RunContext(seed = 1L, talents = talents)
       val e = Enemy(id = 1L, progress = 50f, hp = 100f, maxHp = 100f, speed = 0f,
         tpe = "Cardboard", level = 0, resist = Config.enemySpec("Cardboard").resist)
+      val (ex, ey) = e.pos
       val w = Sim.initial(run).copy(
-        towers = Vector(Tower(GridPos(0, 16), 0f, "Cuboid")),
+        towers = Vector(Tower(cellNear(Grid.cellAt(ex, ey)), 0f, "Cuboid")),
         enemies = Vector(e),
         spawnQueue = Vector.empty,
         breakTimer = 999f
@@ -104,4 +105,33 @@ class MetaTest extends TestBase:
       Sim.step(w, Config.MaxStepDt, Vector.empty).gold
     assertEquals(goldAfterKill(Vector.empty) - Config.StartGold, Config.KillReward)
     assertEquals(goldAfterKill(Vector("filler-gold")) - Config.StartGold, math.round(Config.KillReward * 1.15f))
+  }
+
+  test("save/load round-trips bought towers") {
+    val path = tmpPath("towers")
+    val data = MetaData(balance = 5, talents = Vector.empty, towers = Vector("Static Box"))
+    Meta.save(path, data)
+    assertEquals(Meta.load(path), Right(data))
+  }
+
+  test("a locked tower is bought with meta currency and joins the unlocked set") {
+    val locked = Config.Loadout.locked.head
+    val cost   = Config.Loadout.unlockCosts(locked)
+    assert(!Meta.unlockedTowers(MetaData.empty).contains(locked))
+    val next = Meta.purchaseTower(MetaData(cost, Vector.empty), locked).toOption.get
+    assertEquals(next.balance, 0)
+    assert(Meta.unlockedTowers(next).contains(locked))
+  }
+
+  test("tower purchase rejects short balance, duplicates and starting towers") {
+    val locked = Config.Loadout.locked.head
+    val cost   = Config.Loadout.unlockCosts(locked)
+    assert(Meta.purchaseTower(MetaData(cost - 1, Vector.empty), locked).isLeft)
+    val owned = MetaData(cost * 2, Vector.empty, Vector(locked))
+    assert(Meta.purchaseTower(owned, locked).isLeft)
+    assert(Meta.purchaseTower(owned, Config.Loadout.unlocked.head).isLeft)
+  }
+
+  test("every locked tower in the bundled config has a price") {
+    Config.Loadout.locked.foreach(t => assert(Config.Loadout.unlockCosts.contains(t), t))
   }

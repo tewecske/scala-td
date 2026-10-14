@@ -95,6 +95,7 @@ final class ConfigEditorFrame extends JFrame:
   private var augmentsFs: Vector[(Vector[Field], Vector[String])] = Vector.empty
   private var talentsFs: Vector[(Vector[Field], Vector[String])] = Vector.empty
   private var loadoutCfg: LoadoutConfig = Config.Loadout
+  private var loadedEnemies: Vector[EnemySpec] = Vector.empty
 
   setTitle("Config Editor")
   setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE)
@@ -116,6 +117,12 @@ final class ConfigEditorFrame extends JFrame:
         JOptionPane.showMessageDialog(this, "cwd config broken:\n" + err, "Config Editor", JOptionPane.WARNING_MESSAGE)
         ConfigLoader.bundled()
 
+  /** The form does not edit boss, death-spawn or promotion yet; keep them from the loaded file. */
+  private def keepUneditedFields(e: EnemySpec): EnemySpec =
+    loadedEnemies.find(_.name == e.name)
+      .map(o => e.copy(boss = o.boss, onDeath = o.onDeath, promotesTo = o.promotesTo, leakCost = o.leakCost))
+      .getOrElse(e)
+
   private def buildWith(cfg: GameConfig): Unit =
     boardFs   = buildBoard(cfg.board)
     economyFs = buildEconomy(cfg.economy)
@@ -123,8 +130,9 @@ final class ConfigEditorFrame extends JFrame:
     draftFs   = buildDraft(cfg.draft)
     combatFs  = buildCombat(cfg.combat)
     i18nFs    = buildI18n(cfg.i18n)
-    towersFs  = cfg.towers.map(buildTower(cfg.board.cellPx, _))
-    enemiesFs = cfg.enemies.map(buildEnemy(cfg.board.cellPx, _))
+    towersFs  = cfg.towers.map(buildTower)
+    enemiesFs = cfg.enemies.map(buildEnemy)
+    loadedEnemies = cfg.enemies
     levelsFs  = cfg.levels.map(l => (buildLevel(l), l.waves.size))
     colorsFs  = buildColors(cfg.colors)
     lightingFs = buildLighting(cfg.lighting)
@@ -200,14 +208,13 @@ final class ConfigEditorFrame extends JFrame:
   private def readAll(): Either[String, GameConfig] =
     for
       board   <- readBoard(boardFs)
-      px      = board.cellPx
       economy <- readEconomy(economyFs)
       meta    <- readMeta(metaFs)
       draft   <- readDraft(draftFs)
       combat  <- readCombat(combatFs)
       i18n    <- readI18n(i18nFs)
-      towers  <- sequence(towersFs.map(readTower(px, _)))
-      enemies <- sequence(enemiesFs.map(readEnemy(px, _)))
+      towers  <- sequence(towersFs.map(readTower))
+      enemies <- sequence(enemiesFs.map(readEnemy)).map(_.map(keepUneditedFields))
       levels  <- sequence(levelsFs.map { (fs, wc) => readLevel(fs, wc) })
        colors  <- readColors(colorsFs)
       lighting <- readLighting(lightingFs)
@@ -259,7 +266,7 @@ final class ConfigEditorFrame extends JFrame:
 
   private def buildBoard(b: BoardConfig): Vector[Field] = Vector(
     IntField("gridSize", 1, Int.MaxValue, b.gridSize),
-    FloatField("cellPx", 1f, 10000f, b.cellPx),
+    FloatField("boardPx", 100f, 10000f, b.boardPx),
     FloatField("panelPx", 0f, 10000f, b.panelPx)
   )
 
@@ -273,8 +280,7 @@ final class ConfigEditorFrame extends JFrame:
   private def buildEconomy(e: EconomyConfig): Vector[Field] = Vector(
     IntField("startGold", 0, Int.MaxValue, e.startGold),
     IntField("startLives", 1, Int.MaxValue, e.startLives),
-    IntField("killReward", 0, Int.MaxValue, e.killReward),
-    IntField("levelBonus", 0, Int.MaxValue, e.levelBonus)
+    IntField("killReward", 0, Int.MaxValue, e.killReward)
   )
 
   private def readEconomy(fs: Vector[Field]): Either[String, EconomyConfig] =
@@ -282,8 +288,7 @@ final class ConfigEditorFrame extends JFrame:
       g  <- fs(0).asInstanceOf[IntField].read
       l  <- fs(1).asInstanceOf[IntField].read
       kr <- fs(2).asInstanceOf[IntField].read
-      lb <- fs(3).asInstanceOf[IntField].read
-    yield EconomyConfig(g, l, kr, lb)
+    yield EconomyConfig(g, l, kr)
 
   private def buildMeta(m: MetaConfig): Vector[Field] = Vector(
     IntField("payoutPerLevel", 0, Int.MaxValue, m.payoutPerLevel),
@@ -351,19 +356,19 @@ final class ConfigEditorFrame extends JFrame:
 
   // -- towers -----------------------------------------------------------------
 
-  private def buildTower(px: Float, t: TowerSpec): Vector[Field] = Vector(
+  private def buildTower(t: TowerSpec): Vector[Field] = Vector(
     StringField("name", t.name),
     IntField("cost", 0, Int.MaxValue, t.cost),
     ColorField("color", t.color),
-    FloatField("range (cells)", 0f, 1000f, t.range / px),
+    FloatField("range (cells)", 0f, 1000f, t.range),
     FloatField("fireInterval", 0.0001f, 1000f, t.fireInterval),
     FloatField("damage", 0f, 100000f, t.damage),
     FloatField("projectileSpeed", 0f, 100000f, t.projectileSpeed),
     EnumField("kind", DamageKind.values.map(_.toString).toVector, t.kind.toString),
-    FloatField("splashRadius (cells)", 0f, 1000f, t.splashRadius / px)
+    FloatField("splashRadius (cells)", 0f, 1000f, t.splashRadius)
   )
 
-  private def readTower(px: Float, fs: Vector[Field]): Either[String, TowerSpec] =
+  private def readTower(fs: Vector[Field]): Either[String, TowerSpec] =
     for
       name <- fs(0).asInstanceOf[StringField].read
       cost <- fs(1).asInstanceOf[IntField].read
@@ -374,14 +379,14 @@ final class ConfigEditorFrame extends JFrame:
       ps   <- fs(6).asInstanceOf[FloatField].read
       kind <- fs(7).asInstanceOf[EnumField].read
       spl  <- fs(8).asInstanceOf[FloatField].read
-    yield TowerSpec(name, cost, col, rng * px, fi, dmg, ps,
-                    DamageKind.values.find(_.toString == kind).get, spl * px)
+    yield TowerSpec(name, cost, col, rng, fi, dmg, ps,
+                    DamageKind.values.find(_.toString == kind).get, spl)
 
   // -- enemies ----------------------------------------------------------------
 
   private val NoneName = "None"
 
-  private def buildEnemy(px: Float, e: EnemySpec): Vector[Field] = Vector(
+  private def buildEnemy(e: EnemySpec): Vector[Field] = Vector(
     StringField("name", e.name),
     FloatField("baseHp", 0f, 10000000f, e.baseHp),
     FloatField("baseSpeed", 0f, 100000f, e.baseSpeed),
@@ -394,14 +399,14 @@ final class ConfigEditorFrame extends JFrame:
     FloatField("resist.explosion", 0f, 1f, e.resist.explosion),
     EnumField("aura.kind", NoneName +: AuraKind.values.map(_.toString).toVector,
               e.aura.map(_.kind.toString).getOrElse(NoneName)),
-    FloatField("aura.radius (cells)", 0f, 1000f, e.aura.map(_.radius / px).getOrElse(0f)),
+    FloatField("aura.radius (cells)", 0f, 1000f, e.aura.map(_.radius).getOrElse(0f)),
     FloatField("aura.magnitude", 0f, 100f, e.aura.map(_.magnitude).getOrElse(0f)),
     BoolField("heavy", e.heavy),
     EnumField("sidePreference", NoneName +: RouteSide.values.map(_.toString).toVector,
               e.sidePreference.map(_.toString).getOrElse(NoneName))
   )
 
-  private def readEnemy(px: Float, fs: Vector[Field]): Either[String, EnemySpec] =
+  private def readEnemy(fs: Vector[Field]): Either[String, EnemySpec] =
     for
       name  <- fs(0).asInstanceOf[StringField].read
       hp    <- fs(1).asInstanceOf[FloatField].read
@@ -421,7 +426,7 @@ final class ConfigEditorFrame extends JFrame:
     yield
       val aura =
         if akind == NoneName then None
-        else Some(Aura(AuraKind.values.find(_.toString == akind).get, arad * px, amag))
+        else Some(Aura(AuraKind.values.find(_.toString == akind).get, arad, amag))
       val sidePref =
         if side == NoneName then None
         else Some(RouteSide.values.find(_.toString == side).get)

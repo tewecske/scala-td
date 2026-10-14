@@ -1,0 +1,10 @@
+# Themed campaign: balance (global stats, then each level's waves), benchmark every bot, run campaigns.
+# Run with:  scripts/td.sh batch scripts/campaign-pipeline.txt
+balance --pass both --level all --rounds 5 --eval-games 60
+bench --config data/balance/config.json --bot spender --games 100 --record 2
+bench --config data/balance/config.json --bot explorer-fresh --games 100 --record 2
+# The memory explorer twice: the second session starts from what the first one saved.
+bench --config data/balance/config.json --bot explorer --games 100
+bench --config data/balance/config.json --bot explorer --games 100 --record 2
+run --config data/balance/config.json --bot spender --record
+run --config data/balance/config.json --bot explorer --record

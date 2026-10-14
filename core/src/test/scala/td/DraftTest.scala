@@ -101,3 +101,27 @@ class DraftTest extends TestBase:
     assert(Meta.effects(Vector("reroll")).rerollUnlocked)
     assert(!Meta.effects(Vector.empty).rerollUnlocked)
   }
+
+  test("the draft never offers what the run already owns") {
+    val w      = atLastWave()
+    val round  = w.run.draftPool.slice(w.draftCursor, w.draftCursor + Config.OfferCount)
+    val owned  = round.head
+    val run    = owned match
+      case DraftOffer.Relic(id)   => w.run.copy(relics = Vector(id))
+      case DraftOffer.Augment(id) => w.run.copy(augments = Vector(id))
+    val drafted = Sim.step(w.copy(run = run), Config.MaxStepDt, Vector.empty)
+    assert(!drafted.draft.get.offers.contains(owned))
+    assertEquals(drafted.draft.get.offers.size, round.distinct.size - 1)
+  }
+
+  test("a draft with nothing left to offer is skipped instead of soft-locking") {
+    val w     = atLastWave()
+    val round = w.run.draftPool.slice(w.draftCursor, w.draftCursor + Config.OfferCount)
+    val run   = w.run.copy(
+      relics = round.collect { case DraftOffer.Relic(id) => id },
+      augments = round.collect { case DraftOffer.Augment(id) => id })
+    val next = Sim.step(w.copy(run = run), Config.MaxStepDt, Vector.empty)
+    assert(next.draft.isEmpty)
+    assertEquals(next.level, 1)
+    assertEquals(next.gold, Config.withBiome(w.run.biome)(Config.levelStartGold(1)))
+  }

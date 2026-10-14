@@ -4,8 +4,10 @@ import com.badlogic.gdx.utils.{JsonReader, JsonValue, JsonWriter}
 import java.io.{File, PrintWriter}
 import scala.io.Source
 
-/** Permanent meta-progression: currency balance + owned talent ids. */
-case class MetaData(balance: Int, talents: Vector[String])
+/** Permanent meta-progression: currency balance, owned talent ids, and towers
+  * bought out of the loadout's locked list.
+  */
+case class MetaData(balance: Int, talents: Vector[String], towers: Vector[String] = Vector.empty)
 
 object MetaData:
   val empty: MetaData = MetaData(0, Vector.empty)
@@ -17,7 +19,8 @@ case class TalentEffects(
     rangeMult: Float,
     goldMult: Float,
     loadoutSlots: Int,
-    rerollUnlocked: Boolean
+    rerollUnlocked: Boolean,
+    extraLives: Int = 0
 ):
   def owns(id: String): Boolean = owned.contains(id)
   def activeCores: Set[String] = layerIds(TalentLayer.Core)
@@ -46,6 +49,7 @@ object Meta:
     val root = JsonValue(JsonValue.ValueType.`object`)
     root.addChild("balance", JsonValue(data.balance))
     root.addChild("talents", strArray(data.talents))
+    root.addChild("towers", strArray(data.towers))
     val f = File(path)
     Option(f.getParentFile).foreach(_.mkdirs())
     val w = new PrintWriter(f)
@@ -55,7 +59,7 @@ object Meta:
   def active(): MetaData = load().getOrElse(MetaData.empty)
 
   private def parse(root: JsonValue): MetaData =
-    MetaData(root.getInt("balance", 0), strArray(root, "talents"))
+    MetaData(root.getInt("balance", 0), strArray(root, "talents"), strArray(root, "towers"))
 
   private def strArray(root: JsonValue, name: String): Vector[String] =
     val child = root.get(name)
@@ -102,6 +106,7 @@ object Meta:
       case "goldBonus"    => acc.copy(owned = owned, goldMult   = acc.goldMult   + p.getOrElse("mult", 0f))
       case "loadoutSlots" => acc.copy(owned = owned, loadoutSlots = acc.loadoutSlots + p.getOrElse("slots", 0f).toInt)
       case "reroll"       => acc.copy(owned = owned, rerollUnlocked = true)
+      case "extraLives"   => acc.copy(owned = owned, extraLives = acc.extraLives + p.getOrElse("lives", 0f).toInt)
       case _              => acc.copy(owned = owned)
 
   /** Pure purchase: validates id, duplicates, prereqs (layer gating), cost. */
@@ -123,3 +128,21 @@ object Meta:
       save(defaultPath, d)
       d
     }
+
+  // -- tower unlocks ----------------------------------------------------------
+  /** Towers the loadout picker may offer: the config's starting set plus every
+    * locked tower this profile has bought.
+    */
+  def unlockedTowers(data: MetaData): Set[String] =
+    Config.Loadout.unlocked.toSet ++ data.towers.filter(Config.Loadout.locked.contains)
+
+  /** Pure purchase of a locked tower, priced by `loadout.unlockCosts`. */
+  def purchaseTower(data: MetaData, name: String): Either[String, MetaData] =
+    if !Config.Loadout.locked.contains(name) then Left(s"tower '$name' is not locked")
+    else if data.towers.contains(name) then Left(s"tower '$name' already unlocked")
+    else
+      Config.Loadout.unlockCosts.get(name) match
+        case None => Left(s"tower '$name' cannot be bought")
+        case Some(cost) =>
+          if data.balance < cost then Left(s"tower '$name' costs $cost, balance is ${data.balance}")
+          else Right(data.copy(balance = data.balance - cost, towers = data.towers :+ name))

@@ -35,10 +35,10 @@ class ConfigTest extends TestBase:
     cfg.twists.foreach(t => assert(towerNames.contains(t.targetTower)))
   }
 
-  test("loadout config: max 3, Cuboid default, Hole Punch locked, rest unlocked") {
+  test("loadout config: max 3, Cuboid default, Hole Punch and Static Box locked, rest unlocked") {
     assertEquals(cfg.loadout.maxSelected, 3)
     assertEquals(cfg.loadout.defaultSelected, Vector("Cuboid"))
-    assertEquals(cfg.loadout.locked, Vector("Hole Punch"))
+    assertEquals(cfg.loadout.locked, Vector("Hole Punch", "Static Box"))
     val unlocked = cfg.loadout.unlocked.toSet
     assert(unlocked.contains("Cuboid"))
     assert(unlocked.contains("Matchbox"))
@@ -53,8 +53,8 @@ class ConfigTest extends TestBase:
     cfg.biomes.foreach(b => b.roster.foreach(e => assert(enemyNames.contains(e))))
   }
 
-  test("talent tree has 3 cores and prereqs resolve") {
-    assertEquals(cfg.talents.count(_.layer == TalentLayer.Core), 3)
+  test("talent tree has 4 cores and prereqs resolve") {
+    assertEquals(cfg.talents.count(_.layer == TalentLayer.Core), 4)
     cfg.talents.foreach(t => t.prereqs.foreach(p => assert(cfg.talents.exists(_.id == p))))
   }
 
@@ -89,7 +89,7 @@ class ConfigTest extends TestBase:
     val biomeSection = biomes.getOrElse(s"[ ${biomeJson("tutorial", roster)} ]")
     s"""{
   "board": { "gridSize": 20, "cellPx": 32.0, "panelPx": 240.0 },
-  "economy": { "startGold": 120, "startLives": 20, "killReward": 8, "levelBonus": 50 },
+  "economy": { "startGold": 120, "startLives": 20, "killReward": 8 },
   "meta": { "payoutPerLevel": 10, "payoutPerWave": 2, "payoutWinBonus": 25 },
   "draft": { "offerCount": 3, "rerollCost": 25, "rerollCostGrowth": 15, "poolRounds": 10 },
   "combat": { "maxStepDt": 0.05, "fastForward": 3, "hitRadius": 6.0, "burnDps": 6.0, "burnDuration": 3.0, "slowFactor": 0.5, "slowDuration": 2.0, "breakTime": 4.0 },

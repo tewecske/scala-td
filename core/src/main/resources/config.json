@@ -1,237 +1,2414 @@
 {
-  "board": { "gridSize": 20, "cellPx": 32.0, "panelPx": 240.0 },
-  "economy": { "startGold": 120, "startLives": 20, "killReward": 8, "levelBonus": 50 },
-  "meta": { "payoutPerLevel": 10, "payoutPerWave": 2, "payoutWinBonus": 25 },
-  "draft": { "offerCount": 3, "rerollCost": 25, "rerollCostGrowth": 15, "poolRounds": 10 },
-  "combat": {
-    "maxStepDt": 0.05,
-    "fastForward": 3,
-    "hitRadius": 6.0,
-    "burnDps": 6.0,
-    "burnDuration": 3.0,
-    "slowFactor": 0.5,
-    "slowDuration": 2.0,
-    "breakTime": 4.0,
-    "studyHits": 5
-  },
-  "i18n": { "lang": "en", "showCodes": false },
-  "loadout": {
-    "maxSelected": 3,
-    "defaultSelected": ["Cuboid"],
-    "unlocked": ["Cuboid", "Matchbox", "Ice Cube", "Jack-in-the-Box"],
-    "locked": ["Hole Punch"]
-  },
-  "towers": [
-    { "name": "Cuboid",   "cost": 50,  "color": "#5C63A5", "range": 3.2, "fireInterval": 0.55, "damage": 12.0, "projectileSpeed": 420.0, "kind": "Kinetic",   "splashRadius": 0.0 },
-    { "name": "Matchbox",    "cost": 80,  "color": "#ED7477", "range": 2.8, "fireInterval": 0.50, "damage": 8.0,  "projectileSpeed": 480.0, "kind": "Fire",      "splashRadius": 0.0 },
-    { "name": "Ice Cube",   "cost": 70,  "color": "#9CA2E1", "range": 3.0, "fireInterval": 0.60, "damage": 5.0,  "projectileSpeed": 440.0, "kind": "Slow",      "splashRadius": 0.0 },
-    { "name": "Hole Punch",  "cost": 100, "color": "#EFCE75", "range": 3.4, "fireInterval": 0.80, "damage": 10.0, "projectileSpeed": 400.0, "kind": "Splash",    "splashRadius": 1.2 },
-    { "name": "Jack-in-the-Box", "cost": 140, "color": "#A8383B", "range": 4.0, "fireInterval": 1.10, "damage": 22.0, "projectileSpeed": 320.0, "kind": "Explosion", "splashRadius": 1.6 }
-  ],
-  "enemies": [
-    { "name": "Cardboard", "baseHp": 22.0, "baseSpeed": 42.0, "color": "#ED7477", "size": 16.0,
-      "resist": { "kinetic": 0.0, "fire": 0.0, "slow": 0.0, "splash": 0.0, "explosion": 0.0 }, "aura": null },
-    { "name": "Paper Cut", "baseHp": 10.0, "baseSpeed": 70.0, "color": "#FEA4A6", "size": 12.0,
-      "resist": { "kinetic": 0.0, "fire": 0.0, "slow": 0.0, "splash": 0.0, "explosion": 0.0 }, "aura": null },
-    { "name": "Brick", "baseHp": 90.0, "baseSpeed": 24.0, "color": "#A8383B", "size": 26.0, "heavy": true,
-      "resist": { "kinetic": 0.35, "fire": 0.0, "slow": 0.0, "splash": 0.0, "explosion": 0.0 }, "aura": null },
-    { "name": "Ember", "baseHp": 26.0, "baseSpeed": 40.0, "color": "#EFCE75", "size": 16.0,
-      "resist": { "kinetic": 0.0, "fire": 0.6, "slow": 0.0, "splash": 0.0, "explosion": 0.0 }, "aura": null },
-    { "name": "Frostling", "baseHp": 24.0, "baseSpeed": 42.0, "color": "#9CA2E1", "size": 16.0,
-      "resist": { "kinetic": 0.0, "fire": 0.0, "slow": 0.7, "splash": 0.0, "explosion": 0.0 }, "aura": null },
-    { "name": "Commander", "baseHp": 60.0, "baseSpeed": 30.0, "color": "#5C63A5", "size": 18.0,
-      "resist": { "kinetic": 0.0, "fire": 0.0, "slow": 0.0, "splash": 0.0, "explosion": 0.0 },
-      "aura": { "kind": "SpeedBoost", "radius": 2.5, "magnitude": 0.25 } },
-    { "name": "Shieldbearer", "baseHp": 55.0, "baseSpeed": 32.0, "color": "#323875", "size": 18.0, "heavy": true,
-      "resist": { "kinetic": 0.2, "fire": 0.0, "slow": 0.0, "splash": 0.0, "explosion": 0.0 },
-      "aura": { "kind": "Armor", "radius": 2.0, "magnitude": 0.3 } },
-    { "name": "Edgelord", "baseHp": 30.0, "baseSpeed": 60.0, "color": "#C9A8E1", "size": 14.0, "sidePreference": "Left",
-      "resist": { "kinetic": 0.0, "fire": 0.0, "slow": 0.0, "splash": 0.0, "explosion": 0.0 }, "aura": null },
-    { "name": "Cardboard II", "baseHp": 30.0, "baseSpeed": 52.0, "color": "#ED7477", "size": 16.0,
-      "resist": { "kinetic": 0.0, "fire": 0.0, "slow": 0.0, "splash": 0.0, "explosion": 0.0 }, "aura": null },
-    { "name": "Paper Cut II", "baseHp": 10.0, "baseSpeed": 90.0, "color": "#FEA4A6", "size": 12.0, "speedVariance": 0.35,
-      "resist": { "kinetic": 0.0, "fire": 0.0, "slow": 0.0, "splash": 0.0, "explosion": 0.0 }, "aura": null },
-    { "name": "Brick II", "baseHp": 130.0, "baseSpeed": 24.0, "color": "#A8383B", "size": 26.0, "heavy": true,
-      "resist": { "kinetic": 0.5, "fire": 0.0, "slow": 0.0, "splash": 0.0, "explosion": 0.0 }, "aura": null },
-    { "name": "Crate", "baseHp": 300.0, "baseSpeed": 14.0, "color": "#8D6E63", "size": 30.0, "killReward": 4.0,
-      "resist": { "kinetic": 0.0, "fire": 0.0, "slow": 0.0, "splash": 0.0, "explosion": 0.0 }, "aura": null },
-    { "name": "Crate II", "baseHp": 450.0, "baseSpeed": 14.0, "color": "#6D4C41", "size": 32.0, "killReward": 6.0,
-      "resist": { "kinetic": 0.0, "fire": 0.0, "slow": -0.3, "splash": 0.0, "explosion": 0.0 }, "aura": null }
-  ],
-  "levels": [
-    {
-      "name": "The Quadrangle",
-      "route": { "waypoints": [[0,17],[17,17],[17,13],[2,13],[2,9],[17,9],[17,5],[2,5],[2,1],[19,1]] },
-      "waves": [
-        { "count": 8,  "spawnInterval": 0.85, "hpScale": 1.0, "composition": { "Cardboard": 6, "Paper Cut": 2 } },
-        { "count": 10, "spawnInterval": 0.80, "hpScale": 1.15, "composition": { "Cardboard": 6, "Paper Cut": 4 } },
-        { "count": 11, "spawnInterval": 0.75, "hpScale": 1.3, "composition": { "Cardboard": 6, "Paper Cut": 2, "Brick": 2, "Crate": 1 } }
-      ]
-    },
-    {
-      "name": "The Loading Dock",
-      "route": { "waypoints": [[0, 1], [0, 9], [8, 9], [8, 17], [16, 17], [16, 3], [19, 3]],
-        "branches": [ { "side": "Right", "from": 2, "to": 5, "waypoints": [[8, 3]] } ] },
-      "waves": [
-        { "count": 12, "spawnInterval": 0.80, "hpScale": 1.3, "composition": { "Paper Cut II": 10, "Cardboard": 2 } },
-        { "count": 13, "spawnInterval": 0.75, "hpScale": 1.5, "composition": { "Cardboard": 6, "Paper Cut II": 4, "Brick": 2, "Crate": 1 } },
-        { "count": 11, "spawnInterval": 0.70, "hpScale": 1.7, "composition": { "Brick": 2, "Cardboard": 4, "Paper Cut II": 4, "Crate II": 1 } }
-      ]
-    },
-    {
-      "name": "The Corner Office",
-      "route": { "waypoints": [[0,9],[19,9],[19,3],[3,3],[3,15],[19,15]] },
-      "waves": [
-        { "count": 14, "spawnInterval": 0.75, "hpScale": 1.6, "composition": { "Cardboard II": 8, "Paper Cut II": 6 } },
-        { "count": 14, "spawnInterval": 0.70, "hpScale": 1.8, "composition": { "Brick II": 3, "Cardboard II": 6, "Paper Cut II": 4, "Crate": 1 } },
-        { "count": 15, "spawnInterval": 0.65, "hpScale": 2.0, "composition": { "Brick II": 4, "Cardboard II": 6, "Paper Cut II": 4, "Crate II": 1 } }
-      ]
-    }
-  ],
-  "colors": {
-    "background": "#021A01",
-    "path": "#328A2E",
-    "build": "#0B3308",
-    "gridLine": "#010D01",
-    "enemy": "#ED7477",
-    "shot": "#FFE6A5",
-    "shotFire": "#ED7477",
-    "shotFrost": "#9CA2E1",
-    "shotSplash": "#5C63A5",
-    "shotBoom": "#FEA4A6",
-    "burnTint": "#ED7477",
-    "slowTint": "#9CA2E1",
-    "buffTint": "#9DEC99",
-    "panel": "#030516",
-    "hoverOk": "#64C15D99",
-    "hoverBad": "#ED747780",
-    "range": "#9CA2E166",
-    "buttonFill": "#323875",
-    "hpBarBack": "#030516",
-    "hpBarFill": "#9DEC99",
-    "text": "#FFE6A5",
-    "dimText": "#5C63A5"
-  },
-  "lighting": {
-    "ambient": "#FFFFFF",
-    "ambientIntensity": 0.9
-  },
-  "effects": {
-    "vignette": { "color": "#000000", "strength": 0.5, "radius": 0.4 },
-    "sparks": { "color": "#FFE6A5", "life": 0.5, "speed": 120.0, "size": 3.0, "count": 6 },
-    "shadow": { "color": "#000000", "alpha": 0.35, "offsetX": 3.0, "offsetY": -3.0, "scale": 1.1 },
-    "shake": { "magnitude": 6.0, "duration": 0.25 }
-  },
-  "biomes": [
-    {
-      "id": "tutorial",
-      "name": "The Sandbox",
-      "roster": ["Cardboard", "Paper Cut", "Ember", "Frostling"],
-      "environment": null,
-      "resistTheme": { "primary": "Kinetic", "primaryAmount": 0.0, "secondary": "Fire", "secondaryAmount": 0.0 },
-      "gridSize": 10,
-      "levels": [
-        {
-          "name": "Straightaway",
-          "route": { "waypoints": [[0,5],[9,5]] },
-          "waves": [
-            { "count": 6,  "spawnInterval": 0.95, "hpScale": 1.0, "composition": { "Cardboard": 5, "Paper Cut": 1 } },
-            { "count": 8,  "spawnInterval": 0.85, "hpScale": 1.15, "composition": { "Cardboard": 5, "Paper Cut": 3 } }
-          ]
-        },
-        {
-          "name": "The Little S",
-          "route": { "waypoints": [[0,1],[8,1],[8,8],[1,8],[1,4],[9,4]] },
-          "waves": [
-            { "count": 9,  "spawnInterval": 0.85, "hpScale": 1.2, "composition": { "Cardboard": 6, "Paper Cut": 3 } },
-            { "count": 11, "spawnInterval": 0.75, "hpScale": 1.4, "composition": { "Cardboard": 5, "Paper Cut": 3, "Ember": 3 } }
-          ]
-        }
-      ],
-      "background": "#05070F",
-      "path": "#2E6FB5",
-      "build": "#0B1224",
-      "gridLine": "#02030A"
-    },
-    {
-      "id": "front-lawn",
-      "name": "The Mailroom",
-      "roster": ["Cardboard", "Paper Cut", "Brick", "Crate"],
-      "environment": null,
-      "resistTheme": { "primary": "Kinetic", "primaryAmount": 0.0, "secondary": "Fire", "secondaryAmount": 0.0 }
-    },
-    {
-      "id": "cube-farm",
-      "name": "The Cube Farm",
-      "roster": ["Cardboard", "Paper Cut", "Frostling", "Commander"],
-      "environment": { "kind": "openFloorPlan", "params": { "armorPerNeighbor": 0.15, "radius": 1.5 } },
-      "resistTheme": { "primary": "Slow", "primaryAmount": 0.4, "secondary": "Kinetic", "secondaryAmount": 0.2 }
-    },
-    {
-      "id": "shipping-yard",
-      "name": "The Shipping Yard",
-      "roster": ["Brick", "Shieldbearer", "Ember", "Commander"],
-      "environment": { "kind": "crushed", "params": { "hazardDuration": 3.0, "slowFactor": 0.4, "radius": 1.0 } },
-      "resistTheme": { "primary": "Fire", "primaryAmount": 0.4, "secondary": "Kinetic", "secondaryAmount": 0.3 }
-    },
-    {
-      "id": "cardboard-wastes",
-      "name": "The Cardboard Wastes",
-      "roster": ["Paper Cut", "Cardboard", "Ember", "Brick"],
-      "environment": { "kind": "recycling", "params": { "livesLossMult": 0.5, "killGoldBonus": 1.0, "swarmSizeMult": 1.4 } },
-      "resistTheme": { "primary": "Splash", "primaryAmount": 0.35, "secondary": "Explosion", "secondaryAmount": 0.25 }
-    }
-  ],
-  "twists": [
-    { "id": "brittle", "name": "Brittle", "targetTower": "Ice Cube",
-      "effect": { "kind": "brittle", "params": { "slowDurationMult": 0.5, "kineticDamageVsSlowed": 1.5 } } },
-    { "id": "backdraft", "name": "Backdraft", "targetTower": "Matchbox",
-      "effect": { "kind": "backdraft", "params": { "burnTickRateMult": 2.0, "maxBurnStacks": 1.0 } } },
-    { "id": "shaped-charge", "name": "Shaped Charge", "targetTower": "Jack-in-the-Box",
-      "effect": { "kind": "shapedCharge", "params": { "radiusMult": 0.6, "armorPierce": 1.0 } } },
-    { "id": "ricochet", "name": "Ricochet", "targetTower": "Cuboid",
-      "effect": { "kind": "ricochet", "params": { "bounceEvery": 3.0, "fireIntervalMult": 1.25, "bounceRadius": 2.0 } } }
-  ],
-  "relics": [
-    { "id": "square-deal", "name": "Square Deal", "rarity": "Common", "requiredTalent": null,
-      "effect": { "kind": "squareDeal", "params": { "goldMult": 1.1 } } },
-    { "id": "box-office", "name": "Box Office", "rarity": "Rare", "requiredTalent": "conflagration",
-      "effect": { "kind": "boxOffice", "params": { "killRewardBonus": 2.0 } } },
-    { "id": "perimeter-alarm", "name": "Perimeter Alarm", "rarity": "Rare", "requiredTalent": "permafrost",
-      "effect": { "kind": "perimeterAlarm", "params": { "leakWarningTime": 2.0 } } },
-    { "id": "open-the-box", "name": "Open the Box", "rarity": "Rare", "requiredTalent": "demolition",
-      "effect": { "kind": "openTheBox", "params": { "wavesPerRoll": 1.0 } } },
-    { "id": "pandoras-box", "name": "Pandora's Box", "rarity": "Legendary", "requiredTalent": "conflagration",
-      "effect": { "kind": "pandorasBox", "params": {} } }
-  ],
-  "augments": [
-    { "id": "cornerstone", "name": "Cornerstone", "effect": { "kind": "cornerstone", "params": { "debuffImmunity": 1.0 } } },
-    { "id": "sharpened-edge", "name": "Sharpened Edge", "effect": { "kind": "sharpenedEdge", "params": { "damageMult": 1.2 } } },
-    { "id": "ninety-degrees", "name": "90 Degrees", "effect": { "kind": "ninetyDegrees", "params": {} } },
-    { "id": "set-square", "name": "Set Square", "effect": { "kind": "setSquare", "params": {} } },
-    { "id": "box-springs", "name": "Box Springs", "effect": { "kind": "boxSprings", "params": {} } },
-    { "id": "vertigo", "name": "Vertigo", "effect": { "kind": "vertigo", "params": { "slowAmount": 0.25, "slowDuration": 2.0 } } }
-  ],
-  "talents": [
-    { "id": "filler-damage", "name": "Square Up", "layer": "Filler", "cost": 1, "prereqs": [],
-      "effect": { "kind": "damageBonus", "params": { "mult": 0.1 } } },
-    { "id": "filler-range", "name": "Long Edge", "layer": "Filler", "cost": 1, "prereqs": [],
-      "effect": { "kind": "rangeBonus", "params": { "mult": 0.1 } } },
-    { "id": "filler-gold", "name": "Coin Slot", "layer": "Filler", "cost": 1, "prereqs": [],
-      "effect": { "kind": "goldBonus", "params": { "mult": 0.15 } } },
-    { "id": "pyromancer", "name": "Pyromancer", "layer": "Core", "cost": 3, "prereqs": ["filler-damage"],
-      "effect": { "kind": "pyromancer", "params": {} } },
-    { "id": "frostwarden", "name": "Frostwarden", "layer": "Core", "cost": 3, "prereqs": ["filler-range"],
-      "effect": { "kind": "frostwarden", "params": {} } },
-    { "id": "breaker", "name": "Breaker", "layer": "Core", "cost": 3, "prereqs": ["filler-damage"],
-      "effect": { "kind": "breaker", "params": {} } },
-    { "id": "permafrost", "name": "Permafrost", "layer": "Deep", "cost": 5, "prereqs": ["frostwarden"],
-      "effect": { "kind": "permafrost", "params": {} } },
-    { "id": "conflagration", "name": "Conflagration", "layer": "Deep", "cost": 5, "prereqs": ["pyromancer"],
-      "effect": { "kind": "conflagration", "params": {} } },
-    { "id": "demolition", "name": "Demolition", "layer": "Deep", "cost": 5, "prereqs": ["breaker"],
-      "effect": { "kind": "demolition", "params": {} } },
-    { "id": "reroll", "name": "Restock", "layer": "Filler", "cost": 2, "prereqs": [],
-      "effect": { "kind": "reroll", "params": {} } }
-  ]
+"board": {
+	"gridSize": 20,
+	"boardPx": 640.0,
+	"panelPx": 240.0
+},
+"economy": {
+	"startGold": 120,
+	"startLives": 5,
+	"killReward": 8
+},
+"meta": {
+	"payoutPerLevel": 10,
+	"payoutPerWave": 2,
+	"payoutWinBonus": 25
+},
+"draft": {
+	"offerCount": 3,
+	"rerollCost": 25,
+	"rerollCostGrowth": 15,
+	"poolRounds": 10
+},
+"combat": {
+	"maxStepDt": 0.05,
+	"fastForward": 3,
+	"hitRadius": 6.0,
+	"burnDps": 6.0,
+	"burnDuration": 3.0,
+	"slowFactor": 0.5,
+	"slowDuration": 2.0,
+	"breakTime": 4.0,
+	"studyHits": 5,
+	"puddleShockMult": 1.5
+},
+"i18n": {
+	"lang": "en",
+	"showCodes": false
+},
+"towers": [
+	{
+		"name": "Cuboid",
+		"cost": 50,
+		"color": "#5C63A5",
+		"range": 3.2,
+		"fireInterval": 0.55,
+		"damage": 12.0,
+		"projectileSpeed": 13.125,
+		"kind": "Kinetic",
+		"splashRadius": 0.0
+	},
+	{
+		"name": "Matchbox",
+		"cost": 80,
+		"color": "#ED7477",
+		"range": 2.8,
+		"fireInterval": 0.5,
+		"damage": 8.0,
+		"projectileSpeed": 15.0,
+		"kind": "Fire",
+		"splashRadius": 0.0
+	},
+	{
+		"name": "Ice Cube",
+		"cost": 70,
+		"color": "#9CA2E1",
+		"range": 3.0,
+		"fireInterval": 0.6,
+		"damage": 5.0,
+		"projectileSpeed": 13.75,
+		"kind": "Slow",
+		"splashRadius": 0.0
+	},
+	{
+		"name": "Hole Punch",
+		"cost": 100,
+		"color": "#EFCE75",
+		"range": 3.4,
+		"fireInterval": 0.8,
+		"damage": 10.0,
+		"projectileSpeed": 12.5,
+		"kind": "Splash",
+		"splashRadius": 1.2
+	},
+	{
+		"name": "Jack-in-the-Box",
+		"cost": 140,
+		"color": "#A8383B",
+		"range": 4.0,
+		"fireInterval": 1.1,
+		"damage": 22.0,
+		"projectileSpeed": 10.0,
+		"kind": "Explosion",
+		"splashRadius": 1.6
+	},
+	{
+		"name": "Static Box",
+		"cost": 90,
+		"color": "#7FD8FF",
+		"range": 3.0,
+		"fireInterval": 0.7,
+		"damage": 9.0,
+		"projectileSpeed": 14.0,
+		"kind": "Shock",
+		"splashRadius": 0.0
+	}
+],
+"enemies": [
+	{
+		"name": "Cardboard",
+		"baseHp": 22.0,
+		"baseSpeed": 1.3125,
+		"color": "#ED7477",
+		"size": 16.0,
+		"resist": {
+			"kinetic": 0.0,
+			"fire": 0.0,
+			"slow": 0.0,
+			"splash": 0.0,
+			"explosion": 0.0,
+			"shock": 0.0
+		},
+		"aura": null,
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": false,
+		"onDeath": null,
+		"promotesTo": null,
+		"leakCost": 1
+	},
+	{
+		"name": "Paper Cut",
+		"baseHp": 10.0,
+		"baseSpeed": 2.1875,
+		"color": "#FEA4A6",
+		"size": 12.0,
+		"resist": {
+			"kinetic": 0.0,
+			"fire": 0.0,
+			"slow": 0.0,
+			"splash": 0.0,
+			"explosion": 0.0,
+			"shock": 0.0
+		},
+		"aura": null,
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": false,
+		"onDeath": null,
+		"promotesTo": null,
+		"leakCost": 1
+	},
+	{
+		"name": "Brick",
+		"baseHp": 90.0,
+		"baseSpeed": 0.75,
+		"color": "#A8383B",
+		"size": 26.0,
+		"resist": {
+			"kinetic": 0.35,
+			"fire": 0.0,
+			"slow": 0.0,
+			"splash": 0.0,
+			"explosion": 0.0,
+			"shock": 0.0
+		},
+		"aura": null,
+		"heavy": true,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": false,
+		"onDeath": null,
+		"promotesTo": null,
+		"leakCost": 2
+	},
+	{
+		"name": "Ember",
+		"baseHp": 26.0,
+		"baseSpeed": 1.25,
+		"color": "#EFCE75",
+		"size": 16.0,
+		"resist": {
+			"kinetic": 0.0,
+			"fire": 0.6,
+			"slow": 0.0,
+			"splash": 0.0,
+			"explosion": 0.0,
+			"shock": 0.0
+		},
+		"aura": null,
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": false,
+		"onDeath": null,
+		"promotesTo": null,
+		"leakCost": 1
+	},
+	{
+		"name": "Frostling",
+		"baseHp": 24.0,
+		"baseSpeed": 1.3125,
+		"color": "#9CA2E1",
+		"size": 16.0,
+		"resist": {
+			"kinetic": 0.0,
+			"fire": 0.0,
+			"slow": 0.7,
+			"splash": 0.0,
+			"explosion": 0.0,
+			"shock": 0.0
+		},
+		"aura": null,
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": false,
+		"onDeath": null,
+		"promotesTo": null,
+		"leakCost": 1
+	},
+	{
+		"name": "Commander",
+		"baseHp": 60.0,
+		"baseSpeed": 0.9375,
+		"color": "#5C63A5",
+		"size": 18.0,
+		"resist": {
+			"kinetic": 0.0,
+			"fire": 0.0,
+			"slow": 0.0,
+			"splash": 0.0,
+			"explosion": 0.0,
+			"shock": 0.0
+		},
+		"aura": {
+			"kind": "SpeedBoost",
+			"radius": 2.5,
+			"magnitude": 0.25
+		},
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": false,
+		"onDeath": null,
+		"promotesTo": null,
+		"leakCost": 1
+	},
+	{
+		"name": "Shieldbearer",
+		"baseHp": 55.0,
+		"baseSpeed": 1.0,
+		"color": "#323875",
+		"size": 18.0,
+		"resist": {
+			"kinetic": 0.2,
+			"fire": 0.0,
+			"slow": 0.0,
+			"splash": 0.0,
+			"explosion": 0.0,
+			"shock": 0.0
+		},
+		"aura": {
+			"kind": "Armor",
+			"radius": 2.0,
+			"magnitude": 0.3
+		},
+		"heavy": true,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": false,
+		"onDeath": null,
+		"promotesTo": null,
+		"leakCost": 2
+	},
+	{
+		"name": "Edgelord",
+		"baseHp": 30.0,
+		"baseSpeed": 1.875,
+		"color": "#C9A8E1",
+		"size": 14.0,
+		"resist": {
+			"kinetic": 0.0,
+			"fire": 0.0,
+			"slow": 0.0,
+			"splash": 0.0,
+			"explosion": 0.0,
+			"shock": 0.0
+		},
+		"aura": null,
+		"heavy": false,
+		"sidePreference": "Left",
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": false,
+		"onDeath": null,
+		"promotesTo": null,
+		"leakCost": 1
+	},
+	{
+		"name": "Cardboard II",
+		"baseHp": 30.0,
+		"baseSpeed": 1.625,
+		"color": "#ED7477",
+		"size": 16.0,
+		"resist": {
+			"kinetic": 0.0,
+			"fire": 0.0,
+			"slow": 0.0,
+			"splash": 0.0,
+			"explosion": 0.0,
+			"shock": 0.0
+		},
+		"aura": null,
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": false,
+		"onDeath": null,
+		"promotesTo": null,
+		"leakCost": 1
+	},
+	{
+		"name": "Paper Cut II",
+		"baseHp": 10.0,
+		"baseSpeed": 2.8125,
+		"color": "#FEA4A6",
+		"size": 12.0,
+		"resist": {
+			"kinetic": 0.0,
+			"fire": 0.0,
+			"slow": 0.0,
+			"splash": 0.0,
+			"explosion": 0.0,
+			"shock": 0.0
+		},
+		"aura": null,
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.35,
+		"boss": false,
+		"onDeath": null,
+		"promotesTo": null,
+		"leakCost": 1
+	},
+	{
+		"name": "Brick II",
+		"baseHp": 130.0,
+		"baseSpeed": 0.75,
+		"color": "#A8383B",
+		"size": 26.0,
+		"resist": {
+			"kinetic": 0.5,
+			"fire": 0.0,
+			"slow": 0.0,
+			"splash": 0.0,
+			"explosion": 0.0,
+			"shock": 0.0
+		},
+		"aura": null,
+		"heavy": true,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": false,
+		"onDeath": null,
+		"promotesTo": null,
+		"leakCost": 2
+	},
+	{
+		"name": "Crate",
+		"baseHp": 24.0,
+		"baseSpeed": 1.2,
+		"color": "#8D6E63",
+		"size": 16.0,
+		"resist": {
+			"kinetic": 0.2,
+			"fire": -0.5,
+			"slow": 0.0,
+			"splash": 0.0,
+			"explosion": 0.0,
+			"shock": 0.0
+		},
+		"aura": null,
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": false,
+		"onDeath": null,
+		"promotesTo": "Pallet",
+		"leakCost": 1
+	},
+	{
+		"name": "Crate II",
+		"baseHp": 450.0,
+		"baseSpeed": 0.4375,
+		"color": "#6D4C41",
+		"size": 32.0,
+		"resist": {
+			"kinetic": 0.0,
+			"fire": 0.0,
+			"slow": -0.3,
+			"splash": 0.0,
+			"explosion": 0.0,
+			"shock": 0.0
+		},
+		"aura": null,
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 6.0,
+		"speedVariance": 0.0,
+		"boss": false,
+		"onDeath": null,
+		"promotesTo": null,
+		"leakCost": 1
+	},
+	{
+		"name": "Pallet",
+		"baseHp": 60.0,
+		"baseSpeed": 1.0,
+		"color": "#6D4C41",
+		"size": 20.0,
+		"resist": {
+			"kinetic": 0.3,
+			"fire": -0.5,
+			"slow": 0.0,
+			"splash": 0.0,
+			"explosion": 0.0,
+			"shock": 0.0
+		},
+		"aura": null,
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": false,
+		"onDeath": null,
+		"promotesTo": "Crate Captain",
+		"leakCost": 2
+	},
+	{
+		"name": "Crate Captain",
+		"baseHp": 130.0,
+		"baseSpeed": 0.9,
+		"color": "#4E342E",
+		"size": 24.0,
+		"resist": {
+			"kinetic": 0.3,
+			"fire": -0.5,
+			"slow": 0.0,
+			"splash": 0.0,
+			"explosion": 0.0,
+			"shock": 0.0
+		},
+		"aura": {
+			"kind": "Armor",
+			"radius": 1.5,
+			"magnitude": 0.25
+		},
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": false,
+		"onDeath": {
+			"enemy": "Splinter",
+			"count": 3
+		},
+		"promotesTo": null,
+		"leakCost": 3
+	},
+	{
+		"name": "Splinter",
+		"baseHp": 8.0,
+		"baseSpeed": 1.8,
+		"color": "#A1887F",
+		"size": 8.0,
+		"resist": {
+			"kinetic": 0.0,
+			"fire": -0.5,
+			"slow": 0.0,
+			"splash": 0.0,
+			"explosion": 0.0,
+			"shock": 0.0
+		},
+		"aura": null,
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": false,
+		"onDeath": null,
+		"promotesTo": null,
+		"leakCost": 1
+	},
+	{
+		"name": "The Trespasser",
+		"baseHp": 700.0,
+		"baseSpeed": 0.6,
+		"color": "#6D4C41",
+		"size": 40.0,
+		"resist": {
+			"kinetic": 0.2,
+			"fire": -0.5,
+			"slow": 0.0,
+			"splash": 0.0,
+			"explosion": 0.0,
+			"shock": 0.0
+		},
+		"aura": null,
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": true,
+		"onDeath": null,
+		"promotesTo": null,
+		"leakCost": 4
+	},
+	{
+		"name": "The Trespasser II",
+		"baseHp": 1000.0,
+		"baseSpeed": 0.6,
+		"color": "#5D4037",
+		"size": 44.0,
+		"resist": {
+			"kinetic": 0.2,
+			"fire": -0.5,
+			"slow": 0.0,
+			"splash": 0.0,
+			"explosion": 0.0,
+			"shock": 0.0
+		},
+		"aura": null,
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": true,
+		"onDeath": null,
+		"promotesTo": null,
+		"leakCost": 4
+	},
+	{
+		"name": "Drip",
+		"baseHp": 18.0,
+		"baseSpeed": 1.9,
+		"color": "#4FC3F7",
+		"size": 12.0,
+		"resist": {
+			"kinetic": 0.0,
+			"fire": 0.0,
+			"slow": 0.0,
+			"splash": 0.0,
+			"explosion": 0.0,
+			"shock": -0.6
+		},
+		"aura": null,
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": false,
+		"onDeath": null,
+		"promotesTo": "Soaked Box",
+		"leakCost": 1
+	},
+	{
+		"name": "Soaked Box",
+		"baseHp": 55.0,
+		"baseSpeed": 1.1,
+		"color": "#0288D1",
+		"size": 18.0,
+		"resist": {
+			"kinetic": 0.0,
+			"fire": 0.0,
+			"slow": 0.0,
+			"splash": 0.0,
+			"explosion": 0.0,
+			"shock": -0.5
+		},
+		"aura": null,
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": false,
+		"onDeath": null,
+		"promotesTo": "Puddle Captain",
+		"leakCost": 2
+	},
+	{
+		"name": "Puddle Captain",
+		"baseHp": 120.0,
+		"baseSpeed": 1.0,
+		"color": "#01579B",
+		"size": 22.0,
+		"resist": {
+			"kinetic": 0.0,
+			"fire": 0.0,
+			"slow": 0.0,
+			"splash": 0.0,
+			"explosion": 0.0,
+			"shock": -0.5
+		},
+		"aura": {
+			"kind": "SpeedBoost",
+			"radius": 1.5,
+			"magnitude": 0.25
+		},
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": false,
+		"onDeath": null,
+		"promotesTo": null,
+		"leakCost": 3
+	},
+	{
+		"name": "The Pentagon",
+		"baseHp": 900.0,
+		"baseSpeed": 0.6,
+		"color": "#0277BD",
+		"size": 40.0,
+		"resist": {
+			"kinetic": 0.0,
+			"fire": 0.0,
+			"slow": 0.0,
+			"splash": 0.0,
+			"explosion": 0.0,
+			"shock": -0.6
+		},
+		"aura": null,
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": true,
+		"onDeath": null,
+		"promotesTo": null,
+		"leakCost": 4
+	},
+	{
+		"name": "The Pentagon II",
+		"baseHp": 1200.0,
+		"baseSpeed": 0.6,
+		"color": "#01579B",
+		"size": 44.0,
+		"resist": {
+			"kinetic": 0.0,
+			"fire": 0.0,
+			"slow": 0.0,
+			"splash": 0.0,
+			"explosion": 0.0,
+			"shock": -0.6
+		},
+		"aura": null,
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": true,
+		"onDeath": null,
+		"promotesTo": null,
+		"leakCost": 4
+	},
+	{
+		"name": "Frostbox",
+		"baseHp": 40.0,
+		"baseSpeed": 1.2,
+		"color": "#B3E5FC",
+		"size": 16.0,
+		"resist": {
+			"kinetic": 0.0,
+			"fire": 0.0,
+			"slow": 1.0,
+			"splash": 0.0,
+			"explosion": -0.2,
+			"shock": 0.0
+		},
+		"aura": null,
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": false,
+		"onDeath": null,
+		"promotesTo": "Chilled Pallet",
+		"leakCost": 1
+	},
+	{
+		"name": "Chilled Pallet",
+		"baseHp": 80.0,
+		"baseSpeed": 1.0,
+		"color": "#81D4FA",
+		"size": 20.0,
+		"resist": {
+			"kinetic": 0.1,
+			"fire": 0.0,
+			"slow": 1.0,
+			"splash": 0.0,
+			"explosion": 0.0,
+			"shock": 0.0
+		},
+		"aura": null,
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": false,
+		"onDeath": null,
+		"promotesTo": "Ice Captain",
+		"leakCost": 2
+	},
+	{
+		"name": "Ice Captain",
+		"baseHp": 150.0,
+		"baseSpeed": 0.9,
+		"color": "#29B6F6",
+		"size": 24.0,
+		"resist": {
+			"kinetic": 0.0,
+			"fire": 0.0,
+			"slow": 1.0,
+			"splash": 0.0,
+			"explosion": -0.5,
+			"shock": 0.0
+		},
+		"aura": {
+			"kind": "TowerChill",
+			"radius": 2.5,
+			"magnitude": 0.4
+		},
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": false,
+		"onDeath": null,
+		"promotesTo": null,
+		"leakCost": 3
+	},
+	{
+		"name": "Hexcellent",
+		"baseHp": 1100.0,
+		"baseSpeed": 0.6,
+		"color": "#4FC3F7",
+		"size": 40.0,
+		"resist": {
+			"kinetic": 0.0,
+			"fire": 0.0,
+			"slow": 1.0,
+			"splash": 0.0,
+			"explosion": -0.5,
+			"shock": 0.0
+		},
+		"aura": null,
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": true,
+		"onDeath": null,
+		"promotesTo": null,
+		"leakCost": 4
+	},
+	{
+		"name": "Hexcellent II",
+		"baseHp": 1400.0,
+		"baseSpeed": 0.6,
+		"color": "#29B6F6",
+		"size": 44.0,
+		"resist": {
+			"kinetic": 0.0,
+			"fire": 0.0,
+			"slow": 1.0,
+			"splash": 0.0,
+			"explosion": -0.5,
+			"shock": 0.0
+		},
+		"aura": null,
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": true,
+		"onDeath": null,
+		"promotesTo": null,
+		"leakCost": 4
+	},
+	{
+		"name": "Memo",
+		"baseHp": 16.0,
+		"baseSpeed": 2.0,
+		"color": "#FFF59D",
+		"size": 12.0,
+		"resist": {
+			"kinetic": 0.0,
+			"fire": 0.0,
+			"slow": 0.0,
+			"splash": -0.6,
+			"explosion": 0.0,
+			"shock": 0.0
+		},
+		"aura": null,
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": false,
+		"onDeath": null,
+		"promotesTo": "Stapled Stack",
+		"leakCost": 1
+	},
+	{
+		"name": "Stapled Stack",
+		"baseHp": 90.0,
+		"baseSpeed": 1.0,
+		"color": "#FFF176",
+		"size": 18.0,
+		"resist": {
+			"kinetic": 0.2,
+			"fire": 0.0,
+			"slow": 0.0,
+			"splash": -0.4,
+			"explosion": 0.0,
+			"shock": 0.0
+		},
+		"aura": null,
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": false,
+		"onDeath": null,
+		"promotesTo": "Cubicle Captain",
+		"leakCost": 2
+	},
+	{
+		"name": "Cubicle Captain",
+		"baseHp": 170.0,
+		"baseSpeed": 0.9,
+		"color": "#FBC02D",
+		"size": 22.0,
+		"resist": {
+			"kinetic": 0.0,
+			"fire": 0.0,
+			"slow": 0.0,
+			"splash": -0.4,
+			"explosion": 0.0,
+			"shock": 0.0
+		},
+		"aura": {
+			"kind": "Armor",
+			"radius": 2.0,
+			"magnitude": 0.2
+		},
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": false,
+		"onDeath": null,
+		"promotesTo": null,
+		"leakCost": 3
+	},
+	{
+		"name": "The Roundabout",
+		"baseHp": 1200.0,
+		"baseSpeed": 0.5,
+		"color": "#F9A825",
+		"size": 40.0,
+		"resist": {
+			"kinetic": 0.3,
+			"fire": 0.0,
+			"slow": 0.0,
+			"splash": -0.4,
+			"explosion": 0.0,
+			"shock": 0.0
+		},
+		"aura": null,
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": true,
+		"onDeath": null,
+		"promotesTo": null,
+		"leakCost": 4
+	},
+	{
+		"name": "The Roundabout II",
+		"baseHp": 1500.0,
+		"baseSpeed": 0.5,
+		"color": "#F57F17",
+		"size": 44.0,
+		"resist": {
+			"kinetic": 0.3,
+			"fire": 0.0,
+			"slow": 0.0,
+			"splash": -0.4,
+			"explosion": 0.0,
+			"shock": 0.0
+		},
+		"aura": null,
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": true,
+		"onDeath": null,
+		"promotesTo": null,
+		"leakCost": 4
+	},
+	{
+		"name": "Drum",
+		"baseHp": 110.0,
+		"baseSpeed": 0.8,
+		"color": "#90A4AE",
+		"size": 18.0,
+		"resist": {
+			"kinetic": 0.4,
+			"fire": 0.0,
+			"slow": 0.0,
+			"splash": 0.3,
+			"explosion": 0.0,
+			"shock": -0.6
+		},
+		"aura": null,
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": false,
+		"onDeath": null,
+		"promotesTo": "Barrel Veteran",
+		"leakCost": 1
+	},
+	{
+		"name": "Barrel Veteran",
+		"baseHp": 200.0,
+		"baseSpeed": 0.7,
+		"color": "#607D8B",
+		"size": 22.0,
+		"resist": {
+			"kinetic": 0.4,
+			"fire": 0.0,
+			"slow": 0.0,
+			"splash": 0.3,
+			"explosion": 0.0,
+			"shock": -0.6
+		},
+		"aura": null,
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": false,
+		"onDeath": null,
+		"promotesTo": "Drum Captain",
+		"leakCost": 2
+	},
+	{
+		"name": "Drum Captain",
+		"baseHp": 320.0,
+		"baseSpeed": 0.7,
+		"color": "#455A64",
+		"size": 26.0,
+		"resist": {
+			"kinetic": 0.4,
+			"fire": 0.0,
+			"slow": 0.0,
+			"splash": 0.3,
+			"explosion": 0.0,
+			"shock": -0.6
+		},
+		"aura": {
+			"kind": "Armor",
+			"radius": 2.0,
+			"magnitude": 0.3
+		},
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": false,
+		"onDeath": null,
+		"promotesTo": null,
+		"leakCost": 3
+	},
+	{
+		"name": "The Stop Sign",
+		"baseHp": 1500.0,
+		"baseSpeed": 0.5,
+		"color": "#78909C",
+		"size": 42.0,
+		"resist": {
+			"kinetic": 0.5,
+			"fire": 0.0,
+			"slow": 1.0,
+			"splash": 0.0,
+			"explosion": 0.0,
+			"shock": -0.5
+		},
+		"aura": null,
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": true,
+		"onDeath": null,
+		"promotesTo": null,
+		"leakCost": 4
+	},
+	{
+		"name": "The Stop Sign II",
+		"baseHp": 1900.0,
+		"baseSpeed": 0.5,
+		"color": "#546E7A",
+		"size": 46.0,
+		"resist": {
+			"kinetic": 0.5,
+			"fire": 0.0,
+			"slow": 1.0,
+			"splash": 0.0,
+			"explosion": 0.0,
+			"shock": -0.5
+		},
+		"aura": null,
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": true,
+		"onDeath": null,
+		"promotesTo": null,
+		"leakCost": 4
+	}
+],
+"levels": [
+	{
+		"name": "Shoebox Lane",
+		"route": {
+			"waypoints": [
+				[ 3, 0 ],
+				[ 3, 2 ],
+				[ 6, 2 ],
+				[ 6, 4 ],
+				[ 9, 4 ],
+				[ 9, 6 ],
+				[ 7, 6 ],
+				[ 7, 9 ],
+				[ 3, 9 ]
+			],
+			"branches": []
+		},
+		"waves": [
+			{
+				"count": 4,
+				"spawnInterval": 0.9,
+				"hpScale": 1.0,
+				"composition": {
+					"Crate": 2,
+					"Cardboard": 2
+				}
+			},
+			{
+				"count": 7,
+				"spawnInterval": 0.9,
+				"hpScale": 1.0,
+				"composition": {
+					"Pallet": 1,
+					"Crate": 4,
+					"Cardboard": 2
+				}
+			},
+			{
+				"count": 9,
+				"spawnInterval": 0.9,
+				"hpScale": 1.0,
+				"composition": {
+					"Crate Captain": 3,
+					"The Trespasser": 1,
+					"Pallet": 3,
+					"Crate": 2
+				}
+			}
+		],
+		"gridSize": 10,
+		"puddles": [],
+		"startGold": 120
+	},
+	{
+		"name": "Tiny Crossing",
+		"route": {
+			"waypoints": [
+				[ 0, 3 ],
+				[ 3, 3 ],
+				[ 7, 3 ],
+				[ 7, 7 ],
+				[ 3, 7 ],
+				[ 3, 5 ],
+				[ 0, 5 ]
+			],
+			"branches": []
+		},
+		"waves": [
+			{
+				"count": 4,
+				"spawnInterval": 0.86,
+				"hpScale": 1.0,
+				"composition": {
+					"Crate": 2,
+					"Cardboard": 2
+				}
+			},
+			{
+				"count": 8,
+				"spawnInterval": 0.86,
+				"hpScale": 1.0,
+				"composition": {
+					"Crate Captain": 1,
+					"Pallet": 1,
+					"Crate": 4,
+					"Cardboard": 2
+				}
+			},
+			{
+				"count": 12,
+				"spawnInterval": 0.86,
+				"hpScale": 1.0,
+				"composition": {
+					"The Trespasser II": 1,
+					"Crate Captain": 4,
+					"Pallet": 4,
+					"Crate": 3
+				}
+			}
+		],
+		"gridSize": 10,
+		"puddles": [],
+		"startGold": 140
+	},
+	{
+		"name": "Cramped Loop",
+		"route": {
+			"waypoints": [
+				[ 6, 9 ],
+				[ 6, 7 ],
+				[ 2, 7 ],
+				[ 2, 4 ],
+				[ 5, 4 ],
+				[ 5, 1 ],
+				[ 9, 1 ],
+				[ 9, 3 ]
+			],
+			"branches": [
+				{
+					"side": "Right",
+					"from": 3,
+					"to": 5,
+					"waypoints": [
+						[ 2, 1 ]
+					]
+				}
+			]
+		},
+		"waves": [
+			{
+				"count": 5,
+				"spawnInterval": 0.82,
+				"hpScale": 1.0,
+				"composition": {
+					"Drip": 3,
+					"Paper Cut": 2
+				}
+			},
+			{
+				"count": 8,
+				"spawnInterval": 0.82,
+				"hpScale": 1.0,
+				"composition": {
+					"Soaked Box": 1,
+					"Drip": 5,
+					"Paper Cut": 2
+				}
+			},
+			{
+				"count": 12,
+				"spawnInterval": 0.82,
+				"hpScale": 1.0,
+				"composition": {
+					"Puddle Captain": 2,
+					"Soaked Box": 3,
+					"Drip": 5,
+					"Paper Cut": 2
+				}
+			},
+			{
+				"count": 15,
+				"spawnInterval": 0.82,
+				"hpScale": 1.0,
+				"composition": {
+					"The Pentagon": 1,
+					"Puddle Captain": 6,
+					"Soaked Box": 5,
+					"Drip": 3
+				}
+			}
+		],
+		"gridSize": 10,
+		"puddles": [
+			{
+				"x": 6.5,
+				"y": 9.5,
+				"radius": 1.3
+			},
+			{
+				"x": 9.5,
+				"y": 3.5,
+				"radius": 1.3
+			},
+			{
+				"x": 3.5,
+				"y": 7.5,
+				"radius": 1.3
+			}
+		],
+		"startGold": 160
+	},
+	{
+		"name": "Little Fork",
+		"route": {
+			"waypoints": [
+				[ 0, 3 ],
+				[ 3, 3 ],
+				[ 3, 7 ],
+				[ 7, 7 ],
+				[ 7, 3 ],
+				[ 9, 3 ],
+				[ 9, 0 ],
+				[ 5, 0 ]
+			],
+			"branches": []
+		},
+		"waves": [
+			{
+				"count": 5,
+				"spawnInterval": 0.78,
+				"hpScale": 1.0,
+				"composition": {
+					"Drip": 3,
+					"Paper Cut": 2
+				}
+			},
+			{
+				"count": 9,
+				"spawnInterval": 0.78,
+				"hpScale": 1.0,
+				"composition": {
+					"Soaked Box": 1,
+					"Drip": 6,
+					"Paper Cut": 2
+				}
+			},
+			{
+				"count": 14,
+				"spawnInterval": 0.78,
+				"hpScale": 1.0,
+				"composition": {
+					"Puddle Captain": 2,
+					"Soaked Box": 3,
+					"Drip": 8,
+					"Paper Cut": 1
+				}
+			},
+			{
+				"count": 18,
+				"spawnInterval": 0.78,
+				"hpScale": 1.0,
+				"composition": {
+					"The Pentagon II": 1,
+					"Puddle Captain": 7,
+					"Soaked Box": 6,
+					"Drip": 4
+				}
+			}
+		],
+		"gridSize": 10,
+		"puddles": [
+			{
+				"x": 9.5,
+				"y": 2.5,
+				"radius": 1.3
+			},
+			{
+				"x": 0.5,
+				"y": 5.5,
+				"radius": 1.3
+			},
+			{
+				"x": 0.5,
+				"y": 1.5,
+				"radius": 1.3
+			}
+		],
+		"startGold": 180
+	},
+	{
+		"name": "Closet Circuit",
+		"route": {
+			"waypoints": [
+				[ 1, 0 ],
+				[ 1, 3 ],
+				[ 1, 8 ],
+				[ 5, 8 ],
+				[ 5, 3 ],
+				[ 3, 3 ],
+				[ 3, 0 ]
+			],
+			"branches": []
+		},
+		"waves": [
+			{
+				"count": 6,
+				"spawnInterval": 0.74,
+				"hpScale": 1.0,
+				"composition": {
+					"Frostbox": 4,
+					"Cardboard II": 2
+				}
+			},
+			{
+				"count": 10,
+				"spawnInterval": 0.74,
+				"hpScale": 1.0,
+				"composition": {
+					"Chilled Pallet": 1,
+					"Frostbox": 7,
+					"Cardboard II": 2
+				}
+			},
+			{
+				"count": 14,
+				"spawnInterval": 0.74,
+				"hpScale": 1.0,
+				"composition": {
+					"Ice Captain": 1,
+					"Chilled Pallet": 2,
+					"Frostbox": 9,
+					"Cardboard II": 2
+				}
+			},
+			{
+				"count": 17,
+				"spawnInterval": 0.74,
+				"hpScale": 1.0,
+				"composition": {
+					"Ice Captain": 4,
+					"Chilled Pallet": 4,
+					"Frostbox": 8,
+					"Cardboard II": 1
+				}
+			},
+			{
+				"count": 21,
+				"spawnInterval": 0.74,
+				"hpScale": 1.0,
+				"composition": {
+					"Ice Captain": 8,
+					"Hexcellent": 1,
+					"Chilled Pallet": 7,
+					"Frostbox": 5
+				}
+			}
+		],
+		"gridSize": 10,
+		"puddles": [],
+		"startGold": 200
+	},
+	{
+		"name": "The Stairwell",
+		"route": {
+			"waypoints": [
+				[ 13, 9 ],
+				[ 9, 9 ],
+				[ 3, 9 ],
+				[ 3, 3 ],
+				[ 9, 3 ],
+				[ 9, 7 ],
+				[ 13, 7 ]
+			],
+			"branches": []
+		},
+		"waves": [
+			{
+				"count": 6,
+				"spawnInterval": 0.7,
+				"hpScale": 1.0,
+				"composition": {
+					"Frostbox": 5,
+					"Cardboard II": 1
+				}
+			},
+			{
+				"count": 11,
+				"spawnInterval": 0.7,
+				"hpScale": 1.0,
+				"composition": {
+					"Chilled Pallet": 1,
+					"Frostbox": 8,
+					"Cardboard II": 2
+				}
+			},
+			{
+				"count": 15,
+				"spawnInterval": 0.7,
+				"hpScale": 1.0,
+				"composition": {
+					"Ice Captain": 1,
+					"Chilled Pallet": 3,
+					"Frostbox": 9,
+					"Cardboard II": 2
+				}
+			},
+			{
+				"count": 20,
+				"spawnInterval": 0.7,
+				"hpScale": 1.0,
+				"composition": {
+					"Ice Captain": 5,
+					"Chilled Pallet": 5,
+					"Frostbox": 9,
+					"Cardboard II": 1
+				}
+			},
+			{
+				"count": 24,
+				"spawnInterval": 0.7,
+				"hpScale": 1.0,
+				"composition": {
+					"Hexcellent II": 1,
+					"Ice Captain": 9,
+					"Chilled Pallet": 8,
+					"Frostbox": 6
+				}
+			}
+		],
+		"gridSize": 14,
+		"puddles": [],
+		"startGold": 220
+	},
+	{
+		"name": "Box Canyon",
+		"route": {
+			"waypoints": [
+				[ 0, 1 ],
+				[ 5, 1 ],
+				[ 5, 7 ],
+				[ 3, 7 ],
+				[ 3, 9 ],
+				[ 9, 9 ],
+				[ 9, 7 ],
+				[ 11, 7 ],
+				[ 11, 3 ],
+				[ 7, 3 ],
+				[ 7, 0 ]
+			],
+			"branches": [
+				{
+					"side": "Right",
+					"from": 1,
+					"to": 10,
+					"waypoints": [
+						[ 5, 0 ]
+					]
+				}
+			]
+		},
+		"waves": [
+			{
+				"count": 7,
+				"spawnInterval": 0.66,
+				"hpScale": 1.0,
+				"composition": {
+					"Memo": 6,
+					"Paper Cut II": 1
+				}
+			},
+			{
+				"count": 11,
+				"spawnInterval": 0.66,
+				"hpScale": 1.0,
+				"composition": {
+					"Stapled Stack": 1,
+					"Memo": 9,
+					"Paper Cut II": 1
+				}
+			},
+			{
+				"count": 15,
+				"spawnInterval": 0.66,
+				"hpScale": 1.0,
+				"composition": {
+					"Stapled Stack": 2,
+					"Memo": 12,
+					"Paper Cut II": 1
+				}
+			},
+			{
+				"count": 19,
+				"spawnInterval": 0.66,
+				"hpScale": 1.0,
+				"composition": {
+					"Cubicle Captain": 3,
+					"Stapled Stack": 4,
+					"Memo": 11,
+					"Paper Cut II": 1
+				}
+			},
+			{
+				"count": 23,
+				"spawnInterval": 0.66,
+				"hpScale": 1.0,
+				"composition": {
+					"Cubicle Captain": 6,
+					"Stapled Stack": 6,
+					"Memo": 10,
+					"Paper Cut II": 1
+				}
+			},
+			{
+				"count": 27,
+				"spawnInterval": 0.66,
+				"hpScale": 1.0,
+				"composition": {
+					"The Roundabout": 1,
+					"Cubicle Captain": 10,
+					"Stapled Stack": 9,
+					"Memo": 7
+				}
+			}
+		],
+		"gridSize": 14,
+		"puddles": [],
+		"startGold": 240
+	},
+	{
+		"name": "Backroom Switchback",
+		"route": {
+			"waypoints": [
+				[ 13, 2 ],
+				[ 9, 2 ],
+				[ 9, 4 ],
+				[ 4, 4 ],
+				[ 4, 7 ],
+				[ 9, 7 ],
+				[ 9, 13 ],
+				[ 3, 13 ]
+			],
+			"branches": []
+		},
+		"waves": [
+			{
+				"count": 7,
+				"spawnInterval": 0.62,
+				"hpScale": 1.0,
+				"composition": {
+					"Memo": 6,
+					"Paper Cut II": 1
+				}
+			},
+			{
+				"count": 12,
+				"spawnInterval": 0.62,
+				"hpScale": 1.0,
+				"composition": {
+					"Stapled Stack": 1,
+					"Memo": 10,
+					"Paper Cut II": 1
+				}
+			},
+			{
+				"count": 16,
+				"spawnInterval": 0.62,
+				"hpScale": 1.0,
+				"composition": {
+					"Stapled Stack": 2,
+					"Memo": 13,
+					"Paper Cut II": 1
+				}
+			},
+			{
+				"count": 21,
+				"spawnInterval": 0.62,
+				"hpScale": 1.0,
+				"composition": {
+					"Cubicle Captain": 3,
+					"Stapled Stack": 4,
+					"Memo": 13,
+					"Paper Cut II": 1
+				}
+			},
+			{
+				"count": 25,
+				"spawnInterval": 0.62,
+				"hpScale": 1.0,
+				"composition": {
+					"Cubicle Captain": 7,
+					"Stapled Stack": 7,
+					"Memo": 11
+				}
+			},
+			{
+				"count": 30,
+				"spawnInterval": 0.62,
+				"hpScale": 1.0,
+				"composition": {
+					"Cubicle Captain": 12,
+					"The Roundabout II": 1,
+					"Stapled Stack": 10,
+					"Memo": 7
+				}
+			}
+		],
+		"gridSize": 14,
+		"puddles": [],
+		"startGold": 260
+	},
+	{
+		"name": "Cubicle Maze",
+		"route": {
+			"waypoints": [
+				[ 11, 0 ],
+				[ 11, 5 ],
+				[ 11, 12 ],
+				[ 3, 12 ],
+				[ 3, 5 ],
+				[ 9, 5 ],
+				[ 9, 0 ]
+			],
+			"branches": []
+		},
+		"waves": [
+			{
+				"count": 8,
+				"spawnInterval": 0.58,
+				"hpScale": 1.0,
+				"composition": {
+					"Drum": 8
+				}
+			},
+			{
+				"count": 12,
+				"spawnInterval": 0.58,
+				"hpScale": 1.0,
+				"composition": {
+					"Barrel Veteran": 1,
+					"Drum": 11
+				}
+			},
+			{
+				"count": 16,
+				"spawnInterval": 0.58,
+				"hpScale": 1.0,
+				"composition": {
+					"Barrel Veteran": 2,
+					"Drum": 14
+				}
+			},
+			{
+				"count": 21,
+				"spawnInterval": 0.58,
+				"hpScale": 1.0,
+				"composition": {
+					"Drum Captain": 1,
+					"Barrel Veteran": 4,
+					"Drum": 16
+				}
+			},
+			{
+				"count": 25,
+				"spawnInterval": 0.58,
+				"hpScale": 1.0,
+				"composition": {
+					"Drum Captain": 4,
+					"Barrel Veteran": 6,
+					"Drum": 15
+				}
+			},
+			{
+				"count": 29,
+				"spawnInterval": 0.58,
+				"hpScale": 1.0,
+				"composition": {
+					"Drum Captain": 8,
+					"Barrel Veteran": 8,
+					"Drum": 13
+				}
+			},
+			{
+				"count": 33,
+				"spawnInterval": 0.58,
+				"hpScale": 1.0,
+				"composition": {
+					"Drum Captain": 13,
+					"The Stop Sign": 1,
+					"Barrel Veteran": 11,
+					"Drum": 8
+				}
+			}
+		],
+		"gridSize": 14,
+		"puddles": [],
+		"startGold": 280
+	},
+	{
+		"name": "The Perimeter Loop",
+		"route": {
+			"waypoints": [
+				[ 5, 0 ],
+				[ 5, 3 ],
+				[ 8, 3 ],
+				[ 8, 6 ],
+				[ 4, 6 ],
+				[ 4, 9 ],
+				[ 6, 9 ],
+				[ 6, 13 ],
+				[ 0, 13 ],
+				[ 0, 10 ]
+			],
+			"branches": [
+				{
+					"side": "Right",
+					"from": 0,
+					"to": 2,
+					"waypoints": [
+						[ 8, 0 ]
+					]
+				}
+			]
+		},
+		"waves": [
+			{
+				"count": 8,
+				"spawnInterval": 0.54,
+				"hpScale": 1.0,
+				"composition": {
+					"Drum": 8
+				}
+			},
+			{
+				"count": 13,
+				"spawnInterval": 0.54,
+				"hpScale": 1.0,
+				"composition": {
+					"Barrel Veteran": 1,
+					"Drum": 12
+				}
+			},
+			{
+				"count": 17,
+				"spawnInterval": 0.54,
+				"hpScale": 1.0,
+				"composition": {
+					"Barrel Veteran": 2,
+					"Drum": 15
+				}
+			},
+			{
+				"count": 22,
+				"spawnInterval": 0.54,
+				"hpScale": 1.0,
+				"composition": {
+					"Drum Captain": 1,
+					"Barrel Veteran": 4,
+					"Drum": 17
+				}
+			},
+			{
+				"count": 27,
+				"spawnInterval": 0.54,
+				"hpScale": 1.0,
+				"composition": {
+					"Drum Captain": 5,
+					"Barrel Veteran": 6,
+					"Drum": 16
+				}
+			},
+			{
+				"count": 31,
+				"spawnInterval": 0.54,
+				"hpScale": 1.0,
+				"composition": {
+					"Drum Captain": 9,
+					"Barrel Veteran": 9,
+					"Drum": 13
+				}
+			},
+			{
+				"count": 36,
+				"spawnInterval": 0.54,
+				"hpScale": 1.0,
+				"composition": {
+					"The Stop Sign II": 1,
+					"Drum Captain": 14,
+					"Barrel Veteran": 12,
+					"Drum": 9
+				}
+			}
+		],
+		"gridSize": 14,
+		"puddles": [],
+		"startGold": 300
+	}
+],
+"loadout": {
+	"maxSelected": 3,
+	"defaultSelected": [
+		"Cuboid"
+	],
+	"unlocked": [
+		"Cuboid",
+		"Matchbox",
+		"Ice Cube",
+		"Jack-in-the-Box"
+	],
+	"locked": [
+		"Hole Punch",
+		"Static Box"
+	],
+	"unlockCosts": {
+		"Hole Punch": 40,
+		"Static Box": 30
+	}
+},
+"colors": {
+	"background": "#021A01",
+	"path": "#328A2E",
+	"build": "#0B3308",
+	"gridLine": "#010D01",
+	"enemy": "#ED7477",
+	"shot": "#FFE6A5",
+	"shotFire": "#ED7477",
+	"shotFrost": "#9CA2E1",
+	"shotSplash": "#5C63A5",
+	"shotBoom": "#FEA4A6",
+	"burnTint": "#ED7477",
+	"slowTint": "#9CA2E1",
+	"buffTint": "#9DEC99",
+	"panel": "#030516",
+	"hoverOk": "#64C15D99",
+	"hoverBad": "#ED747780",
+	"range": "#9CA2E166",
+	"buttonFill": "#323875",
+	"hpBarBack": "#030516",
+	"hpBarFill": "#9DEC99",
+	"text": "#FFE6A5",
+	"dimText": "#5C63A5",
+	"shotShock": "#7FD8FF"
+},
+"lighting": {
+	"ambient": "#FFFFFF",
+	"ambientIntensity": 0.9
+},
+"effects": {
+	"vignette": {
+		"color": "#000000",
+		"strength": 0.5,
+		"radius": 0.4
+	},
+	"sparks": {
+		"color": "#FFE6A5",
+		"life": 0.5,
+		"speed": 120.0,
+		"size": 3.0,
+		"count": 6
+	},
+	"shadow": {
+		"color": "#000000",
+		"alpha": 0.35,
+		"offsetX": 3.0,
+		"offsetY": -3.0,
+		"scale": 1.1
+	},
+	"shake": {
+		"magnitude": 6.0,
+		"duration": 0.25
+	}
+},
+"biomes": [
+	{
+		"id": "tutorial",
+		"name": "The Sandbox",
+		"roster": [
+			"Cardboard",
+			"Paper Cut",
+			"Ember",
+			"Frostling"
+		],
+		"environment": null,
+		"resistTheme": {
+			"primary": "Kinetic",
+			"primaryAmount": 0.0,
+			"secondary": "Fire",
+			"secondaryAmount": 0.0
+		},
+		"gridSize": 10,
+		"levels": [
+			{
+				"name": "Straightaway",
+				"route": {
+					"waypoints": [
+						[ 0, 5 ],
+						[ 9, 5 ]
+					],
+					"branches": []
+				},
+				"waves": [
+					{
+						"count": 6,
+						"spawnInterval": 0.95,
+						"hpScale": 1.0,
+						"composition": {
+							"Cardboard": 5,
+							"Paper Cut": 1
+						}
+					},
+					{
+						"count": 8,
+						"spawnInterval": 0.85,
+						"hpScale": 1.15,
+						"composition": {
+							"Cardboard": 5,
+							"Paper Cut": 3
+						}
+					}
+				],
+				"gridSize": null,
+				"puddles": [],
+				"startGold": null
+			},
+			{
+				"name": "The Little S",
+				"route": {
+					"waypoints": [
+						[ 0, 1 ],
+						[ 8, 1 ],
+						[ 8, 8 ],
+						[ 1, 8 ],
+						[ 1, 4 ],
+						[ 9, 4 ]
+					],
+					"branches": []
+				},
+				"waves": [
+					{
+						"count": 9,
+						"spawnInterval": 0.85,
+						"hpScale": 1.2,
+						"composition": {
+							"Cardboard": 6,
+							"Paper Cut": 3
+						}
+					},
+					{
+						"count": 11,
+						"spawnInterval": 0.75,
+						"hpScale": 1.4,
+						"composition": {
+							"Cardboard": 5,
+							"Paper Cut": 3,
+							"Ember": 3
+						}
+					}
+				],
+				"gridSize": null,
+				"puddles": [],
+				"startGold": null
+			}
+		],
+		"background": "#05070F",
+		"path": "#2E6FB5",
+		"build": "#0B1224",
+		"gridLine": "#02030A"
+	},
+	{
+		"id": "front-lawn",
+		"name": "The Mailroom",
+		"roster": [
+			"Cardboard",
+			"Paper Cut",
+			"Brick",
+			"Crate"
+		],
+		"environment": null,
+		"resistTheme": {
+			"primary": "Kinetic",
+			"primaryAmount": 0.0,
+			"secondary": "Fire",
+			"secondaryAmount": 0.0
+		}
+	},
+	{
+		"id": "cube-farm",
+		"name": "The Cube Farm",
+		"roster": [
+			"Cardboard",
+			"Paper Cut",
+			"Frostling",
+			"Commander"
+		],
+		"environment": {
+			"kind": "openFloorPlan",
+			"params": {
+				"armorPerNeighbor": 0.15,
+				"radius": 1.5
+			}
+		},
+		"resistTheme": {
+			"primary": "Slow",
+			"primaryAmount": 0.4,
+			"secondary": "Kinetic",
+			"secondaryAmount": 0.2
+		}
+	},
+	{
+		"id": "shipping-yard",
+		"name": "The Shipping Yard",
+		"roster": [
+			"Brick",
+			"Shieldbearer",
+			"Ember",
+			"Commander"
+		],
+		"environment": {
+			"kind": "crushed",
+			"params": {
+				"hazardDuration": 3.0,
+				"slowFactor": 0.4,
+				"radius": 1.0
+			}
+		},
+		"resistTheme": {
+			"primary": "Fire",
+			"primaryAmount": 0.4,
+			"secondary": "Kinetic",
+			"secondaryAmount": 0.3
+		}
+	},
+	{
+		"id": "cardboard-wastes",
+		"name": "The Cardboard Wastes",
+		"roster": [
+			"Paper Cut",
+			"Cardboard",
+			"Ember",
+			"Brick"
+		],
+		"environment": {
+			"kind": "recycling",
+			"params": {
+				"livesLossMult": 0.5,
+				"killGoldBonus": 1.0,
+				"swarmSizeMult": 1.4
+			}
+		},
+		"resistTheme": {
+			"primary": "Splash",
+			"primaryAmount": 0.35,
+			"secondary": "Explosion",
+			"secondaryAmount": 0.25
+		}
+	}
+],
+"twists": [
+	{
+		"id": "brittle",
+		"name": "Brittle",
+		"targetTower": "Ice Cube",
+		"effect": {
+			"kind": "brittle",
+			"params": {
+				"slowDurationMult": 0.5,
+				"kineticDamageVsSlowed": 1.5
+			}
+		}
+	},
+	{
+		"id": "backdraft",
+		"name": "Backdraft",
+		"targetTower": "Matchbox",
+		"effect": {
+			"kind": "backdraft",
+			"params": {
+				"burnTickRateMult": 2.0,
+				"maxBurnStacks": 1.0
+			}
+		}
+	},
+	{
+		"id": "shaped-charge",
+		"name": "Shaped Charge",
+		"targetTower": "Jack-in-the-Box",
+		"effect": {
+			"kind": "shapedCharge",
+			"params": {
+				"radiusMult": 0.6,
+				"armorPierce": 1.0
+			}
+		}
+	},
+	{
+		"id": "ricochet",
+		"name": "Ricochet",
+		"targetTower": "Cuboid",
+		"effect": {
+			"kind": "ricochet",
+			"params": {
+				"bounceEvery": 3.0,
+				"fireIntervalMult": 1.25,
+				"bounceRadius": 2.0
+			}
+		}
+	}
+],
+"relics": [
+	{
+		"id": "square-deal",
+		"name": "Square Deal",
+		"rarity": "Common",
+		"requiredTalent": null,
+		"effect": {
+			"kind": "squareDeal",
+			"params": {
+				"goldMult": 1.1
+			}
+		}
+	},
+	{
+		"id": "box-office",
+		"name": "Box Office",
+		"rarity": "Rare",
+		"requiredTalent": "conflagration",
+		"effect": {
+			"kind": "boxOffice",
+			"params": {
+				"killRewardBonus": 2.0
+			}
+		}
+	},
+	{
+		"id": "perimeter-alarm",
+		"name": "Perimeter Alarm",
+		"rarity": "Rare",
+		"requiredTalent": "permafrost",
+		"effect": {
+			"kind": "perimeterAlarm",
+			"params": {
+				"leakWarningTime": 2.0
+			}
+		}
+	},
+	{
+		"id": "open-the-box",
+		"name": "Open the Box",
+		"rarity": "Rare",
+		"requiredTalent": "demolition",
+		"effect": {
+			"kind": "openTheBox",
+			"params": {
+				"wavesPerRoll": 1.0
+			}
+		}
+	},
+	{
+		"id": "pandoras-box",
+		"name": "Pandora's Box",
+		"rarity": "Legendary",
+		"requiredTalent": "conflagration",
+		"effect": {
+			"kind": "pandorasBox",
+			"params": {}
+		}
+	}
+],
+"augments": [
+	{
+		"id": "cornerstone",
+		"name": "Cornerstone",
+		"effect": {
+			"kind": "cornerstone",
+			"params": {
+				"debuffImmunity": 1.0
+			}
+		}
+	},
+	{
+		"id": "sharpened-edge",
+		"name": "Sharpened Edge",
+		"effect": {
+			"kind": "sharpenedEdge",
+			"params": {
+				"damageMult": 1.2
+			}
+		}
+	},
+	{
+		"id": "ninety-degrees",
+		"name": "90 Degrees",
+		"effect": {
+			"kind": "ninetyDegrees",
+			"params": {}
+		}
+	},
+	{
+		"id": "set-square",
+		"name": "Set Square",
+		"effect": {
+			"kind": "setSquare",
+			"params": {}
+		}
+	},
+	{
+		"id": "box-springs",
+		"name": "Box Springs",
+		"effect": {
+			"kind": "boxSprings",
+			"params": {}
+		}
+	},
+	{
+		"id": "vertigo",
+		"name": "Vertigo",
+		"effect": {
+			"kind": "vertigo",
+			"params": {
+				"slowAmount": 0.25,
+				"slowDuration": 2.0
+			}
+		}
+	}
+],
+"talents": [
+	{
+		"id": "filler-damage",
+		"name": "Square Up",
+		"layer": "Filler",
+		"cost": 1,
+		"prereqs": [],
+		"effect": {
+			"kind": "damageBonus",
+			"params": {
+				"mult": 0.1
+			}
+		}
+	},
+	{
+		"id": "filler-range",
+		"name": "Long Edge",
+		"layer": "Filler",
+		"cost": 1,
+		"prereqs": [],
+		"effect": {
+			"kind": "rangeBonus",
+			"params": {
+				"mult": 0.1
+			}
+		}
+	},
+	{
+		"id": "filler-gold",
+		"name": "Coin Slot",
+		"layer": "Filler",
+		"cost": 1,
+		"prereqs": [],
+		"effect": {
+			"kind": "goldBonus",
+			"params": {
+				"mult": 0.15
+			}
+		}
+	},
+	{
+		"id": "filler-lives",
+		"name": "Spare Box",
+		"layer": "Filler",
+		"cost": 1,
+		"prereqs": [],
+		"effect": {
+			"kind": "extraLives",
+			"params": {
+				"lives": 1.0
+			}
+		}
+	},
+	{
+		"id": "pyromancer",
+		"name": "Pyromancer",
+		"layer": "Core",
+		"cost": 3,
+		"prereqs": [
+			"filler-damage"
+		],
+		"effect": {
+			"kind": "pyromancer",
+			"params": {}
+		}
+	},
+	{
+		"id": "frostwarden",
+		"name": "Frostwarden",
+		"layer": "Core",
+		"cost": 3,
+		"prereqs": [
+			"filler-range"
+		],
+		"effect": {
+			"kind": "frostwarden",
+			"params": {}
+		}
+	},
+	{
+		"id": "breaker",
+		"name": "Breaker",
+		"layer": "Core",
+		"cost": 3,
+		"prereqs": [
+			"filler-damage"
+		],
+		"effect": {
+			"kind": "breaker",
+			"params": {}
+		}
+	},
+	{
+		"id": "reinforced-core",
+		"name": "Reinforced Core",
+		"layer": "Core",
+		"cost": 3,
+		"prereqs": [
+			"filler-lives"
+		],
+		"effect": {
+			"kind": "extraLives",
+			"params": {
+				"lives": 2.0
+			}
+		}
+	},
+	{
+		"id": "permafrost",
+		"name": "Permafrost",
+		"layer": "Deep",
+		"cost": 5,
+		"prereqs": [
+			"frostwarden"
+		],
+		"effect": {
+			"kind": "permafrost",
+			"params": {}
+		}
+	},
+	{
+		"id": "conflagration",
+		"name": "Conflagration",
+		"layer": "Deep",
+		"cost": 5,
+		"prereqs": [
+			"pyromancer"
+		],
+		"effect": {
+			"kind": "conflagration",
+			"params": {}
+		}
+	},
+	{
+		"id": "demolition",
+		"name": "Demolition",
+		"layer": "Deep",
+		"cost": 5,
+		"prereqs": [
+			"breaker"
+		],
+		"effect": {
+			"kind": "demolition",
+			"params": {}
+		}
+	},
+	{
+		"id": "reroll",
+		"name": "Restock",
+		"layer": "Filler",
+		"cost": 2,
+		"prereqs": [],
+		"effect": {
+			"kind": "reroll",
+			"params": {}
+		}
+	}
+]
 }

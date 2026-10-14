@@ -233,6 +233,8 @@ class Render:
     button(Ui.Play)
     button(Ui.Tutorial)
     button(Ui.Talents)
+    button(Ui.Replays)
+    button(Ui.Progress)
     shapes.end()
 
     val towers = Config.game.towers.size
@@ -242,8 +244,10 @@ class Render:
     buttonLabel(Ui.Play, "PLAY")
     buttonLabel(Ui.Tutorial, "TUTORIAL")
     buttonLabel(Ui.Talents, "TALENTS")
+    buttonLabel(Ui.Replays, Messages.t("menu.replays"))
+    buttonLabel(Ui.Progress, Messages.t("menu.progress"))
     centered(s"1-$towers to pick a tower · click green to build · F to fast-forward · R to reload config · ESC to pause",
-      Config.WorldW / 2, 120f, 1f, Config.DimText)
+      Config.WorldW / 2, 36f, 1f, Config.DimText)
     batch.end()
     if dev then drawDevOverlay()
     present()
@@ -310,6 +314,7 @@ class Render:
     if effects.goldMult   != 1f then effLine(Messages.t("talents.goldMult", pct(effects.goldMult)))
     if effects.loadoutSlots > 0 then effLine(Messages.t("talents.loadoutSlots", effects.loadoutSlots))
     if effects.rerollUnlocked then effLine(Messages.t("talents.reroll"))
+    if effects.extraLives > 0 then effLine(Messages.t("talents.extraLives", effects.extraLives))
     if effects.activeCores.nonEmpty then effLine(Messages.t("talents.cores", effects.activeCores.mkString(", ")))
     if effects.activeDeeps.nonEmpty then effLine(Messages.t("talents.deeps", effects.activeDeeps.mkString(", ")))
     if y == 122f then effLine(Messages.t("talents.none"))
@@ -390,13 +395,13 @@ class Render:
     present()
 
   /** Pre-run loadout picker: every tower as a row; unlocked rows are clickable
-    * and toggle a highlight border, locked rows render as a "?" and ignore
-    * clicks. The run starts with exactly the selected towers in its loadout.
+    * and toggle a highlight border, locked rows show their meta-currency price
+    * and are bought by clicking. The run starts with exactly the selected towers.
     */
-  def drawLoadout(run: RunContext, selected: Vector[String], dev: Boolean = false): Unit =
+  def drawLoadout(run: RunContext, selected: Vector[String], meta: MetaData, dev: Boolean = false): Unit =
     beginScene()
     val towers  = Config.game.towers
-    val locked  = Config.Loadout.locked.toSet
+    val locked  = towers.map(_.name).toSet -- Meta.unlockedTowers(meta)
     val maxSel  = Config.Loadout.maxSelected
 
     shapes.begin(ShapeType.Filled)
@@ -418,13 +423,17 @@ class Render:
 
     batch.begin()
     centered("CHOOSE YOUR LOADOUT", Config.WorldW / 2, 560f, 3f)
-    centered(s"slots ${selected.size} / $maxSel", Config.WorldW / 2, 520f, 1.4f, Config.DimText)
+    centered(s"slots ${selected.size} / $maxSel    currency ${meta.balance}", Config.WorldW / 2, 520f, 1.4f, Config.DimText)
 
     towers.zipWithIndex.foreach { case (t, i) =>
       val r        = Ui.LoadoutRow(i)
       val isLocked = locked.contains(t.name)
       if isLocked then
-        centered("?", r.centerX, r.centerY + 8f, 2.2f, Config.DimText)
+        text(s"${t.name}", r.x + 16f, r.centerY + 8f, 1.4f, Config.DimText)
+        val price = Config.Loadout.unlockCosts.get(t.name).fold("LOCKED")(c => s"UNLOCK $c")
+        val tint  = if Config.Loadout.unlockCosts.get(t.name).exists(_ <= meta.balance) then Config.BuffTint else Config.DimText
+        text(price, r.x + r.w - 130f, r.centerY + 8f, 1.2f, tint)
+        text(kindName(t.kind), r.x + 16f, r.y + 12f, 0.9f, Config.DimText)
       else
         text(s"${t.name}", r.x + 16f, r.centerY + 8f, 1.4f, t.color)
         text(s"${t.cost}g", r.x + r.w - 70f, r.centerY + 8f, 1.2f, Config.ShotColor)
@@ -435,6 +444,68 @@ class Render:
 
     buttonLabel(Ui.LoadoutConfirm, "CONFIRM")
     buttonLabel(Ui.LoadoutBack, "BACK")
+    batch.end()
+    if dev then drawDevOverlay()
+    present()
+
+  /** Saved games, one page at a time. A row is one recording; clicking it plays it back. */
+  def drawReplays(files: Vector[(String, Replay)], page: Int, dev: Boolean = false): Unit =
+    beginScene()
+    val rows = files.slice(page * Ui.ReplaysPerPage, (page + 1) * Ui.ReplaysPerPage)
+
+    shapes.begin(ShapeType.Filled)
+    rows.indices.foreach(i => button(Ui.ReplayRow(i)))
+    button(Ui.ReplayPrev)
+    button(Ui.ReplayBack)
+    button(Ui.ReplayNext)
+    shapes.end()
+
+    batch.begin()
+    centered(Messages.t("replay.title"), Config.WorldW / 2, 560f, 3f)
+    if files.isEmpty then centered(Messages.t("replay.empty"), Config.WorldW / 2, 300f, 1.2f, Config.DimText)
+    rows.zipWithIndex.foreach { case ((_, r), i) =>
+      val row = Ui.ReplayRow(i)
+      val label = if r.kind == "campaign" then s"campaign  ${r.bot}" else s"${r.bot}  ${r.biome}  L${r.level + 1}"
+      text(label, row.x + 12f, row.y + 24f, 1.1f, Config.TextColor)
+      text(r.result.split(" ").take(2).mkString(" "), row.x + 12f, row.y + 8f, 0.9f, Config.DimText)
+    }
+    buttonLabel(Ui.ReplayPrev, Messages.t("replay.prev"))
+    buttonLabel(Ui.ReplayBack, Messages.t("replay.back"))
+    buttonLabel(Ui.ReplayNext, Messages.t("replay.next"))
+    centered(Messages.t("replay.page", page + 1, Ui.replayPages(files.size)), Config.WorldW / 2, 120f, 1.1f, Config.DimText)
+    batch.end()
+    if dev then drawDevOverlay()
+    present()
+
+  /** Logged games summarized per phase, bot, biome and level, one page at a time. */
+  def drawProgress(rows: Vector[ProgressLog.Summary], page: Int, dev: Boolean = false): Unit =
+    beginScene()
+    val shown = rows.slice(page * Ui.ReplaysPerPage, (page + 1) * Ui.ReplaysPerPage)
+
+    shapes.begin(ShapeType.Filled)
+    shown.indices.foreach(i => button(Ui.ReplayRow(i)))
+    button(Ui.ReplayPrev)
+    button(Ui.ReplayBack)
+    button(Ui.ReplayNext)
+    shapes.end()
+
+    batch.begin()
+    centered(Messages.t("progress.title"), Config.WorldW / 2, 560f, 3f)
+    if rows.isEmpty then centered(Messages.t("progress.empty"), Config.WorldW / 2, 300f, 1.2f, Config.DimText)
+    else centered(Messages.t("progress.games", rows.map(_.games).sum), Config.WorldW / 2, 528f, 1.1f, Config.DimText)
+    shown.zipWithIndex.foreach { case (r, i) =>
+      val row = Ui.ReplayRow(i)
+      val pct = "%.0f".format(100.0 * r.won / math.max(1, r.games))
+      text(Messages.t("progress.row1", r.phase, r.bot, r.biome, r.level + 1, r.games, pct),
+        row.x + 10f, row.y + 24f, 0.95f, Config.TextColor)
+      text(Messages.t("progress.row2", "%.1f".format(r.kills), "%.1f".format(r.leaks), "%.1f".format(r.waves),
+        "%.0f".format(r.secondsWon), "%.0f".format(r.secondsLost)),
+        row.x + 10f, row.y + 8f, 0.8f, Config.DimText)
+    }
+    buttonLabel(Ui.ReplayPrev, Messages.t("replay.prev"))
+    buttonLabel(Ui.ReplayBack, Messages.t("replay.back"))
+    buttonLabel(Ui.ReplayNext, Messages.t("replay.next"))
+    centered(Messages.t("replay.page", page + 1, Ui.replayPages(rows.size)), Config.WorldW / 2, 120f, 1.1f, Config.DimText)
     batch.end()
     if dev then drawDevOverlay()
     present()
@@ -500,7 +571,7 @@ class Render:
     present()
 
   def drawGame(w: World, hover: Option[GridPos], fast: Boolean, selected: TowerSpec, notice: Option[String] = None, dev: Boolean = false): Unit =
-    Config.setActiveBiome(w.run.biome)
+    Config.setActive(w.run.biome, w.level)
     beginScene()
     drawScene(w, hover, fast, selected, notice)
     if dev then drawDevOverlay()
@@ -510,7 +581,7 @@ class Render:
     * the player's gold. No sim is stepped while this is on screen.
     */
   def drawDraft(w: World, dev: Boolean = false): Unit =
-    Config.setActiveBiome(w.run.biome)
+    Config.setActive(w.run.biome, w.level)
     beginScene()
     val d = w.draft.get
     val unlocked = Meta.effects(w.run.talents).rerollUnlocked
@@ -546,7 +617,7 @@ class Render:
 
   /** Frozen game view under a dim overlay plus the pause panel and its buttons. */
   def drawPaused(w: World, fast: Boolean, selected: TowerSpec, dev: Boolean = false): Unit =
-    Config.setActiveBiome(w.run.biome)
+    Config.setActive(w.run.biome, w.level)
     beginScene()
     drawScene(w, None, fast, selected, None)
 
@@ -629,6 +700,10 @@ class Render:
     val path = Grid.pathCells(level)
     shapes.setColor(Config.GridLine)
     shapes.rect(0f, 0f, Config.BoardPx, Config.BoardPx)
+    Grid.puddles(level).foreach { case (x, y, r) =>
+      shapes.setColor(Config.ShotShockColor.r, Config.ShotShockColor.g, Config.ShotShockColor.b, 0.22f)
+      shapes.circle(x, y, r)
+    }
     for
       gx <- 0 until Config.GridSize
       gy <- 0 until Config.GridSize
@@ -704,7 +779,7 @@ class Render:
       e.spec.aura.foreach { a =>
         val (ex, ey) = e.pos
         shapes.setColor(e.spec.color)
-        shapes.circle(ex, ey, a.radius)
+        shapes.circle(ex, ey, a.radius * Config.CellPx)
       }
     }
 
@@ -714,6 +789,7 @@ class Render:
     case DamageKind.Slow      => Config.ShotFrostColor
     case DamageKind.Splash    => Config.ShotSplashColor
     case DamageKind.Explosion => Config.ShotBoomColor
+    case DamageKind.Shock     => Config.ShotShockColor
 
   private def drawShots(w: World): Unit =
     w.shots.foreach { p =>
@@ -733,11 +809,11 @@ class Render:
   private def drawRanges(w: World, hover: Option[GridPos], selected: TowerSpec): Unit =
     w.towers.foreach { t =>
       shapes.setColor(t.spec.color)
-      shapes.circle(t.cell.centerX, t.cell.centerY, t.spec.range)
+      shapes.circle(t.cell.centerX, t.cell.centerY, t.spec.range * Config.CellPx)
     }
     hover.filter(c => Grid.isBuildable(c, w.level)).foreach { c =>
       shapes.setColor(selected.color)
-      shapes.circle(c.centerX, c.centerY, selected.range)
+      shapes.circle(c.centerX, c.centerY, selected.range * Config.CellPx)
     }
 
   private def drawHud(w: World, fast: Boolean, selected: TowerSpec): Unit =

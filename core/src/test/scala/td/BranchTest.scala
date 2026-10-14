@@ -3,8 +3,9 @@ package td
 class BranchTest extends TestBase:
   // Config/Grid resolve board/levels off a global active-biome singleton; reset
   // it so a prior suite's run can't leak its biome into this suite's reads.
-  // Ashen Ridge (level 1) is the single branched route in the bundled config.
-  private val BranchLevel = 1
+  // The first branched route in the global campaign (read from the global list, so a
+  // leftover active biome from another suite cannot change it).
+  private val BranchLevel = Config.game.levels.indexWhere(_.route.branches.nonEmpty)
 
   // The tutorial now has its own (small, unbranched) map, so branch tests use a
   // real biome that falls back to the global branched levels, with no environment
@@ -31,9 +32,8 @@ class BranchTest extends TestBase:
   // -- config ----------------------------------------------------------------
 
   test("bundled config has a branched route with a side-taking specialist") {
-    val route = Config.levelAt(BranchLevel).route
+    val route = Config.game.levels(BranchLevel).route
     assert(route.branches.nonEmpty)
-    assertEquals(route.branches.head.side, RouteSide.Right)
     assertEquals(Config.enemySpec("Edgelord").sidePreference, Some(RouteSide.Left))
     assert(Config.enemySpec("Cardboard").sidePreference.isEmpty)
   }
@@ -62,11 +62,12 @@ class BranchTest extends TestBase:
   }
 
   test("branch cells are folded into the buildable-path set") {
-    val path = Grid.pathCells(BranchLevel)
-    assert(path.contains(GridPos(8, 17)))  // trunk
-    assert(path.contains(GridPos(8, 3)))   // branch corner
-    assert(path.contains(GridPos(12, 3)))  // along the branch
-    assert(!Grid.isBuildable(GridPos(8, 3), BranchLevel))
+    val route  = Config.game.levels(BranchLevel).route
+    val path   = Grid.pathCells(BranchLevel)
+    val branch = route.branches.head
+    assert(path.contains(route.waypoints(branch.from)))   // trunk, where the fork starts
+    assert(path.contains(branch.waypoints.head))          // branch corner
+    assert(!Grid.isBuildable(branch.waypoints.head, BranchLevel))
   }
 
   test("a branch-lane enemy is not on the trunk mid-fork") {
@@ -78,14 +79,17 @@ class BranchTest extends TestBase:
 
   // -- movement --------------------------------------------------------------
 
-  test("Edgelord always takes the left fork (the trunk, opposite the right branch)") {
+  test("Edgelord always takes the left fork, whichever side the branch is on") {
     val run = branchRun
     val fork = Grid.forks(BranchLevel).head
     val start = fork.forkProgress - 0.5f
     val ws = world(run, (1 to 5).map(i => enemy("Edgelord", i.toLong, start)).toVector)
     val stepped = Sim.step(ws, Config.MaxStepDt, Vector.empty)
     assertEquals(stepped.enemies.size, 5)
-    assert(stepped.enemies.forall(_.lane.isEmpty), "Edgelord must stay on the trunk/left lane")
+    if fork.side == RouteSide.Left then
+      assert(stepped.enemies.forall(_.lane.contains(fork.branchIndex)), "Edgelord must take the left branch")
+    else
+      assert(stepped.enemies.forall(_.lane.isEmpty), "Edgelord must stay on the trunk, which is the left side")
   }
 
   test("non-specialist enemies split across the two lanes at the fork") {
@@ -137,7 +141,7 @@ class BranchTest extends TestBase:
   private def routeJson(branches: String): String =
     s"""{
   "board": { "gridSize": 20, "cellPx": 32.0, "panelPx": 240.0 },
-  "economy": { "startGold": 120, "startLives": 20, "killReward": 8, "levelBonus": 50 },
+  "economy": { "startGold": 120, "startLives": 20, "killReward": 8 },
   "meta": { "payoutPerLevel": 10, "payoutPerWave": 2, "payoutWinBonus": 25 },
   "draft": { "offerCount": 3, "rerollCost": 25, "rerollCostGrowth": 15, "poolRounds": 10 },
   "combat": { "maxStepDt": 0.05, "fastForward": 3, "hitRadius": 6.0, "burnDps": 6.0, "burnDuration": 3.0, "slowFactor": 0.5, "slowDuration": 2.0, "breakTime": 4.0 },

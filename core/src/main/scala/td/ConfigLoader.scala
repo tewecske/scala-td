@@ -73,9 +73,8 @@ object ConfigLoader:
     catch case e: Exception => Left(s"config parse error: ${e.getMessage}")
 
   private def parseRoot(root: JsonValue): GameConfig =
-    val cellPx  = f(obj(root, "board"), "cellPx")
-    val towers  = arr(root, "towers").map(parseTower(_, cellPx))
-    val enemies = arr(root, "enemies").map(parseEnemy(_, cellPx))
+    val towers  = arr(root, "towers").map(parseTower)
+    val enemies = arr(root, "enemies").map(parseEnemy)
     val colors  = parseColors(obj(root, "colors"))
 
     requireUnique(towers.map(_.name), "tower")
@@ -119,8 +118,8 @@ object ConfigLoader:
     val lighting = parseLighting(optObj(root, "lighting"))
     val effects = parseEffects(optObj(root, "effects"))
     GameConfig(
-      board = BoardConfig(i(board, "gridSize"), cellPx, f(board, "panelPx")),
-      economy = EconomyConfig(i(econ, "startGold"), i(econ, "startLives"), i(econ, "killReward"), i(econ, "levelBonus")),
+      board = BoardConfig(i(board, "gridSize"), fo(board, "boardPx", 640f), f(board, "panelPx")),
+      economy = EconomyConfig(i(econ, "startGold"), i(econ, "startLives"), i(econ, "killReward")),
       meta = MetaConfig(i(meta, "payoutPerLevel"), i(meta, "payoutPerWave"), i(meta, "payoutWinBonus")),
       draft = DraftConfig(i(draft, "offerCount"), i(draft, "rerollCost"), i(draft, "rerollCostGrowth"), i(draft, "poolRounds")),
       combat = CombatConfig(
@@ -132,7 +131,8 @@ object ConfigLoader:
         f(cmbt, "slowFactor"),
         f(cmbt, "slowDuration"),
         f(cmbt, "breakTime"),
-        i(cmbt, "studyHits")
+        i(cmbt, "studyHits"),
+        fo(cmbt, "puddleShockMult", 1.5f)
       ),
       i18n = parseI18n(obj(root, "i18n")),
       towers = towers,
@@ -178,22 +178,36 @@ object ConfigLoader:
     if defSel.size > maxSel then
       throw IllegalArgumentException("loadout defaultSelected exceeds maxSelected")
 
-    LoadoutConfig(maxSel, defSel, unlocked, locked)
+    val costsV = v.get("unlockCosts")
+    val costs =
+      if costsV == null then Map.empty[String, Int]
+      else
+        var c = costsV.child
+        val b = Map.newBuilder[String, Int]
+        while c != null do
+          if !locked.contains(c.name) then
+            throw IllegalArgumentException(s"loadout unlockCosts references '${c.name}', which is not locked")
+          if c.asInt() < 0 then throw IllegalArgumentException(s"loadout unlockCosts for '${c.name}' is negative")
+          b += c.name -> c.asInt()
+          c = c.next
+        b.result()
 
-  private def parseTower(v: JsonValue, cellPx: Float): TowerSpec =
+    LoadoutConfig(maxSel, defSel, unlocked, locked, costs)
+
+  private def parseTower(v: JsonValue): TowerSpec =
     TowerSpec(
       name = s(v, "name"),
       cost = i(v, "cost"),
       color = parseColor(s(v, "color")),
-      range = f(v, "range") * cellPx,
+      range = f(v, "range"),
       fireInterval = f(v, "fireInterval"),
       damage = f(v, "damage"),
       projectileSpeed = f(v, "projectileSpeed"),
       kind = DamageKind.valueOf(s(v, "kind")),
-      splashRadius = f(v, "splashRadius") * cellPx
+      splashRadius = f(v, "splashRadius")
     )
 
-  private def parseEnemy(v: JsonValue, cellPx: Float): EnemySpec =
+  private def parseEnemy(v: JsonValue): EnemySpec =
     val resist = obj(v, "resist")
     val auraVal = v.get("aura")
     val aura =
@@ -202,7 +216,7 @@ object ConfigLoader:
         Some(
           Aura(
             AuraKind.valueOf(auraVal.getString("kind")),
-            auraVal.getFloat("radius") * cellPx,
+            auraVal.getFloat("radius"),
             auraVal.getFloat("magnitude")
           )
         )
@@ -217,7 +231,8 @@ object ConfigLoader:
         f(resist, "fire"),
         f(resist, "slow"),
         f(resist, "splash"),
-        f(resist, "explosion")
+        f(resist, "explosion"),
+        fo(resist, "shock", 0f)
       ),
       aura = aura,
       heavy = v.getBoolean("heavy", false),
@@ -226,8 +241,33 @@ object ConfigLoader:
         if sideVal == null || sideVal.isNull then None
         else Some(enumValue(sideVal.asString(), "side preference", RouteSide.values)),
       killReward = fo(v, "killReward", 1f),
-      speedVariance = fo(v, "speedVariance", 0f)
+      speedVariance = fo(v, "speedVariance", 0f),
+      boss = v.getBoolean("boss", false),
+      onDeath = optOnDeath(v),
+      promotesTo = optString(v, "promotesTo"),
+      leakCost = optInt(v, "leakCost").getOrElse(1)
     )
+
+  private def optString(v: JsonValue, name: String): Option[String] =
+    val child = v.get(name)
+    if child == null || child.isNull then None else Some(child.asString())
+
+  private def optOnDeath(v: JsonValue): Option[(String, Int)] =
+    val child = v.get("onDeath")
+    if child == null || !child.isObject then None
+    else Some(s(child, "enemy") -> i(child, "count"))
+
+  private def parsePuddles(v: JsonValue): Vector[Puddle] =
+    val child = v.get("puddles")
+    if child == null || !child.isArray then Vector.empty
+    else (0 until child.size).map { idx =>
+      val p = child.get(idx)
+      Puddle(f(p, "x"), f(p, "y"), f(p, "radius"))
+    }.toVector
+
+  private def optInt(v: JsonValue, name: String): Option[Int] =
+    val child = v.get(name)
+    if child == null || child.isNull then None else Some(child.asInt())
 
   private def parseLevels(root: JsonValue, known: Set[String]): Vector[LevelConfig] =
     arr(root, "levels").map { v =>
@@ -251,7 +291,7 @@ object ConfigLoader:
         throw IllegalArgumentException(s"level '$name' has multiple branches at fork index ${dupFrom.min}")
       if waves.isEmpty then
         throw IllegalArgumentException(s"level '$name' has no waves")
-      LevelConfig(name, waves, route)
+      LevelConfig(name, waves, route, optInt(v, "gridSize"), parsePuddles(v), optInt(v, "startGold"))
     }
 
   private def parseWave(v: JsonValue, known: Set[String]): WaveSpec =
@@ -313,7 +353,8 @@ object ConfigLoader:
       hpBarBack = c(v, "hpBarBack"),
       hpBarFill = c(v, "hpBarFill"),
       text = c(v, "text"),
-      dimText = c(v, "dimText")
+      dimText = c(v, "dimText"),
+      shotShock = if v.get("shotShock") == null then Color(0.5f, 0.85f, 1f, 1f) else c(v, "shotShock")
     )
 
   /** Ambient-only global illumination. Optional; defaults keep the current look. */
@@ -393,7 +434,7 @@ object ConfigLoader:
           throw IllegalArgumentException(s"biome '$id' level '$name' has an empty route")
         if waves.isEmpty then
           throw IllegalArgumentException(s"biome '$id' level '$name' has no waves")
-        LevelConfig(name, waves, route)
+        LevelConfig(name, waves, route, optInt(lv, "gridSize"), parsePuddles(lv), optInt(lv, "startGold"))
       }
     val colorOpt = (name: String) =>
       val c = v.get(name)

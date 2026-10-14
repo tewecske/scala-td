@@ -17,8 +17,8 @@ object Sim:
     towers = Vector.empty,
     enemies = Vector.empty,
     shots = Vector.empty,
-    gold = Config.StartGold,
-    lives = Config.StartLives,
+    gold = Config.withBiome(run.biome)(Config.levelStartGold(0)),
+    lives = Config.StartLives + Meta.effects(run.talents).extraLives,
     wave = 0,
     spawnQueue = Vector.empty,
     spawnTimer = 0f,
@@ -31,7 +31,7 @@ object Sim:
     // Resolve the run's biome so route/level/palette lookups inside the step
     // (and downstream callers) see the right board. Cleared afterwards so the
     // global state never carries a stale biome between steps/runs.
-    Config.setActiveBiome(w0.run.biome)
+    Config.setActive(w0.run.biome, w0.level)
     try
       if w0.isOver || w0.won then w0
       else if w0.draft.isDefined then cmds.foldLeft(w0)(applyCommand)
@@ -118,8 +118,14 @@ object Sim:
 
   // -- draft ------------------------------------------------------------------
 
+  /** The next round of the pre-rolled pool, minus anything the run already owns
+    * (the pool can repeat across rounds, and an owned pick would be refused).
+    */
   private def nextOffers(w: World): Vector[DraftOffer] =
-    w.run.draftPool.slice(w.draftCursor, w.draftCursor + Config.OfferCount)
+    w.run.draftPool.slice(w.draftCursor, w.draftCursor + Config.OfferCount).filterNot {
+      case DraftOffer.Relic(id)   => w.run.relics.contains(id)
+      case DraftOffer.Augment(id) => w.run.augments.contains(id)
+    }
 
   private def canReroll(w: World, d: Draft): Boolean =
     effects(w).rerollUnlocked && w.gold >= d.rerollCost && nextOffers(w).nonEmpty
@@ -278,7 +284,7 @@ object Sim:
           progress = 0f,
           hp = hp,
           maxHp = hp,
-          speed = spec.baseSpeed * w.run.speedMults.getOrElse(spec.name, 1f),
+          speed = spec.baseSpeed * Config.CellPx * w.run.speedMults.getOrElse(spec.name, 1f),
           tpe = spec.name,
           level = w.level,
           resist = spec.resist.layered(w.run.resistTheme)
@@ -326,7 +332,7 @@ object Sim:
     }
 
   /** End-of-level transition. Towers/enemies/shots are cleared for the next
-    * route, but gold and lives carry over (plus a small bonus). Winning the last
+    * route; lives carry over, gold resets to the next level's start gold. Winning the last
     * level sets [[World.won]] and freezes the sim.
     */
   private def completeLevel(w: World): World =
@@ -344,8 +350,11 @@ object Sim:
     * The level number does NOT advance until the player picks.
     */
   private def enterDraft(w: World): World =
-    w.copy(
-      draft = Some(Draft(nextOffers(w), Config.RerollCost)),
+    val offers = nextOffers(w)
+    // Nothing left to offer: skip the draft rather than leave the player stuck.
+    if offers.isEmpty then beginNextLevel(w.copy(draftCursor = w.draftCursor + Config.OfferCount))
+    else w.copy(
+      draft = Some(Draft(offers, Config.RerollCost)),
       draftCursor = w.draftCursor + Config.OfferCount,
       towers = Vector.empty,
       enemies = Vector.empty,
@@ -357,7 +366,7 @@ object Sim:
     )
 
   /** A pick was made: advance to the next level. Towers/enemies/shots are
-    * cleared, the level bonus is awarded, and the draft closes. `pendingAugment`
+    * cleared, gold resets to the new level's start gold, and the draft closes. `pendingAugment`
     * (if any) is carried over for socketing during play.
     */
   private def beginNextLevel(w: World): World =
@@ -370,7 +379,7 @@ object Sim:
       spawnQueue = Vector.empty,
       spawnTimer = 0f,
       breakTimer = Waves.breakTime,
-      gold = w.gold + math.round(Config.LevelBonus * effects(w).goldMult * relicGoldMult(w)),
+      gold = Config.levelStartGold(w.level + 1),
       hazards = Vector.empty,
       draft = None
     )
@@ -398,10 +407,12 @@ object Sim:
               val (ex, ey) = e.pos
               val dx       = sx - ex
               val dy       = sy - ey
-              if dx * dx + dy * dy <= a.radius * a.radius then
+              val r = a.radius * Config.CellPx
+              if dx * dx + dy * dy <= r * r then
                 a.kind match
                   case AuraKind.SpeedBoost => speedMult = math.max(speedMult, 1f + a.magnitude)
                   case AuraKind.Armor      => auraArmor = math.max(auraArmor, a.magnitude)
+                  case AuraKind.TowerChill => ()
             }
         }
         var armor = auraArmor
@@ -438,12 +449,12 @@ object Sim:
       val (dead, alive) = updated.partition(_.hp <= 0f)
       if dead.isEmpty then base.copy(enemies = alive)
       else
-        noteReveals(base, dead).copy(
+        spawnOnDeath(noteReveals(base, dead).copy(
           enemies = alive,
           gold = base.gold + killRewardTotal(base, dead),
           kills = base.kills + dead.size,
           hazards = base.hazards ++ crushedHazards(base, dead)
-        )
+        ), dead)
 
   private def tickHazards(hazards: Vector[Hazard], dt: Float): Vector[Hazard] =
     if hazards.isEmpty then hazards
@@ -489,7 +500,7 @@ object Sim:
       val mult = math.max(0f, envParam(w, "recycling", "livesLossMult")) match
         case m if m <= 0f => 1f
         case m            => m
-      val pending = w.leakDamage + leaked.size * mult
+      val pending = w.leakDamage + leaked.map(_.spec.leakCost).sum * mult
       val whole   = pending.toInt
       val merged  = leaked.foldLeft(w.leaksByType) { (m, e) => m + (e.tpe -> (m.getOrElse(e.tpe, 0) + 1)) }
       base.copy(
@@ -529,17 +540,58 @@ object Sim:
           case "vertigo"       => AugmentFx(1f, Some((a.effect.params.getOrElse("slowAmount", 0f), a.effect.params.getOrElse("slowDuration", 0f))))
           case _               => AugmentFx(1f, None)
 
+  /** How fast a tower reloads: 1 normally, less while a chill aura (TowerChill)
+    * reaches it. The strongest chill wins.
+    */
+  private def towerChill(w: World, t: Tower): Float =
+    w.enemies.foldLeft(1f) { (acc, e) =>
+      e.spec.aura match
+        case Some(a) if a.kind == AuraKind.TowerChill =>
+          val (ex, ey) = e.pos
+          val r        = a.radius * Config.CellPx
+          val dx       = ex - t.cell.centerX
+          val dy       = ey - t.cell.centerY
+          if dx * dx + dy * dy <= r * r then math.min(acc, 1f - a.magnitude) else acc
+        case _ => acc
+    }
+
+  /** Enemies that die leave their spawn behind, at the same place on the route. */
+  private def spawnOnDeath(w: World, dead: Vector[Enemy]): World =
+    val spawns = dead.flatMap { d =>
+      d.spec.onDeath.toVector.flatMap { case (name, count) =>
+        val spec = Config.enemySpec(name)
+        (0 until count).map(_ => d -> spec)
+      }
+    }
+    if spawns.isEmpty then w
+    else
+      val (next, out) = spawns.foldLeft((w.nextId, Vector.empty[Enemy])) { case ((id, acc), (d, spec)) =>
+        val e = Enemy(
+          id = id,
+          progress = d.progress,
+          hp = spec.baseHp,
+          maxHp = spec.baseHp,
+          speed = spec.baseSpeed * Config.CellPx,
+          tpe = spec.name,
+          level = d.level,
+          resist = spec.resist.layered(w.run.resistTheme),
+          lane = d.lane
+        )
+        (id + 1, acc :+ e)
+      }
+      w.copy(enemies = w.enemies ++ out, nextId = next)
+
   private def fireTowers(w: World, dt: Float): World =
     val fresh = Vector.newBuilder[Projectile]
     val eff   = effects(w)
 
     val towers = w.towers.map { t =>
-      val cd = t.cooldown - dt
+      val cd = t.cooldown - dt * towerChill(w, t)
       if cd > 0f then t.copy(cooldown = cd)
       else
         val spec   = t.spec
         val tw     = twistFx(w, t.tpe)
-        val range  = spec.range * eff.rangeMult
+        val range  = spec.range * Config.CellPx * eff.rangeMult
         val range2 = range * range
         // Standard tower-defense targeting: whatever is closest to leaking.
         val target = w.enemies
@@ -567,8 +619,8 @@ object Sim:
               e.id,
               spec.kind,
               spec.damage * eff.damageMult * fx.damageMult,
-              spec.projectileSpeed,
-              spec.splashRadius * tw.radiusMult,
+              spec.projectileSpeed * Config.CellPx,
+              spec.splashRadius * Config.CellPx * tw.radiusMult,
               dest,
               slowOv,
               burnTickRate = tw.burnTickRate,
@@ -629,13 +681,15 @@ object Sim:
     val landed     = hs.result()
     val landedById = landed.groupBy(_.id)
     val fb         = Vector.newBuilder[HitFeedback]
+    val puddles  = Grid.puddles(w.level)
     val damaged  = w.enemies.map { e =>
       landedById.get(e.id) match
         case None => e
         case Some(es) =>
           es.foldLeft(e) { (acc, h) =>
             val resistFrac = e.resist(h.kind)
-            val base       = h.damage * (1f - resistFrac)
+            val wet        = if h.kind == DamageKind.Shock && inPuddle(e.pos, puddles) then Config.PuddleShockMult else 1f
+            val base       = h.damage * (1f - resistFrac) * wet
             val armored    = if h.armorPierce then base else base * (1f - e.armor)
             val dmg        = math.max(0f,
               if brittleKin != 1f && h.kind == DamageKind.Kinetic && e.slowed then armored * brittleKin
@@ -675,14 +729,22 @@ object Sim:
     }
 
     val withResist = w.copy(traitHits = newHits, events = newEvents)
-    noteReveals(withResist, dead).copy(
+    spawnOnDeath(noteReveals(withResist, dead).copy(
       shots = fs.result(),
       enemies = alive,
       gold = w.gold + killRewardTotal(w, dead),
       kills = w.kills + dead.size,
       hazards = w.hazards ++ crushedHazards(w, dead),
       hitFeedback = w.hitFeedback ++ fb.result()
-    )
+    ), dead)
+
+  private def inPuddle(pos: (Float, Float), puddles: Vector[(Float, Float, Float)]): Boolean =
+    val (x, y) = pos
+    puddles.exists { case (px, py, r) =>
+      val dx = x - px
+      val dy = y - py
+      dx * dx + dy * dy <= r * r
+    }
 
   private def resolveImpact(w: World, p: Projectile, at: (Float, Float)): Vector[Hit] =
     val (ix, iy) = at
@@ -703,6 +765,7 @@ object Sim:
         case DamageKind.Fire      => Hit(e.id, DamageKind.Fire, p.damage, Some((Config.BurnDps * p.burnTickRate, Config.BurnDuration)), None, p.noBurnStack, p.armorPierce)
         case DamageKind.Slow      => Hit(e.id, DamageKind.Slow, p.damage, None, Some((Config.SlowFactor, Config.SlowDuration)), p.noBurnStack, p.armorPierce)
         case DamageKind.Splash    => Hit(e.id, DamageKind.Splash, p.damage, None, None, p.noBurnStack, p.armorPierce)
+        case DamageKind.Shock     => Hit(e.id, DamageKind.Shock, p.damage, None, None, p.noBurnStack, p.armorPierce)
         case DamageKind.Explosion => Hit(e.id, DamageKind.Explosion, p.damage, None, None, p.noBurnStack, p.armorPierce)
       p.slow.fold(base)(s => base.copy(slow = Some(s)))
 
