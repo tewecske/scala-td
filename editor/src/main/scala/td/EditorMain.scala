@@ -1,3 +1,0 @@
-package td
-
-object EditorMain

@@ -45,7 +45,8 @@ case class EnemySpec(
     boss: Boolean = false,
     onDeath: Option[(String, Int)] = None,
     promotesTo: Option[String] = None,
-    leakCost: Int = 1
+    leakCost: Int = 1,
+    shape: EnemyShape = EnemyShape.Square
 )
 
 /** The window is always `boardPx` square. Each level's grid divides it, so bigger

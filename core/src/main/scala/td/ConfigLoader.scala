@@ -256,7 +256,8 @@ object ConfigLoader:
       boss = v.getBoolean("boss", false),
       onDeath = optOnDeath(v),
       promotesTo = optString(v, "promotesTo"),
-      leakCost = optInt(v, "leakCost").getOrElse(1)
+      leakCost = optInt(v, "leakCost").getOrElse(1),
+      shape = optString(v, "shape").fold(EnemyShape.Square)(s => enumValue(s, "enemy shape", EnemyShape.values))
     )
 
   private def optString(v: JsonValue, name: String): Option[String] =

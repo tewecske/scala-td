@@ -14,3 +14,6 @@ e2e/test-results/
 e2e/playwright-report/
 result
 result-*
+
+# local config override: the editor saves here and the game loads it (R reloads)
+/config.json

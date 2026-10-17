@@ -257,3 +257,25 @@ case class DeathRecap(
     counterKind: DamageKind,
     missingCounter: Boolean
 )
+
+/** How an enemy type is drawn. Purely visual and chosen per type in the config,
+  * deliberately not tied to abilities: several types share a shape and differ by
+  * size and color.
+  */
+enum EnemyShape(val sides: Int, val radiusScale: Float, val turn: Float):
+  case Square   extends EnemyShape(4, 0.707f, 45f)
+  case Diamond  extends EnemyShape(4, 0.74f, 0f)
+  case Triangle extends EnemyShape(3, 0.78f, 0f)
+  case Pentagon extends EnemyShape(5, 0.66f, 0f)
+  case Hexagon  extends EnemyShape(6, 0.62f, 0f)
+  case Octagon  extends EnemyShape(8, 0.58f, 22.5f)
+
+  /** Corners of this shape for an enemy of `size`, centered on the origin, the
+    * first corner pointing along `heading` (degrees) so it faces where it walks.
+    */
+  def corners(size: Float, heading: Float = 0f): Vector[(Float, Float)] =
+    val r = size * radiusScale
+    (0 until sides).toVector.map { i =>
+      val a = math.toRadians(heading + turn + i * 360.0 / sides)
+      ((math.cos(a) * r).toFloat, (math.sin(a) * r).toFloat)
+    }

@@ -48,7 +48,11 @@ lazy val editor = (project in file("editor"))
   .settings(commonSettings)
   .settings(
     name := "editor",
-    Compile / mainClass := Some("td.ConfigEditorApp")
+    // the level / wave / enemy editor; the older all-fields form is td.ConfigEditorApp
+    Compile / mainClass := Some("td.EditorApp"),
+    // own JVM, started in the repo root so "config.json" is the file the game reloads
+    fork := true,
+    run / baseDirectory := (ThisBuild / baseDirectory).value
   )
 
 lazy val headless = (project in file("headless"))

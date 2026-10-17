@@ -149,7 +149,8 @@ object ConfigWriter:
       "boss" -> bool(e.boss),
       "onDeath" -> onDeath,
       "promotesTo" -> promotes,
-      "leakCost" -> num(e.leakCost)
+      "leakCost" -> num(e.leakCost),
+      "shape" -> str(e.shape.toString)
     )
 
   private def level(l: LevelConfig): JsonValue =

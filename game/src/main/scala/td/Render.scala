@@ -40,6 +40,15 @@ class Render:
   /** Seconds since start, for menu animation. */
   private var time: Float = 0f
 
+  /** Length of the last frame, for smooth turret turning. */
+  private var frameDt: Float = 0f
+
+  /** Where each tower's barrel points (degrees), by cell; turns towards its target. */
+  private val aim = scala.collection.mutable.Map.empty[GridPos, Float]
+
+  /** Barrel turn speed, degrees per second. */
+  private val TurnSpeed = 540f
+
   private val texts = ArrayBuffer[() => Unit]()
 
   // -- camera shake (life loss) ----------------------------------------------
@@ -108,6 +117,7 @@ class Render:
   /** Ages the floating labels + sparks and decays the shake once per frame. */
   def updateFx(dt: Float): Unit =
     time += dt
+    frameDt = dt
     if floating.nonEmpty then
       val aged = floating.map(f => f.copy(life = f.life - dt)).filter(_.life > 0f)
       floating.clear()
@@ -122,6 +132,7 @@ class Render:
   def clearFx(): Unit =
     floating.clear()
     sparks.clear()
+    aim.clear()
     shakeTime = 0f
 
   /** Triggers a camera shake (called when a life is lost). */
@@ -914,10 +925,19 @@ class Render:
       shapes.circle(cx, cy, r * 0.6f, 16)
       glow(t.cell.centerX, t.cell.centerY, cell * 0.65f, t.spec.color)
       val inset = cell * 0.12f
-      shapes.setColor(t.spec.color)
+      // base plate
+      shapes.setColor(mix(t.spec.color, Config.PanelColor, 0.35f))
       shapes.rect(t.cell.x * cell + inset, t.cell.y * cell + inset, cell - 2 * inset, cell - 2 * inset)
-      shapes.setColor(mix(t.spec.color, Color.WHITE, 0.35f))
-      shapes.rect(t.cell.x * cell + inset, (t.cell.y + 1) * cell - inset - cell * 0.07f, cell - 2 * inset, cell * 0.07f)
+      // barrel, turned towards the target, then the turret on top of it
+      val angle = turnTowards(w, t)
+      val len   = cell * 0.56f
+      val thick = cell * 0.15f
+      shapes.setColor(mix(t.spec.color, Color.WHITE, 0.25f))
+      shapes.rect(t.cell.centerX, t.cell.centerY - thick / 2, 0f, thick / 2, len, thick, 1f, 1f, angle)
+      shapes.setColor(t.spec.color)
+      shapes.circle(t.cell.centerX, t.cell.centerY, cell * 0.24f, 24)
+      shapes.setColor(mix(t.spec.color, Color.WHITE, 0.45f))
+      shapes.circle(t.cell.centerX, t.cell.centerY, cell * 0.09f, 16)
       t.augment.foreach { _ =>
         shapes.setColor(gold)
         shapes.circle(t.cell.centerX, t.cell.centerY, cell * 0.1f, 12)
@@ -927,6 +947,29 @@ class Render:
         shapes.setColor(Config.HoverOk)
         shapes.rect(t.cell.x * cell, t.cell.y * cell, cell, cell)
     }
+
+  /** Turns a tower's barrel towards its target and returns the new angle (degrees).
+    * The target is chosen as the simulation does (in range, closest to leaking);
+    * the barrel points at where that enemy is drawn. Without a target it holds still.
+    */
+  private def turnTowards(w: World, t: Tower): Float =
+    val cx    = t.cell.centerX
+    val cy    = t.cell.centerY
+    val range = t.spec.range * Config.CellPx
+    val now   = aim.getOrElse(t.cell, 90f)
+    val target = w.enemies.filter { e =>
+      val (ex, ey) = e.pos
+      (ex - cx) * (ex - cx) + (ey - cy) * (ey - cy) <= range * range
+    }.maxByOption(_.progress)
+    val next = target.fold(now) { e =>
+      val (ex, ey) = drawnPos(e)
+      val want = math.toDegrees(math.atan2(ey - cy, ex - cx)).toFloat
+      val diff = ((want - now) % 360f + 540f) % 360f - 180f
+      val step = TurnSpeed * math.max(frameDt, 1f / 60f)
+      if math.abs(diff) <= step then want else now + math.signum(diff) * step
+    }
+    aim(t.cell) = next
+    next
 
   private def drawSparks(): Unit =
     val c = Config.SparkColor
@@ -943,18 +986,33 @@ class Render:
     * smoothly through corners and is smaller for enemies that fill the road.
     */
   private def scatter(e: Enemy): (Float, Float) =
-    val cell = Config.CellPx
-    val room = math.max(0f, (cell * 0.84f - e.spec.size) / 2f)
+    val room = math.max(0f, (Config.CellPx * 0.84f - e.spec.size) / 2f)
     if room <= 0f then (0f, 0f)
     else
-      val h    = java.lang.Long.hashCode(e.id * 0x9E3779B97F4A7C15L)
-      val t    = ((h >>> 8) & 0xffff) / 65535f * 2f - 1f
-      val (ax, ay) = Grid.positionAt(e.progress - cell * 0.5f, e.level, e.lane)
-      val (bx, by) = Grid.positionAt(e.progress + cell * 0.5f, e.level, e.lane)
-      val dx  = bx - ax
-      val dy  = by - ay
-      val len = math.sqrt(dx * dx + dy * dy).toFloat
-      if len < 1e-3f then (0f, 0f) else (-dy / len * t * room, dx / len * t * room)
+      val h = java.lang.Long.hashCode(e.id * 0x9E3779B97F4A7C15L)
+      val t = ((h >>> 8) & 0xffff) / 65535f * 2f - 1f
+      val (dx, dy) = roadDir(e)
+      (-dy * t * room, dx * t * room)
+
+  /** The road's direction under an enemy (unit vector), averaged over one cell so
+    * it turns smoothly through corners.
+    */
+  private def roadDir(e: Enemy): (Float, Float) =
+    val cell = Config.CellPx
+    val (ax, ay) = Grid.positionAt(e.progress - cell * 0.5f, e.level, e.lane)
+    val (bx, by) = Grid.positionAt(e.progress + cell * 0.5f, e.level, e.lane)
+    val dx  = bx - ax
+    val dy  = by - ay
+    val len = math.sqrt(dx * dx + dy * dy).toFloat
+    if len < 1e-3f then (1f, 0f) else (dx / len, dy / len)
+
+  /** A filled polygon around (cx, cy) as a triangle fan. */
+  private def polygon(cx: Float, cy: Float, corners: Vector[(Float, Float)]): Unit =
+    val n = corners.size
+    for i <- 0 until n do
+      val (ax, ay) = corners(i)
+      val (bx, by) = corners((i + 1) % n)
+      shapes.triangle(cx, cy, cx + ax, cy + ay, cx + bx, cy + by)
 
   /** Where an enemy is drawn: its simulation position plus its [[scatter]]. */
   private def drawnPos(e: Enemy): (Float, Float) =
@@ -962,18 +1020,22 @@ class Render:
     val (ox, oy) = scatter(e)
     (x + ox, y + oy)
 
+  /** Enemies as their type's polygon, turned to face along the road. */
   private def drawEnemies(w: World): Unit =
     w.enemies.foreach { e =>
-      val size = e.spec.size
+      val size  = e.spec.size
+      val shape = e.spec.shape
       val (ex, ey) = drawnPos(e)
+      val (dx, dy) = roadDir(e)
+      val heading  = math.toDegrees(math.atan2(dy, dx)).toFloat
       if e.slowed then
         shapes.setColor(Config.SlowTint)
-        shapes.rect(ex - size / 2 - 3f, ey - size / 2 - 3f, size + 6f, size + 6f)
+        polygon(ex, ey, shape.corners(size + 7f, heading))
       if e.burning then
         shapes.setColor(Config.BurnTint)
-        shapes.rect(ex - size / 2 - 1.5f, ey - size / 2 - 1.5f, size + 3f, size + 3f)
+        polygon(ex, ey, shape.corners(size + 3.5f, heading))
       shapes.setColor(e.spec.color)
-      shapes.rect(ex - size / 2, ey - size / 2, size, size)
+      polygon(ex, ey, shape.corners(size, heading))
       if e.buffed then
         shapes.setColor(Config.BuffTint)
         shapes.rect(ex - size / 2 - 3f, ey - size / 2 - 3f, 5f, 5f)
