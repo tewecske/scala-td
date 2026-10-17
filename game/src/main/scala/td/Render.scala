@@ -608,7 +608,9 @@ class Render:
     if dev then drawDevOverlay()
     present()
 
-  /** Saved games, one page at a time. A row is one recording; clicking it plays it back. */
+  /** Saved games, newest first, one page at a time. A row says who played what,
+    * when, and how it ended; clicking it plays the game back.
+    */
   def drawReplays(files: Vector[(String, Replay)], page: Int, dev: Boolean = false): Unit =
     beginScene()
     backdrop()
@@ -618,14 +620,34 @@ class Render:
     rows.zipWithIndex.foreach { case ((_, r), i) =>
       val row = Layout.listRow(i)
       round(row, 12f, if hovered(row) then mix(Config.ButtonFill, Color.WHITE, 0.12f) else Config.ButtonFill)
-      val label =
-        if r.kind == "campaign" then s"${Messages.t("replay.campaign")} · ${r.bot}"
-        else s"${r.bot} · ${Config.biomes.find(_.id == r.biome).fold(r.biome)(_.name)} · L${r.level + 1}"
-      text(label, row.x + 24f, row.top - 22f, TextStyle.Label, text0, maxW = row.w - 300f)
-      text(r.result.split(" ").take(2).mkString(" "), row.x + 24f, row.y + 18f, TextStyle.Small, muted, maxW = row.w - 48f)
-      val outcome = r.result.split(" ").headOption.getOrElse("")
-      text(outcome, row.right - 24f, row.centerY, TextStyle.Button,
-        if outcome.startsWith("WON") || outcome.startsWith("won") then accent else danger, Align.Right)
+
+      // result badge on the right
+      val (label, c) = r.outcome match
+        case "WON"     => (Messages.t("replay.outcome.won"), accent)
+        case "CLEARED" => (Messages.t("replay.outcome.cleared"), accent)
+        case "LOST"    => (Messages.t("replay.outcome.lost"), danger)
+        case _         => (Messages.t("replay.outcome.unfinished"), gold)
+      val badge = Rect(row.right - 196f, row.centerY - 20f, 176f, 40f)
+      outline(badge, 20f, 2f, c, mix(Config.ButtonFill, c, 0.18f))
+      text(label, badge.centerX, badge.centerY, TextStyle.Small, c, Align.Center, badge.w - 16f)
+
+      val what =
+        if r.kind == "campaign" then Messages.t("replay.what.campaign", r.stat("level").fold("?")(l => (l.toInt + 1).toString))
+        else
+          val biome = Config.biomes.find(_.id == Config.biomeAt(r.biome, r.level)).fold(r.biome)(_.name)
+          Messages.t("replay.what.level", r.level + 1, biome)
+      val extras = Vector(
+        Option.when(r.setup.talents.nonEmpty)(r.setup.talents.mkString("+")),
+        r.setup.relics.headOption, r.setup.augment
+      ).flatten
+      val title = s"${r.bot}  ·  $what" + (if extras.isEmpty then "" else s"  ·  ${extras.mkString(", ")}")
+      text(title, row.x + 24f, row.top - 22f, TextStyle.Label, text0, maxW = badge.x - row.x - 48f)
+
+      val when = java.time.Instant.ofEpochMilli(r.recordedAt).atZone(java.time.ZoneId.systemDefault())
+        .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+      val details = Messages.t("replay.details", when, clock(r.seconds), r.stat("kills").getOrElse("?"),
+        r.stat("leaks").getOrElse("?"), r.stat("lives").getOrElse("?"))
+      text(details, row.x + 24f, row.y + 18f, TextStyle.Small, muted, maxW = badge.x - row.x - 48f)
     }
     drawPager(page, Layout.listPages(files.size))
     if dev then drawDevOverlay()
@@ -710,11 +732,12 @@ class Render:
     if dev then drawDevOverlay()
     present()
 
+  /** The game; with `replay` the side panel shows playback controls instead of key hints. */
   def drawGame(w: World, hover: Option[GridPos], fast: Boolean, selected: TowerSpec, notice: Option[String] = None,
-      dev: Boolean = false): Unit =
+      dev: Boolean = false, replay: Option[Playback] = None): Unit =
     Config.setActive(w.biome, w.level)
     beginScene()
-    drawScene(w, hover, fast, selected, notice)
+    drawScene(w, hover, fast, selected, notice, replay)
     if dev then drawDevOverlay()
     present()
 
@@ -788,7 +811,7 @@ class Render:
 
   /** The in-game scene: board, actors, shots, overlays and the HUD panel. */
   private def drawScene(w: World, hover: Option[GridPos], fast: Boolean, selected: TowerSpec,
-      notice: Option[String]): Unit =
+      notice: Option[String], replay: Option[Playback] = None): Unit =
     val b = Layout.board
     // a soft frame around the board
     round(Rect(b.x - 10f, b.y - 10f, b.w + 20f, b.h + 20f), 10f, mix(Config.GridLine, Config.PathColor, 0.25f))
@@ -806,7 +829,7 @@ class Render:
       drawAuras(w)
     }
     drawFloating()
-    drawHud(w, fast, selected)
+    drawHud(w, fast, selected, replay)
     notice.foreach { n =>
       val a = Layout.boardArea
       text(n, a.centerX, a.y + 4f, TextStyle.Label, gold, Align.Center, a.w)
@@ -965,7 +988,7 @@ class Render:
   /** Top of the HUD's tower list; [[Layout.hudTower]] rows hang below it. */
   def hudTowersTop: Float = Layout.H - 330f
 
-  private def drawHud(w: World, fast: Boolean, selected: TowerSpec): Unit =
+  private def drawHud(w: World, fast: Boolean, selected: TowerSpec, replay: Option[Playback]): Unit =
     val p  = Layout.panel
     val x  = p.x + 28f
     val iw = p.w - 56f
@@ -1009,7 +1032,7 @@ class Render:
     // wave status, twist and held augment
     var y = hudTowersTop - pool.size * 62f - 40f
     def para(s: String, c: Color, style: TextStyle = TextStyle.Body): Unit =
-      if y > 150f then y -= wrapped(s, x, y, iw, style, c) + 10f
+      if y > (if replay.isDefined then Layout.replayTop else 150f) then y -= wrapped(s, x, y, iw, style, c) + 10f
     if w.inBreak then para(Messages.t("hud.nextWave", f"${w.breakTimer}%.1f"), text0, TextStyle.Label)
     else para(Messages.t("hud.spawning", w.spawnQueue.size, w.enemies.size), text0, TextStyle.Label)
     val waveNum = if w.inBreak then math.min(w.wave + 1, Waves.waveCount(w.level)) else w.wave
@@ -1021,13 +1044,51 @@ class Render:
       para(s"${Config.augment(id).name} — ${Messages.t("draft.socketHint")}", accent, TextStyle.Small)
     }
 
-    // controls
+    replay match
+      case Some(pb) => drawReplayControls(pb)
+      case None     => drawKeyHints(fast)
+
+  private def drawKeyHints(fast: Boolean): Unit =
+    val x = Layout.panel.x + 28f
     val hints = Vector(
       (if fast then Messages.t("hud.fastOn", Config.FastForward) else Messages.t("hud.fast"), if fast then gold else muted),
       (Messages.t("hud.pause"), muted),
       (Messages.t("hud.reload"), muted)
     )
     hints.zipWithIndex.foreach { case ((s, c), i) => text(s, x, 112f - i * 34f, TextStyle.Small, c) }
+
+  /** Playback controls: speed, elapsed time, a progress bar to click, and the buttons. */
+  private def drawReplayControls(pb: Playback): Unit =
+    val bar = Layout.replayProgress
+    val x   = bar.x
+    fill(Rect(Layout.panel.x + 2f, 0f, Layout.PanelW - 2f, Layout.replayTop - 14f), mix(Config.PanelColor, surface, 0.5f))
+    val state =
+      if pb.finished then Messages.t("replay.finished")
+      else if pb.paused then Messages.t("replay.paused")
+      else Messages.t("replay.playing")
+    text(Messages.t("replay.title.short"), x, bar.top + 34f, TextStyle.Button, muted)
+    text(s"${speedLabel(pb.speed)}  ·  $state", bar.right, bar.top + 34f, TextStyle.Button,
+      if pb.paused || pb.finished then gold else accent, Align.Right)
+    round(bar, 7f, Config.PanelColor)
+    if pb.progress > 0f then round(Rect(bar.x, bar.y, math.max(14f, bar.w * pb.progress), bar.h), 7f, accent)
+    if hovered(bar) then
+      val at = math.max(bar.x, math.min(bar.right, mouse._1))
+      fill(Rect(at - 1.5f, bar.y - 6f, 3f, bar.h + 12f), text0)
+    text(clock(pb.index * Config.MaxStepDt), x, bar.y - 18f, TextStyle.Small, muted)
+    text(clock(pb.replay.seconds), bar.right, bar.y - 18f, TextStyle.Small, muted, Align.Right)
+    button(Layout.replaySlower, "−", style = TextStyle.Heading)
+    button(Layout.replayPause, Messages.t(if pb.paused || pb.finished then "replay.play" else "replay.pause"), Look.Primary)
+    button(Layout.replayFaster, "+", style = TextStyle.Heading)
+    button(Layout.replayExit, Messages.t("replay.exit"))
+    wrapped(Messages.t("replay.keys"), x, 52f, Layout.PanelW - 56f, TextStyle.Small, muted)
+
+  private def speedLabel(speed: Double): String =
+    if speed >= 1.0 then s"${speed.toInt}x" else s"${speed}x"
+
+  /** Seconds as m:ss. */
+  private def clock(seconds: Float): String =
+    val t = math.max(0, seconds.toInt)
+    f"${t / 60}%d:${t % 60}%02d"
 
   // -- bloom ------------------------------------------------------------------
 

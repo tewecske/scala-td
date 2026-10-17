@@ -235,7 +235,7 @@ object HeadlessMain:
       val replay = Replay(
         kind = "campaign", bot = opts.bot, seed = opts.seed, biome = world.run.biome, level = 0,
         think = think, config = h, result = Replay.resultOf(world, steps.toInt), steps = steps.toInt,
-        commands = log.result()
+        commands = log.result(), recordedAt = System.currentTimeMillis
       )
       val path = ReplayStore.write(ReplayStore.DefaultDir, s"campaign-${opts.bot}-seed${opts.seed}", replay)
       println(s"saved replay $path")

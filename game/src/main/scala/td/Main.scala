@@ -272,29 +272,36 @@ class TdGame extends ApplicationAdapter:
         else Phase.ReplayList(files, page)
 
       case Phase.Replaying(pb0) =>
-        if Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) then
+        def key(k: Int) = Gdx.input.isKeyJustPressed(k)
+        def hit(r: Rect) = clicked && r.contains(mx, my)
+        if key(Input.Keys.ESCAPE) || hit(Layout.replayExit) then
           Config.reload()
           replayList(0)
         else
-          val pb1 =
-            if Gdx.input.isKeyJustPressed(Input.Keys.SPACE) then pb0.copy(paused = !pb0.paused)
+          val toggled =
+            if key(Input.Keys.SPACE) || hit(Layout.replayPause) then
+              // play from the start again once the recording has finished
+              if pb0.finished then pb0.seek(0).copy(paused = false) else pb0.copy(paused = !pb0.paused)
             else pb0
-          val pb2 =
-            if Gdx.input.isKeyJustPressed(Input.Keys.RIGHT) then pb1.copy(speed = stepSpeed(pb1.speed, 1))
-            else if Gdx.input.isKeyJustPressed(Input.Keys.LEFT) then pb1.copy(speed = stepSpeed(pb1.speed, -1))
-            else pb1
-          val (pb3, hits, names) = pb2.advance(dt)
+          val sped =
+            if key(Input.Keys.RIGHT) || key(Input.Keys.PLUS) || key(Input.Keys.EQUALS) ||
+                key(Input.Keys.NUMPAD_ADD) || hit(Layout.replayFaster) then toggled.faster(1)
+            else if key(Input.Keys.LEFT) || key(Input.Keys.MINUS) || key(Input.Keys.NUMPAD_SUBTRACT) ||
+                hit(Layout.replaySlower) then toggled.faster(-1)
+            else toggled
+          val bar = Layout.replayProgress
+          val sought =
+            // the bar is thin; accept clicks a little above and below it
+            if clicked && Rect(bar.x, bar.y - 12f, bar.w, bar.h + 24f).contains(mx, my) then
+              gfx.clearFx()
+              sped.seek(math.round((mx - bar.x) / bar.w * sped.replay.steps))
+            else sped
+          val (pb, hits, names) = sought.advance(dt)
           gfx.feedHits(hits)
           gfx.feedNames(names, knownNames)
-          val hud    = Messages.t("replay.hud", s"${pb3.speed}x")
-          val status =
-            if pb3.finished then Messages.t("replay.finished")
-            else if pb3.paused then Messages.t("replay.paused")
-            else ""
-          val line = if status.isEmpty then hud else s"$hud  $status"
-          if pb3.world.draft.isDefined then gfx.drawDraft(pb3.world, dev)
-          else gfx.drawGame(pb3.world, None, false, Config.game.towers.head, Some(line), dev)
-          Phase.Replaying(pb3)
+          if pb.world.draft.isDefined then gfx.drawDraft(pb.world, dev)
+          else gfx.drawGame(pb.world, None, false, Config.game.towers.head, notice, dev, replay = Some(pb))
+          Phase.Replaying(pb)
 
       case Phase.Playing(w) =>
         // The board (size/route/colors) is biome-specific, so resolve the active
@@ -435,12 +442,6 @@ class TdGame extends ApplicationAdapter:
         notice = Some(Messages.t("replay.configMissing"))
         noticeTimer = NoticeTime
         Phase.ReplayList(files, page)
-
-  private def stepSpeed(speed: Double, dir: Int): Double =
-    val i = Playback.Speeds.indexWhere(_ == speed) match
-      case -1 => Playback.Speeds.indexOf(1.0)
-      case k  => k
-    Playback.Speeds(math.max(0, math.min(Playback.Speeds.size - 1, i + dir)))
 
   /** Every run starts from a clean World, so nothing leaks across retries. */
   private def newRun(): Phase =

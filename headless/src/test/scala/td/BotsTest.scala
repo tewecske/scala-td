@@ -200,6 +200,36 @@ class BotsTest extends FunSuite:
     assertEquals(Replay.verify(loaded), game.result)
   }
 
+  test("a cleared single level is recorded as CLEARED, and old RUNNING recordings read as CLEARED") {
+    val game = Scenario.play(spender(1L), biome, 0, 1L, 5)
+    assert(game.outcome.won)
+    assert(game.result.startsWith("CLEARED "), game.result)
+    val replay = Replay(
+      kind = "scenario", bot = "spender", seed = 1L, biome = biome, level = 0, think = 5,
+      config = "x", result = "RUNNING" + game.result.drop("CLEARED".length), steps = game.outcome.steps,
+      commands = game.commands)
+    val loaded = Replay.parse(Replay.toJson(replay)).toOption.get
+    assertEquals(loaded.result, game.result)
+    assertEquals(loaded.outcome, "CLEARED")
+    assertEquals(loaded.stat("kills"), Some(game.outcome.kills.toString))
+    assertEquals(Replay.verify(loaded), game.result)
+  }
+
+  test("seeking a playback forward or back lands on the same state as playing straight through") {
+    val game = Scenario.play(spender(2L), biome, 0, 2L, 5)
+    val r = Replay(kind = "scenario", bot = "spender", seed = 2L, biome = biome, level = 0, think = 5,
+      config = "x", result = game.result, steps = game.outcome.steps, commands = game.commands)
+    val start  = Playback.start(r)
+    val middle = start.seek(r.steps / 2)
+    assertEquals(middle.index, r.steps / 2)
+    val back = start.seek(r.steps - 10).seek(r.steps / 2)
+    assertEquals(back.world, middle.world)
+    assertEquals(Replay.resultOf(start.seek(r.steps).world, r.steps, Some(0)), game.result)
+    assertEquals(start.copy(speed = 64.0).faster(1).speed, 64.0)
+    assertEquals(start.copy(speed = 0.25).faster(-1).speed, 0.25)
+    assertEquals(start.faster(1).speed, 2.0)
+  }
+
   test("a rolled game plays the run the game rolls from its seed and replays exactly") {
     val dir   = Files.createTempDirectory("replays").toString
     val setup = Setup(loadout = Vector("Cuboid"), rolled = true)

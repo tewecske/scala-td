@@ -31,7 +31,10 @@ object Tour:
       Step("game-14x14", () => Phase.Playing(battle(level = 5, steps = 1300)), frames = 4),
       Step("paused", () => Phase.Paused(battle(level = 0, steps = 900))),
       Step("draft", () => Phase.Playing(draft)),
-      Step("recap", () => Phase.Recap(false, 1, 3, 0, 40, Vector.empty, Vector.empty, None))
+      Step("recap", () => Phase.Recap(false, 1, 3, 0, 40, Vector.empty, Vector.empty, None)),
+      // last: playing a replay switches to the config it was recorded with
+      Step("replays", () => Phase.ReplayList(ReplayStore.list(ReplayStore.DefaultDir), 0)),
+      Step("replaying", () => replaying, frames = 20)
     )
 
   /** A level mid-fight: towers on the cells that cover the most road, then
@@ -51,6 +54,17 @@ object Tour:
     val built = best.zip(kinds).foldLeft(w1) { case (w, (c, k)) => Sim.step(w, 0f, Vector(Command.Build(c, k))) }
     Iterator.iterate(built)(w => Sim.step(w, Config.MaxStepDt, Vector.empty)
       .copy(events = Vector.empty, hitFeedback = Vector.empty, nameEvents = Vector.empty)).drop(steps).next()
+
+  /** The newest recording, halfway through, at 4x. */
+  def replaying: Phase =
+    ReplayStore.list(ReplayStore.DefaultDir).headOption.flatMap { (_, r) =>
+      ReplayStore.loadConfig(ReplayStore.DefaultDir, r.config).toOption.map { cfg =>
+        Config.use(cfg)
+        Config.clearActiveBiome()
+        Grid.reset()
+        Phase.Replaying(Playback.start(r).seek(r.steps / 2).copy(speed = 4.0))
+      }
+    }.getOrElse(Phase.Menu)
 
   /** The draft between levels 1 and 2. */
   def draft: World =

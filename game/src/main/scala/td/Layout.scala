@@ -187,6 +187,17 @@ object Layout:
   /** HUD: the buildable towers, one clickable row each. */
   def hudTower(i: Int, top: Float): Rect = Rect(panel.x + 24f, top - (i + 1) * 62f, PanelW - 48f, 54f)
 
+  /** Replay controls at the bottom of the side panel. */
+  private def replayX: Float = panel.x + 28f
+  private def replayW: Float = PanelW - 56f
+  def replayProgress: Rect = Rect(replayX, 252f, replayW, 14f)
+  def replaySlower: Rect   = Rect(replayX, 156f, 100f, 58f)
+  def replayPause: Rect    = Rect(replayX + 112f, 156f, replayW - 224f, 58f)
+  def replayFaster: Rect   = Rect(replayX + replayW - 100f, 156f, 100f, 58f)
+  def replayExit: Rect     = Rect(replayX, 84f, replayW, 58f)
+  /** Lowest point the HUD's text may reach above the replay controls. */
+  def replayTop: Float = 350f
+
   // -- developer overlay ------------------------------------------------------------
 
   def devPanel: Rect = Rect(W - PanelW - 300f, H - 360f, 280f, 330f)

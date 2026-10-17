@@ -23,7 +23,7 @@ enum TextStyle(val file: String, val size: Float):
   * any resolution. [[rebuild]] runs whenever the pixels per UI unit change.
   */
 final class Fonts:
-  private val Chars = FreeTypeFontGenerator.DEFAULT_CHARS + "·–—…×←→▲▼✓★"
+  private val Chars = FreeTypeFontGenerator.DEFAULT_CHARS + "·–—−…×←→▲▼✓★"
 
   private var built: Map[TextStyle, BitmapFont] = Map.empty
   private var builtFor: Float = -1f

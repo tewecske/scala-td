@@ -15,6 +15,7 @@ import scala.util.Try
   * level from the start, rebuilt from `seed` via [[RunGen]]). `config` is the hash
   * of the config snapshot the game was played with (see [[ReplayStore]]); `result`
   * is the end state as text, so a replay can be checked against what was recorded.
+  * `recordedAt` is when it was saved (epoch millis; 0 for files from before it existed).
   */
 final case class Replay(
     kind: String,
@@ -27,8 +28,18 @@ final case class Replay(
     result: String,
     steps: Int,
     commands: Vector[(Int, Vector[Command])],
-    setup: Setup = Setup()
-)
+    setup: Setup = Setup(),
+    recordedAt: Long = 0L
+):
+  /** How the game ended: WON, LOST, CLEARED (a single level beaten) or RUNNING (cut short). */
+  def outcome: String = result.takeWhile(_ != ' ')
+
+  /** One `key=value` field of the end state, e.g. `stat("lives")`. */
+  def stat(key: String): Option[String] =
+    result.split(' ').collectFirst { case kv if kv.startsWith(s"$key=") => kv.drop(key.length + 1) }
+
+  /** Game time the recording covers, in seconds. */
+  def seconds: Float = steps * Config.MaxStepDt
 
 /** What a single-level game starts with besides the level itself: the towers
   * brought (empty = all), owned talents and relics, the augment picked in the
@@ -88,11 +99,13 @@ object Replay:
       lives = math.max(1, w.lives - setup.livesLost))
 
   /** The end state as one line, identical for identical games. */
-  def resultOf(w: World, steps: Int): String =
+  def resultOf(w: World, steps: Int, startLevel: Option[Int] = None): String =
     val state =
       if w.isOver then "LOST"
       else if w.won then "WON"
-      else if w.draft.isDefined then "CLEARED"
+      // a single-level game is over once its level is cleared: at the draft, or past
+      // it when there was nothing to draft and the next level already began
+      else if w.draft.isDefined || startLevel.exists(w.level > _) then "CLEARED"
       else "RUNNING"
     s"$state lives=${w.lives} gold=${w.gold} kills=${w.kills} leaks=${w.leaks} wave=${w.wave} level=${w.level} steps=$steps"
 
@@ -105,7 +118,7 @@ object Replay:
       val next = Sim.step(w, Config.MaxStepDt, byStep.getOrElse(i, Vector.empty))
       next.copy(events = Vector.empty, hitFeedback = Vector.empty, nameEvents = Vector.empty)
     }
-    resultOf(end, r.steps)
+    resultOf(end, r.steps, Option.when(r.kind == "scenario")(r.level))
 
   // -- json -------------------------------------------------------------------
 
@@ -126,6 +139,7 @@ object Replay:
       "augment" -> r.setup.augment.fold(JsonValue(JsonValue.ValueType.nullValue))(JsonValue(_)),
       "livesLost" -> JsonValue(r.setup.livesLost.toLong),
       "rolled"  -> JsonValue(r.setup.rolled),
+      "recorded" -> JsonValue(r.recordedAt),
       "commands" -> arr(r.commands.map { case (step, cmds) =>
         obj("step" -> JsonValue(step.toLong), "do" -> arr(cmds.map(encode)))
       })
@@ -136,15 +150,24 @@ object Replay:
     Try {
       val root = JsonReader().parse(text)
       val cmds = root.get("commands")
+      val kind  = root.getString("kind")
+      val level = root.getInt("level")
+      // Older single-level recordings called a level cleared past its (empty) draft RUNNING.
+      val result = root.getString("result") match
+        case r if kind == "scenario" && r.startsWith("RUNNING ") &&
+            r.split(' ').collectFirst { case kv if kv.startsWith("level=") => kv.drop(6).toInt }.exists(_ > level) =>
+          "CLEARED" + r.drop("RUNNING".length)
+        case r => r
       Replay(
-        kind = root.getString("kind"),
+        kind = kind,
         bot = root.getString("bot"),
         seed = root.getLong("seed"),
         biome = root.getString("biome"),
-        level = root.getInt("level"),
+        level = level,
         think = root.getInt("think"),
         config = root.getString("config"),
-        result = root.getString("result"),
+        result = result,
+        recordedAt = root.getLong("recorded", 0L),
         steps = root.getInt("steps"),
         setup = {
           def strings(name: String): Vector[String] =
@@ -222,7 +245,9 @@ object ReplayStore:
     Files.writeString(path, Replay.toJson(r) + "\n", StandardCharsets.UTF_8)
     path.toAbsolutePath.normalize.toString
 
-  /** Every recorded game in the directory, newest first. Unreadable files are skipped. */
+  /** Every recorded game in the directory, newest first. Unreadable files are skipped;
+    * recordings without a timestamp get their file's modification time.
+    */
   def list(dir: String): Vector[(String, Replay)] =
     val d = Paths.get(dir)
     if !Files.isDirectory(d) then Vector.empty
@@ -232,7 +257,10 @@ object ReplayStore:
         .sortBy(p => -Files.getLastModifiedTime(p).toMillis)
       files.flatMap { p =>
         val text = Files.readString(p, StandardCharsets.UTF_8)
-        Replay.parse(text).toOption.map(r => p.toAbsolutePath.normalize.toString -> r)
+        Replay.parse(text).toOption.map { r =>
+          val at = if r.recordedAt > 0 then r.recordedAt else Files.getLastModifiedTime(p).toMillis
+          p.toAbsolutePath.normalize.toString -> r.copy(recordedAt = at)
+        }
       }
 
   private def sha256(text: String): String =
@@ -274,9 +302,33 @@ final case class Playback(
         k += 1
       (copy(world = w, index = i, carry = due - n), hits.result(), names.result())
 
+  /** Fraction of the recording played, 0..1. */
+  def progress: Float = if replay.steps == 0 then 1f else index.toFloat / replay.steps
+
+  /** Jumps to step `target`: forward by stepping on, backward by replaying from the
+    * start (the simulation is deterministic, so the result is the same game state).
+    */
+  def seek(target: Int): Playback =
+    val to    = math.max(0, math.min(replay.steps, target))
+    val start = if to < index then copy(world = Replay.initialWorld(replay), index = 0) else this
+    var w = start.world
+    var i = start.index
+    while i < to do
+      w = Sim.step(w, Config.MaxStepDt, byStep.getOrElse(i, Vector.empty))
+        .copy(events = Vector.empty, hitFeedback = Vector.empty, nameEvents = Vector.empty)
+      i += 1
+    start.copy(world = w, index = i, carry = 0.0)
+
+  /** The next speed up (dir = 1) or down (dir = -1) from [[Playback.Speeds]]. */
+  def faster(dir: Int): Playback =
+    val i = Playback.Speeds.indexWhere(_ >= speed) match
+      case -1 => Playback.Speeds.size - 1
+      case k  => k
+    copy(speed = Playback.Speeds(math.max(0, math.min(Playback.Speeds.size - 1, i + dir))))
+
 object Playback:
   val MaxStepsPerFrame: Int = 50
-  val Speeds: Vector[Double] = Vector(0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0)
+  val Speeds: Vector[Double] = Vector(0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0)
 
   def start(r: Replay): Playback =
     Playback(

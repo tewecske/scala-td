@@ -87,7 +87,7 @@ object Scenario:
       timedOut = !finished(w, level)
     )
     val wallMs = (System.nanoTime() - began) / 1000000L
-    Game(seed, outcome, Replay.resultOf(w, steps), log.result(), marks.result(), wallMs, setup)
+    Game(seed, outcome, Replay.resultOf(w, steps, Some(level)), log.result(), marks.result(), wallMs, setup)
 
   /** Over, won, or the level was cleared: the draft opened, or was skipped and
     * the run moved on.

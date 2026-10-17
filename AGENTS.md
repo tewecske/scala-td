@@ -4,6 +4,8 @@ Scala 3 tower-defense game on libGDX (LWJGL3 desktop backend). Multi-project sbt
 
 ## Commands
 
+- `nix develop` — dev shell pinned by `flake.lock`: JDK 21, sbt, and the OpenGL/X11 libraries the game window needs. `nix develop .#headless` adds a virtual display with software OpenGL (no screen or GPU needed)
+- `nix run .#shots -- [WxH] [dir]` — screenshot every screen on a virtual display (default 1920x1080 into `data/screenshots/tour-<WxH>`)
 - `sbt compile` — build
 - `sbt "game/run"` — launches the GUI window; needs a display, so not runnable headless
 - `scripts/sim.sh` — headless simulations (bots, balancing, replays): no args prints examples, `--help` every command and option
@@ -17,7 +19,7 @@ Scala 3 tower-defense game on libGDX (LWJGL3 desktop backend). Multi-project sbt
 - Screen layout lives in `Layout.scala` (game): every rectangle in UI units on a canvas of at least 1920x1080 that extends with the window's aspect ratio. Renderer and click handling share those rectangles. The board keeps one tile size on every map (the largest map just fits) and is centered; it is drawn in simulation coordinates through a transform (`Layout.toUi` / `Layout.toSim`), so changing the look never changes the sim.
 - Display settings (windowed / fullscreen / borderless, resolution) are saved in `data/settings.json` (`DisplaySettings`, core) and applied by `Display.scala` (game).
 - Packaging: `sbt dist` (or `scripts/package.sh`, `scripts\package.cmd` on Windows) builds a jpackage app-image with a bundled runtime for the current OS into `target/dist` (`project/Dist.scala`). Packaged builds keep save data in the user data folder (`DataDir`).
-- Screenshots: F12 in game saves to `data/screenshots`. `TD_TOUR=<dir> sbt game/run` visits every screen, saves a PNG of each and exits (`Tour.scala`); `TD_WINDOW=WxH` forces the window size.
+- Screenshots: F12 in game saves to `data/screenshots`. `nix run .#shots` (or `TD_TOUR=<dir> sbt game/run` with a display) visits every screen, saves a PNG of each and exits (`Tour.scala`); `TD_WINDOW=WxH` forces the window size.
 - Tuning constants are centralized: `Config.scala` (board/economy/combat), `Waves.scala` (difficulty curve), `Grid.scala` (route + path derivation).
 
 ## Gotchas

@@ -281,7 +281,8 @@ object Experiments:
       def save(g: Scenario.Game, name: String): Unit =
         ReplayStore.write(ReplayStore.DefaultDir, name, Replay(
           kind = "scenario", bot = "spender", seed = g.seed, biome = s.biome, level = level, think = s.think,
-          setup = g.setup, config = hash, result = g.result, steps = g.outcome.steps, commands = g.commands))
+          setup = g.setup, config = hash, result = g.result, steps = g.outcome.steps, commands = g.commands,
+          recordedAt = System.currentTimeMillis))
       val ranked = (o: Stages.Entry) =>
         Stages.games(o, level, count, s).sortBy(g => -Training.score(g.outcome, enemies))
       val prefix = s"stage-L${level + 1}"
@@ -361,7 +362,8 @@ object Experiments:
       val played = if g.setup.rolled then RunGen.roll(g.seed).biome else biome
       val r = Replay(
         kind = "scenario", bot = bot, seed = g.seed, biome = played, level = level, think = think, setup = g.setup,
-        config = hash, result = g.result, steps = g.outcome.steps, commands = g.commands
+        config = hash, result = g.result, steps = g.outcome.steps, commands = g.commands,
+        recordedAt = System.currentTimeMillis
       )
       val where = if g.setup.rolled then "rolled" else biome
       ReplayStore.write(ReplayStore.DefaultDir, s"$bot-$where-L${level + 1}-$tag-${rank + 1}", r)
