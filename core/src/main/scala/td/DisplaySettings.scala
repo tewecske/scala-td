@@ -19,7 +19,7 @@ final case class DisplaySettings(mode: WindowMode = WindowMode.Windowed, width: 
 
 object DisplaySettings:
   val FileName    = "settings.json"
-  val defaultPath = s"data/$FileName"
+  def defaultPath: String = DataDir.path(FileName)
 
   /** The saved settings, or the defaults when there are none or they can't be read. */
   def load(path: String = defaultPath): DisplaySettings =

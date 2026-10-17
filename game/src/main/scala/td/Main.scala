@@ -6,10 +6,13 @@ import com.badlogic.gdx.graphics.glutils.HdpiMode
 
 object Main:
   def main(args: Array[String]): Unit =
+    DataDir.forPackagedBuild()
     val config = new Lwjgl3ApplicationConfiguration()
     config.setTitle(Messages.t("game.title"))
     // Work in real pixels on high-DPI screens so text is rasterized at full resolution.
     config.setHdpiMode(HdpiMode.Pixels)
+    // The game has no sound; skipping OpenAL avoids failures on machines without an audio device.
+    config.disableAudio(true)
     Display.configure(config, DisplaySettings.load())
     // TD_WINDOW=WxH forces a window size (screenshot tours).
     sys.env.get("TD_WINDOW").map(_.split("x").map(_.toInt)) match

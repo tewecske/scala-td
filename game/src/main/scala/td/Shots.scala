@@ -11,7 +11,7 @@ import java.time.format.DateTimeFormatter
   * every screen unattended.
   */
 object Shots:
-  val Dir = "data/screenshots"
+  def Dir: String = DataDir.path("screenshots")
 
   /** Writes the back buffer to `path`. Call after the frame is drawn. */
   def save(path: String): String =

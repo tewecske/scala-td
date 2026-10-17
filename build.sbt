@@ -26,6 +26,7 @@ lazy val core = (project in file("core"))
 lazy val game = (project in file("game"))
   .dependsOn(core)
   .settings(commonSettings)
+  .settings(Dist.settings)
   .settings(
     name := "game",
     // LWJGL3 needs its own JVM; running inside sbt's process is unreliable.
@@ -65,4 +66,6 @@ lazy val headless = (project in file("headless"))
 lazy val root = (project in file("."))
   .aggregate(core, game, editor, headless)
   .settings(commonSettings)
+  // `sbt dist` from the root packages the game
+  .settings(Dist.dist := (game / Dist.dist).value)
   .settings(name := "towerdefense")

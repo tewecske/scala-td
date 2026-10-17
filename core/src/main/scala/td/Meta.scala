@@ -34,7 +34,7 @@ object TalentEffects:
 
 object Meta:
   val FileName    = "meta.json"
-  val defaultPath = s"data/$FileName"
+  def defaultPath: String = DataDir.path(FileName)
 
   // -- persistence (mirrors Journal) -----------------------------------------
   def load(): Either[String, MetaData] = load(defaultPath)

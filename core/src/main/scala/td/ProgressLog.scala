@@ -14,7 +14,7 @@ final case class Mark(level: Int, wave: Int, seconds: Double, kills: Int, lives:
   * real time. The `timeline` column has one entry per wave start.
   */
 object ProgressLog:
-  val DefaultPath = "data/progress/games.csv"
+  def DefaultPath: String = DataDir.path("progress/games.csv")
 
   val Header: String =
     "phase,bot,level,biome,seed,outcome,kills,leaks,lives_left,gold_left,gold_spent,towers,waves_started,game_seconds,wall_ms,timeline"

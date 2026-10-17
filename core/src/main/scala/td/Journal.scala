@@ -33,7 +33,7 @@ object JournalData:
 
 object Journal:
   val FileName    = "journal.json"
-  val defaultPath = s"data/$FileName"
+  def defaultPath: String = DataDir.path(FileName)
 
   def load(): Either[String, JournalData] = load(defaultPath)
 

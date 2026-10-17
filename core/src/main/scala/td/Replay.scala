@@ -199,7 +199,7 @@ object Replay:
   * snapshot once; `<name>.json` is one recorded game.
   */
 object ReplayStore:
-  val DefaultDir = "data/replays"
+  def DefaultDir: String = DataDir.path("replays")
 
   /** Writes the config snapshot (once per distinct config) and returns its hash. */
   def saveConfig(dir: String, cfg: GameConfig): String =
