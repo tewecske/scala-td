@@ -30,7 +30,8 @@
 	"slowDuration": 2.0,
 	"breakTime": 4.0,
 	"studyHits": 5,
-	"puddleShockMult": 1.5
+	"puddleShockMult": 1.5,
+	"critMult": 1.5
 },
 "i18n": {
 	"lang": "en",
@@ -85,9 +86,9 @@
 		"name": "Jack-in-the-Box",
 		"cost": 140,
 		"color": "#A8383B",
-		"range": 4.0,
-		"fireInterval": 1.1,
-		"damage": 22.0,
+		"range": 3.2,
+		"fireInterval": 1.4,
+		"damage": 16.0,
 		"projectileSpeed": 10.0,
 		"kind": "Explosion",
 		"splashRadius": 1.6
@@ -2201,6 +2202,32 @@
 		}
 	},
 	{
+		"id": "filler-rate",
+		"name": "Quick Reload",
+		"layer": "Filler",
+		"cost": 1,
+		"prereqs": [],
+		"effect": {
+			"kind": "fireRateBonus",
+			"params": {
+				"mult": 0.1
+			}
+		}
+	},
+	{
+		"id": "filler-crit",
+		"name": "Lucky Corner",
+		"layer": "Filler",
+		"cost": 1,
+		"prereqs": [],
+		"effect": {
+			"kind": "critChance",
+			"params": {
+				"chance": 0.1
+			}
+		}
+	},
+	{
 		"id": "filler-gold",
 		"name": "Coin Slot",
 		"layer": "Filler",
@@ -2240,28 +2267,13 @@
 		}
 	},
 	{
-		"id": "pyromancer",
-		"name": "Pyromancer",
-		"layer": "Core",
-		"cost": 3,
-		"prereqs": [
-			"filler-damage"
-		],
+		"id": "reroll",
+		"name": "Restock",
+		"layer": "Filler",
+		"cost": 2,
+		"prereqs": [],
 		"effect": {
-			"kind": "pyromancer",
-			"params": {}
-		}
-	},
-	{
-		"id": "frostwarden",
-		"name": "Frostwarden",
-		"layer": "Core",
-		"cost": 3,
-		"prereqs": [
-			"filler-range"
-		],
-		"effect": {
-			"kind": "frostwarden",
+			"kind": "reroll",
 			"params": {}
 		}
 	},
@@ -2274,8 +2286,116 @@
 			"filler-damage"
 		],
 		"effect": {
-			"kind": "breaker",
-			"params": {}
+			"kind": "kindDamageBonus",
+			"params": {
+				"kinetic": 0.25
+			}
+		}
+	},
+	{
+		"id": "pyromancer",
+		"name": "Pyromancer",
+		"layer": "Core",
+		"cost": 3,
+		"prereqs": [
+			"filler-damage"
+		],
+		"effect": {
+			"kind": "kindDamageBonus",
+			"params": {
+				"fire": 0.25
+			}
+		}
+	},
+	{
+		"id": "frostwarden",
+		"name": "Frostwarden",
+		"layer": "Core",
+		"cost": 3,
+		"prereqs": [
+			"filler-range"
+		],
+		"effect": {
+			"kind": "kindDamageBonus",
+			"params": {
+				"slow": 0.25
+			}
+		}
+	},
+	{
+		"id": "demolition",
+		"name": "Demolition",
+		"layer": "Core",
+		"cost": 3,
+		"prereqs": [
+			"filler-damage"
+		],
+		"effect": {
+			"kind": "kindDamageBonus",
+			"params": {
+				"explosion": 0.25
+			}
+		}
+	},
+	{
+		"id": "hole-saw",
+		"name": "Hole Saw",
+		"layer": "Core",
+		"cost": 3,
+		"prereqs": [
+			"filler-damage"
+		],
+		"effect": {
+			"kind": "kindDamageBonus",
+			"params": {
+				"splash": 0.25
+			}
+		}
+	},
+	{
+		"id": "live-wire",
+		"name": "Live Wire",
+		"layer": "Core",
+		"cost": 3,
+		"prereqs": [
+			"filler-damage"
+		],
+		"effect": {
+			"kind": "kindDamageBonus",
+			"params": {
+				"shock": 0.25
+			}
+		}
+	},
+	{
+		"id": "sharp-corners",
+		"name": "Sharp Corners",
+		"layer": "Core",
+		"cost": 3,
+		"prereqs": [
+			"filler-crit"
+		],
+		"effect": {
+			"kind": "critDamage",
+			"params": {
+				"mult": 0.5
+			}
+		}
+	},
+	{
+		"id": "wear-and-tear",
+		"name": "Wear and Tear",
+		"layer": "Core",
+		"cost": 3,
+		"prereqs": [
+			"filler-damage"
+		],
+		"effect": {
+			"kind": "shred",
+			"params": {
+				"perHit": 0.03,
+				"max": 0.3
+			}
 		}
 	},
 	{
@@ -2316,30 +2436,6 @@
 		],
 		"effect": {
 			"kind": "conflagration",
-			"params": {}
-		}
-	},
-	{
-		"id": "demolition",
-		"name": "Demolition",
-		"layer": "Deep",
-		"cost": 5,
-		"prereqs": [
-			"breaker"
-		],
-		"effect": {
-			"kind": "demolition",
-			"params": {}
-		}
-	},
-	{
-		"id": "reroll",
-		"name": "Restock",
-		"layer": "Filler",
-		"cost": 2,
-		"prereqs": [],
-		"effect": {
-			"kind": "reroll",
 			"params": {}
 		}
 	}

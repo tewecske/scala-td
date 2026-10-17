@@ -119,7 +119,8 @@ case class CombatConfig(
     slowDuration: Float,
     breakTime: Float,
     studyHits: Int,
-    puddleShockMult: Float = 1.5f
+    puddleShockMult: Float = 1.5f,
+    critMult: Float = 1.5f
 )
 
 /** One wave of a level: a fixed enemy mix and its pacing. [[composition]] lists

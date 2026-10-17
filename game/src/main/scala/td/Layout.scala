@@ -87,10 +87,16 @@ object Layout:
     case TalentLayer.Core   => 1
     case TalentLayer.Deep   => 2
 
+  /** Rows get closer together when a column holds more talents than fit at full spacing. */
+  private def talentStep: Float =
+    val rows = talentOrder.groupBy(_.layer).values.map(_.size).maxOption.getOrElse(1)
+    if rows <= 1 then 84f else math.min(84f, (talentHeaderY - 110f - 150f) / (rows - 1))
+
   def talentRow(i: Int): Rect =
     val t       = talentOrder(i)
     val inLayer = talentOrder.take(i).count(_.layer == t.layer)
-    Rect(talentX(talentColumn(t.layer)), talentHeaderY - 110f - inLayer * 84f, TalentColW, 72f)
+    val step    = talentStep
+    Rect(talentX(talentColumn(t.layer)), talentHeaderY - 110f - inLayer * step, TalentColW, math.min(72f, step - 8f))
 
   def talentEffects: Rect =
     val top = talentHeaderY - 38f

@@ -114,6 +114,8 @@ object Config:
   def BreakTime: Float    = current.combat.breakTime
   def StudyHits: Int      = current.combat.studyHits
   def PuddleShockMult: Float = current.combat.puddleShockMult
+  /** Damage of a critical hit, as a multiple of a normal hit, before talents. */
+  def CritMult: Float = current.combat.critMult
 
   // -- specs ------------------------------------------------------------------
   def towerSpec(name: String): TowerSpec =

@@ -73,13 +73,14 @@ object Balance:
   // -- local steps --------------------------------------------------------------
 
   /** One step harder for `level` (0-based): per wave, part of the lowest promotable
-    * unit moves up a rung and the biggest group grows.
+    * unit moves up a rung and every non-boss type grows by its share.
     */
   def harden(cfg: GameConfig, s: Steps, biome: String, level: Int): (GameConfig, String) =
     reshape(cfg, s, biome, level, harder = true)
 
   /** One step easier for `level`: per wave, part of the highest demotable unit
-    * moves down a rung and the biggest group shrinks (a wave keeps at least one enemy).
+    * moves down a rung and every non-boss type shrinks by its share (keeping at
+    * least one of each).
     */
   def ease(cfg: GameConfig, s: Steps, biome: String, level: Int): (GameConfig, String) =
     reshape(cfg, s, biome, level, harder = false)
@@ -114,15 +115,14 @@ object Balance:
       val nonBoss =
         if harder && wi == 0 then Vector.empty // the first wave stays as generated
         else moved.filter { case (n, c) => c > 0 && !isBoss(n) }
-      val total   = moved.map(_._2).sum
-      val delta   = math.max(1, math.round(total * s.resizeShare).toInt)
-      val resized =
-        if nonBoss.isEmpty then moved
-        else
-          val biggest = nonBoss.maxBy(_._2)
-          val change  = if harder then delta else -math.min(delta, math.min(biggest._2, total - 1))
-          if change != 0 then log += s"wave ${wi + 1}: ${if change > 0 then "+" else ""}$change ${biggest._1}"
-          add(moved, biggest._1, change)
+      // Every non-boss type changes by its own share (at least one unit), so a wave
+      // keeps its mix; easing never takes a type below one unit.
+      val resized = nonBoss.foldLeft(moved) { case (comp, (name, count)) =>
+        val step   = math.max(1, math.round(count * s.resizeShare).toInt)
+        val change = if harder then step else -math.min(step, count - 1)
+        if change != 0 then log += s"wave ${wi + 1}: ${if change > 0 then "+" else ""}$change $name"
+        add(comp, name, change)
+      }
       val comp  = resized.filter(_._2 > 0)
       val count = comp.map(_._2).sum
       val interval =

@@ -81,6 +81,8 @@ class Render:
 
   /** Damage numbers of hits the target partly resisted. */
   private val ResistedColor = new Color(0.60f, 0.72f, 0.92f, 1f)
+  /** Damage numbers of critical hits: bigger, gold, with an exclamation mark. */
+  private val CritColor = new Color(1.00f, 0.82f, 0.30f, 1f)
   private val FlashLife = 1.6f
 
   private case class Floating(x: Float, y: Float, label: String, color: Color, life: Float, maxLife: Float, big: Boolean)
@@ -93,8 +95,9 @@ class Render:
       val (label, color) =
         if h.resistFrac >= 0.99f then (Messages.t("popup.immune"), Config.EnemyColor)
         else if h.resistFrac > 0f then (math.round(h.dealt).toString, ResistedColor)
+        else if h.crit then (s"${math.round(h.dealt)}!", CritColor)
         else (math.round(h.dealt).toString, Config.TextColor)
-      floating += Floating(h.x, h.y + 14f, label, color, PopupLife, PopupLife, big = false)
+      floating += Floating(h.x, h.y + 14f, label, color, PopupLife, PopupLife, big = h.crit && h.resistFrac < 0.99f)
       for _ <- 0 until Config.SparkCount do
         val ang = rng.nextFloat() * math.Pi * 2f
         val spd = Config.SparkSpeed * (0.4f + rng.nextFloat() * 0.6f)
@@ -503,7 +506,8 @@ class Render:
         if isOwned then Messages.t("talents.owned")
         else if locked then Messages.t("talents.locked", Config.talents.find(_.id == t.prereqs.head).fold(t.prereqs.head)(_.name))
         else Messages.t("talents.effectOf." + t.effect.kind, effectAmount(t))
-      text(status, r.x + 20f, r.y + 20f, TextStyle.Small, if isOwned then accent else muted, maxW = r.w - 40f)
+      // shorter cards (long columns) keep the two lines apart by moving the second down
+      text(status, r.x + 20f, r.y + math.min(20f, r.h * 0.18f), TextStyle.Small, if isOwned then accent else muted, maxW = r.w - 40f)
       if !isOwned then
         text(Messages.t("talents.cost", t.cost), r.right - 18f, r.top - 24f, TextStyle.Button,
           if affordable then gold else faint, Align.Right)
@@ -514,14 +518,19 @@ class Render:
     val lines = Vector(
       Option.when(effects.damageMult != 1f)(Messages.t("talents.damageMult", pct(effects.damageMult))),
       Option.when(effects.rangeMult != 1f)(Messages.t("talents.rangeMult", pct(effects.rangeMult))),
+      Option.when(effects.fireRateMult != 1f)(Messages.t("talents.fireRate", pct(effects.fireRateMult))),
+      Option.when(effects.critChance > 0f)(Messages.t("talents.crit", share(effects.critChance), s"x${fmt1(effects.critMult)}")),
       Option.when(effects.goldMult != 1f)(Messages.t("talents.goldMult", pct(effects.goldMult))),
       Option.when(effects.loadoutSlots > 0)(Messages.t("talents.loadoutSlots", effects.loadoutSlots)),
       Option.when(effects.rerollUnlocked)(Messages.t("talents.reroll")),
       Option.when(effects.extraLives > 0)(Messages.t("talents.extraLives", effects.extraLives)),
       Option.when(effects.startGold > 0)(Messages.t("talents.startGold", effects.startGold)),
+      Option.when(effects.shredPerHit > 0f)(Messages.t("talents.shred", share(effects.shredPerHit), share(effects.shredMax))),
       Option.when(effects.activeCores.nonEmpty)(Messages.t("talents.cores", effects.activeCores.mkString(", "))),
       Option.when(effects.activeDeeps.nonEmpty)(Messages.t("talents.deeps", effects.activeDeeps.mkString(", ")))
-    ).flatten
+    ).flatten ++ DamageKind.values.toVector.collect {
+      case k if effects.kindMult(k) != 1f => Messages.t("talents.kindDamage", kindName(k), pct(effects.kindMult(k)))
+    }
     var y = box.top - 36f
     if lines.isEmpty then text(Messages.t("talents.none"), box.x + 24f, y, TextStyle.Body, muted)
     lines.foreach { l =>
@@ -534,9 +543,19 @@ class Render:
 
   /** The number a talent's effect line shows: a percentage or a count. */
   private def effectAmount(t: Talent): String =
-    t.effect.params.headOption.fold("") { (k, v) =>
-      if k == "mult" then s"+${math.round(v * 100)}%" else s"+${math.round(v)}"
-    }
+    val p = t.effect.params
+    t.effect.kind match
+      case "kindDamageBonus" =>
+        p.toVector.sortBy(_._1).map((k, v) => s"+${share(v)} $k").mkString(", ").replace("slow", "frost")
+      case "shred" => s"${share(p.getOrElse("perHit", 0f))}/hit, max ${share(p.getOrElse("max", 0f))}"
+      case _ =>
+        p.headOption.fold("") { (k, v) =>
+          if k == "mult" || k == "chance" then s"+${share(v)}" else s"+${math.round(v)}"
+        }
+
+  /** A fraction as a whole percentage (0.25 -> 25%). */
+  private def share(v: Float): String = s"${math.round(v * 100)}%"
+  private def fmt1(v: Float): String = f"$v%.1f"
 
   /** Signed percentage of a multiplier relative to 1.0 (1.1 -> +10%). */
   private def pct(mult: Float): String =

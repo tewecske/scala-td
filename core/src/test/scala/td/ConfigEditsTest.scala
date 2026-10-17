@@ -40,3 +40,25 @@ class ConfigEditsTest extends munit.FunSuite:
     assertEquals(back.enemies.find(_.name == "Crate").map(_.shape), Some(EnemyShape.Hexagon))
     assertEquals(back.enemies.find(_.name == "Cardboard").map(_.shape), Some(EnemyShape.Square))
   }
+
+class TowerEditsTest extends munit.FunSuite:
+  private val cfg = ConfigLoader.bundled().fold(e => throw RuntimeException(e), identity)
+
+  test("renaming a tower keeps the loadout and twists pointing at it, and the config still loads") {
+    val target = cfg.twists.head.targetTower
+    val next   = ConfigEdits.renameTower(cfg, target, "Renamed Box")
+    assert(next.twists.head.targetTower == "Renamed Box")
+    assert((next.loadout.unlocked ++ next.loadout.locked).contains("Renamed Box"))
+    assert(ConfigLoader.parse(ConfigWriter.toJson(next)).isRight)
+  }
+
+  test("moving a tower between starting, free and locked always gives a loadable config") {
+    val name = cfg.towers.last.name
+    import ConfigEdits.TowerAccess.*
+    Vector(Locked, Unlocked, Starting, Locked).foldLeft(cfg) { (c, a) =>
+      val next = ConfigEdits.setTowerAccess(c, name, a)
+      assertEquals(ConfigEdits.towerAccess(next, name), a)
+      assert(ConfigLoader.parse(ConfigWriter.toJson(next)).isRight, a)
+      next
+    }
+  }

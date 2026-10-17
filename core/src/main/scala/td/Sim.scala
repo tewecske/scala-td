@@ -617,6 +617,7 @@ object Sim:
             val fx     = augmentFx(t)
             val fired  = t.shotsFired + 1
             val bounce = tw.bounceEvery > 0 && fired % tw.bounceEvery == 0
+            val crit   = eff.critChance > 0f && critRoll(w, t, fired) < eff.critChance
             val slowOv =
               if spec.kind == DamageKind.Slow then Some((Config.SlowFactor, Config.SlowDuration * tw.slowDurationMult))
               else fx.slow
@@ -625,7 +626,8 @@ object Sim:
               t.cell.centerY,
               e.id,
               spec.kind,
-              spec.damage * eff.damageMult * fx.damageMult,
+              spec.damage * eff.damageMult * eff.kindMult(spec.kind) * fx.damageMult *
+                (if crit then eff.critMult else 1f),
               spec.projectileSpeed * Config.CellPx,
               spec.splashRadius * Config.CellPx * tw.radiusMult,
               dest,
@@ -634,12 +636,22 @@ object Sim:
               noBurnStack = tw.noBurnStack,
               armorPierce = tw.armorPierce,
               bounce = bounce,
-              bounceRadius = tw.bounceRadius * Config.CellPx
+              bounceRadius = tw.bounceRadius * Config.CellPx,
+              crit = crit
             )
-            t.copy(cooldown = spec.fireInterval * tw.fireIntervalMult, shotsFired = fired)
+            t.copy(cooldown = spec.fireInterval * tw.fireIntervalMult / eff.fireRateMult, shotsFired = fired)
     }
 
     w.copy(towers = towers, shots = w.shots ++ fresh.result())
+
+  /** A number in [0, 1) for a tower's `fired`-th shot. The sim has no random
+    * state, so it is derived from the run seed, the tower's cell and the shot
+    * count: the same run always crits on the same shots, and replays stay exact.
+    */
+  private def critRoll(w: World, t: Tower, fired: Int): Float =
+    val mix = w.run.seed ^ (t.cell.x.toLong * 0x9E3779B97F4A7C15L) ^ (t.cell.y.toLong * 0xC2B2AE3D27D4EB4FL) ^
+      (fired.toLong * 0x165667B19E3779F9L)
+    Rng(mix).nextLong()._2.nextFloat()._1
 
   /** One landing shot's worth of effect on a single enemy. Resistances are not
     * applied here — each target reads its own resist/armor when the hit lands.
@@ -651,14 +663,25 @@ object Sim:
       burn: Option[(Float, Float)],
       slow: Option[(Float, Float)],
       noBurnStack: Boolean = false,
-      armorPierce: Boolean = false
+      armorPierce: Boolean = false,
+      crit: Boolean = false
   )
+
+  /** The shred talent: each hit lowers the target's resistance to that hit's
+    * damage kind, down to its starting value minus the talent's maximum.
+    */
+  private def shred(w: World, e: Enemy, kind: DamageKind, eff: TalentEffects): Resistances =
+    if eff.shredPerHit <= 0f then e.resist
+    else
+      val floor = math.max(-1f, e.spec.resist.layered(w.resistTheme)(kind) - eff.shredMax)
+      e.resist.updated(kind, math.max(floor, e.resist(kind) - eff.shredPerHit))
 
   /** Moves each shot, converts the ones that land into hits, applies them, then
     * cashes in whatever died. Explosion shots detonate at their fixed point even
     * if the original target has already died.
     */
   private def moveProjectiles(w: World, dt: Float): World =
+    val eff        = effects(w)
     val brittleKin = brittleKineticMult(w)
     val byId = w.enemies.map(e => e.id -> e).toMap
     val fs   = Vector.newBuilder[Projectile]
@@ -694,7 +717,8 @@ object Sim:
         case None => e
         case Some(es) =>
           es.foldLeft(e) { (acc, h) =>
-            val resistFrac = e.resist(h.kind)
+            // the current resist: earlier hits this step may have shredded it
+            val resistFrac = acc.resist(h.kind)
             val wet        = if h.kind == DamageKind.Shock && inPuddle(e.pos, puddles) then Config.PuddleShockMult else 1f
             val base       = h.damage * (1f - resistFrac) * wet
             val armored    = if h.armorPierce then base else base * (1f - e.armor)
@@ -702,8 +726,8 @@ object Sim:
               if brittleKin != 1f && h.kind == DamageKind.Kinetic && e.slowed then armored * brittleKin
               else armored)
             val (ex, ey) = e.pos
-            fb += HitFeedback(ex, ey, h.kind, dmg, resistFrac)
-            var cur = acc.copy(hp = acc.hp - dmg)
+            fb += HitFeedback(ex, ey, h.kind, dmg, resistFrac, h.crit)
+            var cur = acc.copy(hp = acc.hp - dmg, resist = shred(w, acc, h.kind, eff))
             h.burn.foreach { case (dps, dur) =>
               val fr = e.resist(DamageKind.Fire)
               val du = dur * (1f - fr)
@@ -774,7 +798,7 @@ object Sim:
         case DamageKind.Splash    => Hit(e.id, DamageKind.Splash, p.damage, None, None, p.noBurnStack, p.armorPierce)
         case DamageKind.Shock     => Hit(e.id, DamageKind.Shock, p.damage, None, None, p.noBurnStack, p.armorPierce)
         case DamageKind.Explosion => Hit(e.id, DamageKind.Explosion, p.damage, None, None, p.noBurnStack, p.armorPierce)
-      p.slow.fold(base)(s => base.copy(slow = Some(s)))
+      p.slow.fold(base)(s => base.copy(slow = Some(s))).copy(crit = p.crit)
 
     val hits = primary.map(make)
     if p.bounce then

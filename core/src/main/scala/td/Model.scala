@@ -21,6 +21,14 @@ case class Resistances(
     case DamageKind.Explosion => explosion
     case DamageKind.Shock     => shock
 
+  def updated(kind: DamageKind, v: Float): Resistances = kind match
+    case DamageKind.Kinetic   => copy(kinetic = v)
+    case DamageKind.Fire      => copy(fire = v)
+    case DamageKind.Slow      => copy(slow = v)
+    case DamageKind.Splash    => copy(splash = v)
+    case DamageKind.Explosion => copy(explosion = v)
+    case DamageKind.Shock     => copy(shock = v)
+
   /** Base resist plus the run's resist theme, clamped to [0, 1] (1 = immune).
     * Only the primary/secondary kinds gain; all others pass through untouched.
     */
@@ -107,7 +115,8 @@ case class Projectile(
     noBurnStack: Boolean = false,
     armorPierce: Boolean = false,
     bounce: Boolean = false,
-    bounceRadius: Float = 0f
+    bounceRadius: Float = 0f,
+    crit: Boolean = false
 ):
   def homes: Boolean = kind != DamageKind.Explosion
 
@@ -242,7 +251,7 @@ case class DiscoveryEvent(enemy: String, traitKey: String, tier: Precision, valu
   * the post-resist/armor damage; [[resistFrac]] is the fraction of incoming
   * damage removed by resistance (0 none, >= 1 immune).
   */
-case class HitFeedback(x: Float, y: Float, kind: DamageKind, dealt: Float, resistFrac: Float)
+case class HitFeedback(x: Float, y: Float, kind: DamageKind, dealt: Float, resistFrac: Float, crit: Boolean = false)
 
 /** A name flash: an enemy type was first seen this run (`reveal=false`, drawn as
   * "???" until its name is known) or its name was first learned by a killing blow

@@ -8,7 +8,7 @@ import javax.swing.*
 import javax.swing.filechooser.FileNameExtensionFilter
 import td.ConfigEdits.LevelSet
 
-/** The level / wave / enemy / biome editor: a separate window, not part of the game.
+/** The level / wave / enemy / tower / biome editor: a separate window, not part of the game.
   * Opens a config file, edits it with sliders, steppers and dropdowns, and saves
   * it back. The game reads `config.json` in its working directory at start and
   * again when R is pressed, so saving there and pressing R tries a change at once.
@@ -65,6 +65,7 @@ final class EditorFrame(start: Option[File]) extends JFrame:
   private val enemies = EnemiesTab(state)
   private val levels  = LevelsTab(state)
   private val biomes  = BiomesTab(state)
+  private val towers  = TowersTab(state)
   private val tabs = JTabbedPane()
 
   setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE)
@@ -72,6 +73,7 @@ final class EditorFrame(start: Option[File]) extends JFrame:
   setLocationRelativeTo(null)
   tabs.addTab("Enemies", enemies)
   tabs.addTab("Levels & waves", levels)
+  tabs.addTab("Towers", towers)
   tabs.addTab("Biomes", biomes)
 
   private val bar = Controls.row(
@@ -123,6 +125,7 @@ final class EditorFrame(start: Option[File]) extends JFrame:
     enemies.rebuild()
     levels.rebuild()
     biomes.rebuild()
+    towers.rebuild()
 
   private def saveAs(): Unit =
     val c = chooser()
@@ -158,7 +161,9 @@ final class EditorFrame(start: Option[File]) extends JFrame:
         case 2 => tabs.setSelectedIndex(1)
         case 3 => shot(File(dir, "editor-levels.png"))
         case 4 => tabs.setSelectedIndex(2)
-        case 5 => shot(File(dir, "editor-biomes.png"))
+        case 5 => shot(File(dir, "editor-towers.png"))
+        case 6 => tabs.setSelectedIndex(3)
+        case 7 => shot(File(dir, "editor-biomes.png"))
         case _ => timer.stop(); dispose(); sys.exit(0)
       step += 1
     }
@@ -636,3 +641,200 @@ object BiomesTab:
     "killGoldBonus"    -> ("Extra gold per kill", 0, 10, 0.5, "gold", "Added to the gold every kill pays"),
     "swarmSizeMult"    -> ("Wave size", 50, 300, 5, "%", "Every group in a wave is this big compared with the level's wave"))
   val Percent = Set("armorPerNeighbor", "slowFactor", "livesLossMult", "swarmSizeMult")
+
+// -- towers ------------------------------------------------------------------------------
+
+/** A tower's range drawn over map tiles, with the tower in the middle. */
+final class TowerPreview(tower: () => Option[TowerSpec]) extends JComponent:
+  setPreferredSize(Dimension(300, 230))
+  override def paintComponent(g0: Graphics): Unit =
+    val g = g0.asInstanceOf[Graphics2D]
+    g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+    g.setColor(AwtColor(2, 26, 1))
+    g.fillRect(0, 0, getWidth, getHeight)
+    tower().foreach { t =>
+      val tile  = 20
+      val tiles = 11
+      val ox    = (getWidth - tiles * tile) / 2
+      val oy    = 8
+      for x <- 0 until tiles; y <- 0 until tiles do
+        g.setColor(if (x + y) % 2 == 0 then AwtColor(50, 138, 46) else AwtColor(44, 124, 40))
+        g.fillRect(ox + x * tile, oy + y * tile, tile, tile)
+      val cx = ox + tiles * tile / 2.0
+      val cy = oy + tiles * tile / 2.0
+      val r  = t.range * tile
+      g.setColor(AwtColor(255, 230, 165, 60))
+      g.fill(java.awt.geom.Ellipse2D.Double(cx - r, cy - r, 2 * r, 2 * r))
+      g.setColor(AwtColor(255, 230, 165))
+      g.draw(java.awt.geom.Ellipse2D.Double(cx - r, cy - r, 2 * r, 2 * r))
+      if t.splashRadius > 0f then
+        val s = t.splashRadius * tile
+        g.setColor(AwtColor(255, 140, 90, 140))
+        g.draw(java.awt.geom.Ellipse2D.Double(cx + r * 0.6 - s, cy - s, 2 * s, 2 * s))
+      g.setColor(Controls.toAwt(t.color))
+      g.fillRect((cx - tile / 2.0).toInt, (cy - tile / 2.0).toInt, tile, tile)
+      g.setColor(AwtColor(255, 230, 165))
+      g.drawString(f"range ${t.range}%.1f tiles" + (if t.splashRadius > 0f then f", blast ${t.splashRadius}%.1f" else ""),
+        ox, oy + tiles * tile + 16)
+    }
+
+final class TowersTab(state: EditorState) extends JPanel(BorderLayout()):
+  import ConfigEdits.TowerAccess
+  private val model = DefaultListModel[String]()
+  private val list = JList[String](model)
+  private val right = JPanel(BorderLayout())
+  private var selected: Option[String] = None
+  private var summary = JLabel()
+  // declared before anything that builds the form (fields initialize in order)
+  private val preview = TowerPreview(() => current)
+
+  list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION)
+  list.setCellRenderer(new DefaultListCellRenderer:
+    override def getListCellRendererComponent(l: JList[?], v: Any, i: Int, sel: Boolean, focus: Boolean): java.awt.Component =
+      val c = super.getListCellRendererComponent(l, v, i, sel, focus).asInstanceOf[JLabel]
+      state.cfg.towers.find(_.name == v).foreach { t =>
+        c.setIcon(swatch(t))
+        c.setText(s"$v  (${accessLabel(ConfigEdits.towerAccess(state.cfg, t.name)).takeWhile(_ != ':')})")
+      }
+      c)
+  list.addListSelectionListener(e => if !e.getValueIsAdjusting then
+    val v = Option(list.getSelectedValue)
+    if v != selected then
+      selected = v
+      showForm())
+
+  private val left = JPanel(BorderLayout())
+  private val perRun = JPanel(BorderLayout())
+  left.add(perRun, BorderLayout.NORTH)
+  left.add(JScrollPane(list), BorderLayout.CENTER)
+  left.add(Controls.row(
+    Controls.button("New", "Add a new tower type")(add(None)),
+    Controls.button("Duplicate", "Copy the selected tower")(selected.foreach(n => add(Some(n)))),
+    Controls.button("Delete", "Remove the selected tower")(delete())), BorderLayout.SOUTH)
+  left.setPreferredSize(Dimension(260, 600))
+  add(left, BorderLayout.WEST)
+  add(right, BorderLayout.CENTER)
+  rebuild()
+
+  def rebuild(): Unit =
+    perRun.removeAll()
+    perRun.add(Controls.row(JLabel("Towers per run"), Controls.stepper(1, 6, state.cfg.loadout.maxSelected,
+      v => state.update(c => c.copy(loadout = c.loadout.copy(maxSelected = v))))), BorderLayout.CENTER)
+    perRun.revalidate()
+    val keep = selected
+    model.clear()
+    state.cfg.towers.foreach(t => model.addElement(t.name))
+    selected = None
+    val pick = keep.filter(n => state.cfg.towers.exists(_.name == n)).orElse(state.cfg.towers.headOption.map(_.name))
+    pick.foreach(n => list.setSelectedValue(n, true))
+    if pick.isEmpty then showForm()
+
+  private def swatch(t: TowerSpec): Icon = new Icon:
+    def getIconWidth: Int = 18
+    def getIconHeight: Int = 18
+    def paintIcon(c: java.awt.Component, g: Graphics, x: Int, y: Int): Unit =
+      g.setColor(Controls.toAwt(t.color))
+      g.fillRect(x + 2, y + 2, 14, 14)
+
+  private def current: Option[TowerSpec] = selected.flatMap(n => state.cfg.towers.find(_.name == n))
+
+  private def edit(f: TowerSpec => TowerSpec): Unit =
+    selected.foreach(n => state.update(c => ConfigEdits.updateTower(c, n)(f)))
+    current.foreach(t => summary.setText(describe(t)))
+    preview.repaint()
+    list.repaint()
+
+  private def add(copyOf: Option[String]): Unit =
+    val base = copyOf.flatMap(n => state.cfg.towers.find(_.name == n)).getOrElse(
+      TowerSpec("New tower", 60, com.badlogic.gdx.graphics.Color.valueOf("C8B48CFF"), 3f, 0.6f, 10f, 13f, DamageKind.Kinetic, 0f))
+    val taken = state.cfg.towers.map(_.name).toSet
+    val stem  = copyOf.fold("New tower")(n => s"$n copy")
+    val name  = if !taken(stem) then stem else Iterator.from(2).map(i => s"$stem $i").find(n => !taken(n)).get
+    state.update(c => ConfigEdits.setTowerAccess(c.copy(towers = c.towers :+ base.copy(name = name)), name, TowerAccess.Unlocked))
+    selected = Some(name)
+    rebuild()
+
+  private def delete(): Unit = selected.foreach { n =>
+    val twists = state.cfg.twists.filter(_.targetTower == n).map(_.name)
+    if twists.nonEmpty then
+      JOptionPane.showMessageDialog(this, s"$n is the target of the twist(s): ${twists.mkString(", ")}", "Cannot delete",
+        JOptionPane.WARNING_MESSAGE)
+    else if state.cfg.loadout.defaultSelected == Vector(n) then
+      JOptionPane.showMessageDialog(this, s"$n is the only tower a new player starts with.", "Cannot delete",
+        JOptionPane.WARNING_MESSAGE)
+    else
+      state.update { c =>
+        val l = ConfigEdits.setTowerAccess(c, n, TowerAccess.Unlocked).loadout
+        c.copy(towers = c.towers.filterNot(_.name == n),
+          loadout = l.copy(unlocked = l.unlocked.filterNot(_ == n)))
+      }
+      selected = None
+      rebuild()
+  }
+
+  private def accessLabel(a: TowerAccess): String = a match
+    case TowerAccess.Starting => "starting: in a new player's loadout"
+    case TowerAccess.Unlocked => "free: can be picked for any run"
+    case TowerAccess.Locked   => "locked: bought with meta currency"
+
+  private def describe(t: TowerSpec): String =
+    val dps = t.damage / math.max(0.01f, t.fireInterval)
+    f"<html><b>${dps}%.1f damage per second</b> (${1f / math.max(0.01f, t.fireInterval)}%.2f shots/s) · " +
+      f"${dps / math.max(1, t.cost) * 100}%.1f per 100 gold" +
+      (if t.splashRadius > 0f then " · hits everything in the blast" else "") + "</html>"
+
+  private def rename(to0: String): Unit =
+    val to = to0.trim
+    selected.foreach { from =>
+      if to.isEmpty || to == from then ()
+      else if state.cfg.towers.exists(_.name == to) then
+        JOptionPane.showMessageDialog(this, s"There is already a tower called $to.", "Rename", JOptionPane.WARNING_MESSAGE)
+        showForm()
+      else
+        state.update(c => ConfigEdits.renameTower(c, from, to))
+        selected = Some(to)
+        rebuild()
+    }
+
+  private def showForm(): Unit =
+    right.removeAll()
+    current.foreach { t =>
+      val f = Form()
+      f.section("Look")
+      f.field("Name", Controls.text(t.name, rename),
+        "Renaming updates the loadout and twists. Saved progress that bought this tower keeps the old name.")
+      f.field("Color", Controls.color(t.color, c => edit(_.copy(color = c))))
+      f.full(preview)
+
+      f.section("Stats")
+      summary = JLabel(describe(t))
+      f.full(summary)
+      f.field("Cost", Controls.slider(5, 500, 5, t.cost, v => edit(_.copy(cost = v.toInt)), "gold"), "Gold to build one in a run")
+      f.field("Damage", Controls.slider(1, 300, 0.5, t.damage, v => edit(_.copy(damage = v.toFloat)), "per hit", log = true))
+      f.field("Reload", Controls.slider(0.05, 4, 0.05, t.fireInterval, v => edit(_.copy(fireInterval = v.toFloat)), "s"),
+        "Seconds between two shots (lower fires faster)")
+      f.field("Range", Controls.slider(0.5, 10, 0.1, t.range, v => edit(_.copy(range = v.toFloat)), "tiles"))
+      f.field("Damage type", Controls.dropdown(DamageKind.values.toVector, t.kind, k => edit(_.copy(kind = k)),
+        k => if k == DamageKind.Slow then "frost (slows)" else k.toString.toLowerCase),
+        "Fire also burns, frost also slows, explosions land where the target was")
+      f.field("Blast radius", Controls.slider(0, 5, 0.1, t.splashRadius, v => edit(_.copy(splashRadius = v.toFloat)), "tiles"),
+        "0 hits one enemy; above 0 hits every enemy within this radius of the impact")
+      f.field("Shot speed", Controls.slider(1, 40, 0.25, t.projectileSpeed, v => edit(_.copy(projectileSpeed = v.toFloat)), "tiles/s"))
+
+      f.section("Availability")
+      val access = ConfigEdits.towerAccess(state.cfg, t.name)
+      f.field("Available", Controls.dropdown(TowerAccess.values.toVector, access, a => {
+        state.update(c => ConfigEdits.setTowerAccess(c, t.name, a))
+        list.repaint()
+        showForm()
+      }, accessLabel))
+      if access == TowerAccess.Locked then
+        f.field("Unlock cost", Controls.stepper(0, 500, state.cfg.loadout.unlockCosts.getOrElse(t.name, 30), v =>
+          state.update(c => c.copy(loadout = c.loadout.copy(unlockCosts = c.loadout.unlockCosts.updated(t.name, v))))),
+          "Meta currency to unlock it for good")
+      val twists = state.cfg.twists.filter(_.targetTower == t.name)
+      if twists.nonEmpty then f.full(JLabel(s"Run twists that change it: ${twists.map(_.name).mkString(", ")}"))
+      right.add(JScrollPane(f.finish()), BorderLayout.CENTER)
+    }
+    right.revalidate()
+    right.repaint()

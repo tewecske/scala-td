@@ -21,9 +21,19 @@ case class TalentEffects(
     loadoutSlots: Int,
     rerollUnlocked: Boolean,
     extraLives: Int = 0,
-    startGold: Int = 0
+    startGold: Int = 0,
+    fireRateMult: Float = 1f,
+    critChance: Float = 0f,
+    critDamage: Float = 0f,
+    kindDamage: Map[DamageKind, Float] = Map.empty,
+    shredPerHit: Float = 0f,
+    shredMax: Float = 0f
 ):
   def owns(id: String): Boolean = owned.contains(id)
+  /** Damage multiplier for one damage kind from the per-kind talents (1 = none). */
+  def kindMult(kind: DamageKind): Float = 1f + kindDamage.getOrElse(kind, 0f)
+  /** A critical hit's damage as a multiple of a normal hit. */
+  def critMult: Float = Config.CritMult + critDamage
   def activeCores: Set[String] = layerIds(TalentLayer.Core)
   def activeDeeps: Set[String] = layerIds(TalentLayer.Deep)
   private def layerIds(layer: TalentLayer): Set[String] =
@@ -109,6 +119,17 @@ object Meta:
       case "reroll"       => acc.copy(owned = owned, rerollUnlocked = true)
       case "extraLives"   => acc.copy(owned = owned, extraLives = acc.extraLives + p.getOrElse("lives", 0f).toInt)
       case "startGold"    => acc.copy(owned = owned, startGold = acc.startGold + p.getOrElse("gold", 0f).toInt)
+      case "fireRateBonus" => acc.copy(owned = owned, fireRateMult = acc.fireRateMult + p.getOrElse("mult", 0f))
+      case "critChance"   => acc.copy(owned = owned, critChance = acc.critChance + p.getOrElse("chance", 0f))
+      case "critDamage"   => acc.copy(owned = owned, critDamage = acc.critDamage + p.getOrElse("mult", 0f))
+      // params are keyed by damage kind ("kinetic", "fire", ...), each a damage bonus
+      case "kindDamageBonus" =>
+        val more = DamageKind.values.toVector.flatMap(k => p.get(k.toString.toLowerCase).map(k -> _))
+        acc.copy(owned = owned, kindDamage = more.foldLeft(acc.kindDamage) { case (m, (k, v)) =>
+          m.updated(k, m.getOrElse(k, 0f) + v) })
+      case "shred" =>
+        acc.copy(owned = owned, shredPerHit = acc.shredPerHit + p.getOrElse("perHit", 0f),
+          shredMax = math.max(acc.shredMax, p.getOrElse("max", 0f)))
       case _              => acc.copy(owned = owned)
 
   /** Pure purchase: validates id, duplicates, prereqs (layer gating), cost. */

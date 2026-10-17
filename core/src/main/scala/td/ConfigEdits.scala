@@ -39,6 +39,44 @@ object ConfigEdits:
     Effect("crushed", Map("hazardDuration" -> 3f, "slowFactor" -> 0.4f, "radius" -> 1f)),
     Effect("recycling", Map("livesLossMult" -> 0.5f, "killGoldBonus" -> 1f, "swarmSizeMult" -> 1.4f)))
 
+  def updateTower(cfg: GameConfig, name: String)(f: TowerSpec => TowerSpec): GameConfig =
+    cfg.copy(towers = cfg.towers.map(t => if t.name == name then f(t) else t))
+
+  /** Renames a tower type and every reference to it (loadout lists, unlock costs, twists). */
+  def renameTower(cfg: GameConfig, from: String, to: String): GameConfig =
+    def r(n: String) = if n == from then to else n
+    val l = cfg.loadout
+    cfg.copy(
+      towers = cfg.towers.map(t => t.copy(name = r(t.name))),
+      loadout = l.copy(defaultSelected = l.defaultSelected.map(r), unlocked = l.unlocked.map(r), locked = l.locked.map(r),
+        unlockCosts = l.unlockCosts.map((n, c) => r(n) -> c)),
+      twists = cfg.twists.map(t => t.copy(targetTower = r(t.targetTower))))
+
+  /** How a tower becomes available to the player. */
+  enum TowerAccess:
+    case Starting, Unlocked, Locked
+
+  def towerAccess(cfg: GameConfig, name: String): TowerAccess =
+    if cfg.loadout.defaultSelected.contains(name) then TowerAccess.Starting
+    else if cfg.loadout.locked.contains(name) then TowerAccess.Locked
+    else TowerAccess.Unlocked
+
+  /** Moves a tower between "in the default loadout", "free to pick" and "bought with meta currency". */
+  def setTowerAccess(cfg: GameConfig, name: String, access: TowerAccess, unlockCost: Int = 30): GameConfig =
+    val l = cfg.loadout
+    def without(v: Vector[String]) = v.filterNot(_ == name)
+    val next = access match
+      case TowerAccess.Starting =>
+        l.copy(defaultSelected = without(l.defaultSelected) :+ name, unlocked = without(l.unlocked) :+ name,
+          locked = without(l.locked), unlockCosts = l.unlockCosts - name)
+      case TowerAccess.Unlocked =>
+        l.copy(defaultSelected = without(l.defaultSelected), unlocked = without(l.unlocked) :+ name,
+          locked = without(l.locked), unlockCosts = l.unlockCosts - name)
+      case TowerAccess.Locked =>
+        l.copy(defaultSelected = without(l.defaultSelected), unlocked = without(l.unlocked),
+          locked = without(l.locked) :+ name, unlockCosts = l.unlockCosts.updated(name, l.unlockCosts.getOrElse(name, unlockCost)))
+    cfg.copy(loadout = next)
+
   /** A wave with `count` matching its composition (the loader requires it). */
   def wave(spawnInterval: Float, hpScale: Float, composition: Vector[(String, Int)]): WaveSpec =
     val comp = composition.filter(_._2 > 0)

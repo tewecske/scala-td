@@ -143,7 +143,8 @@ object ConfigLoader:
         f(cmbt, "slowDuration"),
         f(cmbt, "breakTime"),
         i(cmbt, "studyHits"),
-        fo(cmbt, "puddleShockMult", 1.5f)
+        fo(cmbt, "puddleShockMult", 1.5f),
+        fo(cmbt, "critMult", 1.5f)
       ),
       i18n = parseI18n(obj(root, "i18n")),
       towers = towers,

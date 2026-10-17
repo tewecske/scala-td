@@ -95,7 +95,8 @@ object ConfigWriter:
       "slowDuration" -> num(c.slowDuration),
       "breakTime"   -> num(c.breakTime),
       "studyHits"   -> num(c.studyHits),
-      "puddleShockMult" -> num(c.puddleShockMult)
+      "puddleShockMult" -> num(c.puddleShockMult),
+      "critMult"    -> num(c.critMult)
     )
 
   private def i18n(i: I18nConfig): JsonValue =

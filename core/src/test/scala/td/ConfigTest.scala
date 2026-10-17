@@ -53,9 +53,9 @@ class ConfigTest extends TestBase:
     cfg.biomes.foreach(b => b.roster.foreach(e => assert(enemyNames.contains(e))))
   }
 
-  test("talent tree has 4 cores and prereqs resolve") {
-    assertEquals(cfg.talents.count(_.layer == TalentLayer.Core), 4)
+  test("talent prereqs resolve and no talent column is longer than the screen fits") {
     cfg.talents.foreach(t => t.prereqs.foreach(p => assert(cfg.talents.exists(_.id == p))))
+    TalentLayer.values.foreach(l => assert(cfg.talents.count(_.layer == l) <= 9, l))
   }
 
   test("gated relics reference an existing talent") {
