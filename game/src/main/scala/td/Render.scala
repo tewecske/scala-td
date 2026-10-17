@@ -69,6 +69,9 @@ class Render:
   // -- floating popups/flashes (simulation coordinates) --------------------------
 
   private val PopupLife = 0.9f
+
+  /** Damage numbers of hits the target partly resisted. */
+  private val ResistedColor = new Color(0.60f, 0.72f, 0.92f, 1f)
   private val FlashLife = 1.6f
 
   private case class Floating(x: Float, y: Float, label: String, color: Color, life: Float, maxLife: Float, big: Boolean)
@@ -77,9 +80,10 @@ class Render:
   /** Register a landed hit as a floating damage/status label + a spark burst. */
   def feedHits(hits: Vector[HitFeedback]): Unit =
     hits.foreach { h =>
+      // resisted hits show their (reduced) damage in a cool color; immune ones say so
       val (label, color) =
         if h.resistFrac >= 0.99f then (Messages.t("popup.immune"), Config.EnemyColor)
-        else if h.resistFrac > 0f then (Messages.t("popup.resist"), Config.EnemyColor)
+        else if h.resistFrac > 0f then (math.round(h.dealt).toString, ResistedColor)
         else (math.round(h.dealt).toString, Config.TextColor)
       floating += Floating(h.x, h.y + 14f, label, color, PopupLife, PopupLife, big = false)
       for _ <- 0 until Config.SparkCount do
@@ -304,11 +308,13 @@ class Render:
       f.draw(batch, glyphs, math.round(left).toFloat, math.round(y * ppu + f.getCapHeight / 2).toFloat)
     }
 
-  /** Queues text wrapped to `w` UI units, top line centered on `y`; returns the height used. */
+  /** Queues text wrapped to `w` UI units starting at `x`, top line centered on `y`
+    * (lines aligned within the width by `align`); returns the height used.
+    */
   private def wrapped(s: String, x: Float, y: Float, w: Float, style: TextStyle = TextStyle.Body,
-      c: Color = Config.TextColor): Float =
+      c: Color = Config.TextColor, align: Align = Align.Left): Float =
     val f      = fonts(style)
-    val layout = new GlyphLayout(f, s, new Color(c), w * ppu, GdxAlign.left, true)
+    val layout = new GlyphLayout(f, s, new Color(c), w * ppu, gdxAlign(align), true)
     texts += (() => f.draw(batch, layout, math.round(x * ppu).toFloat, math.round(y * ppu + f.getCapHeight / 2).toFloat))
     layout.height / ppu + (f.getLineHeight - f.getCapHeight) / ppu
 
@@ -753,20 +759,25 @@ class Render:
 
     d.offers.zipWithIndex.foreach { case (offer, i) =>
       val r = Layout.draftCard(i, d.offers.size)
-      val (kind, name, rarity) = offer match
+      val (kind, note, name, rarity, effect) = offer match
         case DraftOffer.Relic(id) =>
           val rl = Config.relic(id)
-          (Messages.t("draft.relic"), rl.name, Some(rl.rarity.toString))
-        case DraftOffer.Augment(id) => (Messages.t("draft.augment"), Config.augment(id).name, None)
+          (Messages.t("draft.relic"), Messages.t("draft.relicNote"), rl.name, Some(rl.rarity.toString), rl.effect)
+        case DraftOffer.Augment(id) =>
+          val a = Config.augment(id)
+          (Messages.t("draft.augment"), Messages.t("draft.augmentNote"), a.name, None, a.effect)
       val rc = rarity match
         case Some("Legendary") => gold
         case Some("Rare")      => Config.ShotShockColor
         case _                 => muted
       val c = if hovered(r) then mix(Config.ButtonFill, Color.WHITE, 0.12f) else Config.ButtonFill
       outline(r, 18f, 2.5f, if hovered(r) then text0 else mix(rc, Config.ButtonFill, 0.4f), c)
-      text(kind.toUpperCase, r.centerX, r.top - 40f, TextStyle.Button, muted, Align.Center)
-      text(name, r.centerX, r.centerY + 10f, TextStyle.Card, text0, Align.Center, r.w - 40f)
-      rarity.foreach(rr => text(Messages.t(s"draft.rarity.$rr").toUpperCase, r.centerX, r.y + 40f, TextStyle.Button, rc,
+      text(kind.toUpperCase, r.centerX, r.top - 34f, TextStyle.Button, muted, Align.Center)
+      text(note, r.centerX, r.top - 64f, TextStyle.Small, muted, Align.Center)
+      text(name, r.centerX, r.top - 118f, TextStyle.Card, text0, Align.Center, r.w - 40f)
+      val (desc, works) = boonText(effect)
+      wrapped(desc, r.x + 28f, r.top - 168f, r.w - 56f, TextStyle.Body, if works then text0 else muted, Align.Center)
+      rarity.foreach(rr => text(Messages.t(s"draft.rarity.$rr").toUpperCase, r.centerX, r.y + 30f, TextStyle.Button, rc,
         Align.Center))
     }
     button(Layout.draftReroll,
@@ -775,6 +786,18 @@ class Render:
     text(Messages.t("draft.gold", w.gold), Layout.cx, 70f, TextStyle.Stat, gold, Align.Center)
     if dev then drawDevOverlay()
     present()
+
+  /** What a relic or augment does, with its numbers, and whether the game implements it. */
+  private def boonText(e: Effect): (String, Boolean) =
+    def p(k: String) = e.params.getOrElse(k, 0f)
+    def pct(mult: Float) = math.round((mult - 1f) * 100).toString
+    def num(x: Float) = if x == x.round.toFloat then x.round.toString else x.toString
+    e.kind match
+      case "squareDeal"    => (Messages.t("boon.squareDeal", pct(p("goldMult"))), true)
+      case "boxOffice"     => (Messages.t("boon.boxOffice", num(p("killRewardBonus"))), true)
+      case "sharpenedEdge" => (Messages.t("boon.sharpenedEdge", pct(p("damageMult"))), true)
+      case "vertigo"       => (Messages.t("boon.vertigo", math.round(p("slowAmount") * 100).toString, num(p("slowDuration"))), true)
+      case _               => (Messages.t("boon.placeholder"), false)
 
   /** Frozen game view under a dim overlay plus the pause panel and its buttons. */
   def drawPaused(w: World, fast: Boolean, selected: TowerSpec, dev: Boolean = false): Unit =
@@ -913,10 +936,36 @@ class Render:
       shapes.rect(p.x - s / 2f, p.y - s / 2f, s, s)
     }
 
+  /** How far an enemy is drawn beside the road's center line, so a wave looks
+    * like a crowd rather than a queue. Drawing only: the simulation still moves,
+    * targets and hits it on the center line, so rules and replays are unchanged.
+    * Each enemy keeps its own side and distance (from its id); the offset turns
+    * smoothly through corners and is smaller for enemies that fill the road.
+    */
+  private def scatter(e: Enemy): (Float, Float) =
+    val cell = Config.CellPx
+    val room = math.max(0f, (cell * 0.84f - e.spec.size) / 2f)
+    if room <= 0f then (0f, 0f)
+    else
+      val h    = java.lang.Long.hashCode(e.id * 0x9E3779B97F4A7C15L)
+      val t    = ((h >>> 8) & 0xffff) / 65535f * 2f - 1f
+      val (ax, ay) = Grid.positionAt(e.progress - cell * 0.5f, e.level, e.lane)
+      val (bx, by) = Grid.positionAt(e.progress + cell * 0.5f, e.level, e.lane)
+      val dx  = bx - ax
+      val dy  = by - ay
+      val len = math.sqrt(dx * dx + dy * dy).toFloat
+      if len < 1e-3f then (0f, 0f) else (-dy / len * t * room, dx / len * t * room)
+
+  /** Where an enemy is drawn: its simulation position plus its [[scatter]]. */
+  private def drawnPos(e: Enemy): (Float, Float) =
+    val (x, y)   = e.pos
+    val (ox, oy) = scatter(e)
+    (x + ox, y + oy)
+
   private def drawEnemies(w: World): Unit =
     w.enemies.foreach { e =>
       val size = e.spec.size
-      val (ex, ey) = e.pos
+      val (ex, ey) = drawnPos(e)
       if e.slowed then
         shapes.setColor(Config.SlowTint)
         shapes.rect(ex - size / 2 - 3f, ey - size / 2 - 3f, size + 6f, size + 6f)
@@ -941,7 +990,7 @@ class Render:
   private def drawAuras(w: World): Unit =
     w.enemies.foreach { e =>
       e.spec.aura.foreach { a =>
-        val (ex, ey) = e.pos
+        val (ex, ey) = drawnPos(e)
         shapes.setColor(e.spec.color)
         shapes.circle(ex, ey, a.radius * Config.CellPx, 48)
       }
@@ -955,12 +1004,26 @@ class Render:
     case DamageKind.Explosion => Config.ShotBoomColor
     case DamageKind.Shock     => Config.ShotShockColor
 
+  /** Shots fly at their target's simulation position; near the end they bend
+    * towards where the target is drawn (see [[scatter]]) so hits look right.
+    */
   private def drawShots(w: World): Unit =
+    val byId = w.enemies.map(e => e.id -> e).toMap
     w.shots.foreach { p =>
+      val (x, y) = p.dest match
+        case Some(_) => (p.x, p.y)
+        case None =>
+          byId.get(p.targetId).fold((p.x, p.y)) { e =>
+            val (tx, ty) = e.pos
+            val (ox, oy) = scatter(e)
+            val dist = math.sqrt((tx - p.x) * (tx - p.x) + (ty - p.y) * (ty - p.y)).toFloat
+            val f    = math.max(0f, math.min(1f, 1f - dist / (Config.CellPx * 1.5f)))
+            (p.x + ox * f, p.y + oy * f)
+          }
       val c = shotColor(p.kind)
-      glow(p.x, p.y, 10f, c)
+      glow(x, y, 10f, c)
       shapes.setColor(c)
-      shapes.rect(p.x - 3f, p.y - 3f, 6f, 6f)
+      shapes.rect(x - 3f, y - 3f, 6f, 6f)
     }
 
   private def drawHover(w: World, hover: Option[GridPos], selected: TowerSpec): Unit =

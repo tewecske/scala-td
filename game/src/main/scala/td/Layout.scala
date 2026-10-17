@@ -122,9 +122,9 @@ object Layout:
   // -- draft / pause / recap ---------------------------------------------------------
 
   def draftCard(i: Int, n: Int): Rect =
-    val w = 400f; val gap = 40f
+    val w = 420f; val gap = 40f
     val total = n * w + (n - 1) * gap
-    Rect(cx - total / 2 + i * (w + gap), H / 2 - 150f, w, 300f)
+    Rect(cx - total / 2 + i * (w + gap), H / 2 - 170f, w, 360f)
   def draftReroll: Rect = bottomRow(1, 0, y = 120f)
 
   def pausePanel: Rect = Rect(cx - 280f, H / 2 - 220f, 560f, 440f)

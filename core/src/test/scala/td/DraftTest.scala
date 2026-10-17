@@ -22,8 +22,20 @@ class DraftTest extends TestBase:
     assert(shallow.nonEmpty)
     assert(shallow.forall(_.rarity == Rarity.Common))
     val deep = DraftGen.eligibleRelics(Vector("conflagration"))
-    assert(deep.exists(r => r.id == "pandoras-box" && r.rarity == Rarity.Legendary))
     assert(deep.exists(r => r.id == "box-office" && r.rarity == Rarity.Rare))
+  }
+
+  test("placeholder boons without behavior are never offered") {
+    val all = (DraftGen.eligibleItems(Config.talents.map(_.id)) ++
+      (1L to 20L).flatMap(s => DraftGen.rollPool(Rng(s), Config.talents.map(_.id)))).distinct
+    val effects = all.map {
+      case DraftOffer.Relic(id)   => Config.relic(id).effect
+      case DraftOffer.Augment(id) => Config.augment(id).effect
+    }
+    assert(effects.forall(DraftGen.implemented), effects.map(_.kind).distinct)
+    assert(!all.contains(DraftOffer.Augment("set-square")))
+    assert(!all.contains(DraftOffer.Relic("pandoras-box")))
+    assert(all.contains(DraftOffer.Augment("vertigo")))
   }
 
   test("draft pool is deterministic and shallow pools have no legendaries") {

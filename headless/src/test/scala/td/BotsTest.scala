@@ -185,7 +185,7 @@ class BotsTest extends FunSuite:
 
   test("a game with talents, a relic and a pending augment replays exactly through the file format") {
     val dir   = Files.createTempDirectory("replays").toString
-    val setup = Setup(loadout = Vector("Matchbox"), talents = Vector("filler-damage"), augment = Some("cornerstone"),
+    val setup = Setup(loadout = Vector("Matchbox"), talents = Vector("filler-damage"), augment = Some("sharpened-edge"),
       livesLost = 2)
     val game  = Scenario.play(spender(4L), biome, 1, 4L, 5, setup = setup)
     assertEquals(game.outcome.livesStart, Config.StartLives - 2)

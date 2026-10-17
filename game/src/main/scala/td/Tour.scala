@@ -28,7 +28,7 @@ object Tour:
       Step("briefing", () => Phase.Briefing(Sim.initial(RunGen.roll(7L)))),
       Step("loadout", () => Phase.Loadout(RunGen.roll(7L), Vector("Cuboid", "Matchbox"), MetaData(35, Vector.empty))),
       Step("game-10x10", () => Phase.Playing(battle(level = 0, steps = 900)), frames = 4),
-      Step("game-14x14", () => Phase.Playing(battle(level = 5, steps = 1300)), frames = 4),
+      Step("game-14x14", () => Phase.Playing(battle(level = 5, steps = 1300)), frames = 40),
       Step("paused", () => Phase.Paused(battle(level = 0, steps = 900))),
       Step("draft", () => Phase.Playing(draft)),
       Step("recap", () => Phase.Recap(false, 1, 3, 0, 40, Vector.empty, Vector.empty, None)),
@@ -66,7 +66,12 @@ object Tour:
       }
     }.getOrElse(Phase.Menu)
 
-  /** The draft between levels 1 and 2. */
+  /** The draft between levels 1 and 2: a relic and two augments. */
   def draft: World =
     val w = Sim.initial(RunGen.roll(5L))
-    w.copy(draft = Some(Draft(w.run.draftPool.take(Config.OfferCount), Config.RerollCost)))
+    val offers = Vector(DraftOffer.Relic("square-deal"), DraftOffer.Augment("vertigo"), DraftOffer.Augment("sharpened-edge"))
+      .filter {
+        case DraftOffer.Relic(id)   => Config.relics.exists(_.id == id)
+        case DraftOffer.Augment(id) => Config.augments.exists(_.id == id)
+      }
+    w.copy(draft = Some(Draft(if offers.nonEmpty then offers else w.run.draftPool.take(Config.OfferCount), Config.RerollCost)))

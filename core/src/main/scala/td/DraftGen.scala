@@ -7,17 +7,27 @@ object DraftGen:
   /** Fixed seed for the tutorial's pool so the tutorial stays reproducible. */
   val TutorialPoolSeed: Long = 0xD27AF5EEDL
 
+  /** Boon effects the simulation implements. The config also holds placeholder
+    * boons with no behavior yet; they stay out of the draft until they are built.
+    */
+  val ImplementedEffects: Set[String] = Set("squareDeal", "boxOffice", "sharpenedEdge", "vertigo")
+
+  def implemented(e: Effect): Boolean = ImplementedEffects.contains(e.kind)
+
   /** Relics the player can actually roll: common (no requirement) plus any
-    * rare/legendary whose required deep talent they own.
+    * rare/legendary whose required deep talent they own; implemented ones only.
     */
   def eligibleRelics(talents: Vector[String]): Vector[Relic] =
     val owned = Meta.effects(talents)
-    Config.relics.filter(r => r.requiredTalent.forall(owned.owns))
+    Config.relics.filter(r => implemented(r.effect) && r.requiredTalent.forall(owned.owns))
 
-  /** The full offer pool: eligible relics + every augment (augments are ungated). */
+  /** Augments that can be offered: every implemented one (augments are ungated). */
+  def eligibleAugments: Vector[Augment] = Config.augments.filter(a => implemented(a.effect))
+
+  /** The full offer pool: eligible relics + eligible augments. */
   def eligibleItems(talents: Vector[String]): Vector[DraftOffer] =
     eligibleRelics(talents).map(r => DraftOffer.Relic(r.id)) ++
-      Config.augments.map(a => DraftOffer.Augment(a.id))
+      eligibleAugments.map(a => DraftOffer.Augment(a.id))
 
   /** Roll `DraftPoolRounds * OfferCount` offers. Offers within a round are
     * distinct; repeats across rounds are possible and are guarded at pick time.
