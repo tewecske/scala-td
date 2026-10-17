@@ -6,6 +6,7 @@ Scala 3 tower-defense game on libGDX (LWJGL3 desktop backend). Multi-project sbt
 
 - `sbt compile` — build
 - `sbt "game/run"` — launches the GUI window; needs a display, so not runnable headless
+- `scripts/sim.sh` — headless simulations (bots, balancing, replays): no args prints examples, `--help` every command and option
 - `sbt test` — munit unit tests (headless-safe). Tests are wired in by `TASKS/task01`; see `TASKS/context.md` section 5 for the testing convention. No scalafmt, no CI.
 
 ## Architecture

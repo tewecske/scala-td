@@ -331,7 +331,10 @@ object Experiments:
 
   def replay(args: List[String]): Unit =
     args match
-      case path :: Nil if path != "--help" =>
+      case ("--help" | "-h") :: _ =>
+        println(ReplayUsage)
+        throw CommandDone
+      case path :: Nil =>
         val text = Files.readString(Paths.get(path))
         Replay.parse(text) match
           case Left(err) => Opts.fail(err, ReplayUsage)
