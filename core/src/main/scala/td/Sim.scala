@@ -231,7 +231,7 @@ object Sim:
     }
 
   private def vagueHint(base: Float): String =
-    if base >= 0.99f then "immune"
+    if base >= Config.ImmuneAt then "immune"
     else if base > 0f then "resists"
     else if base < 0f then "weak"
     else "neutral"
@@ -588,6 +588,25 @@ object Sim:
       }
       w.copy(enemies = w.enemies ++ out, nextId = next)
 
+  /** The enemy tower `t` shoots next: in its range (talents included), picked by
+    * the tower's targeting mode. The renderer aims barrels with the same rule.
+    */
+  def targetOf(w: World, t: Tower, eff: TalentEffects): Option[Enemy] =
+    val range  = t.spec.range * Config.CellPx * eff.rangeMult
+    val range2 = range * range
+    val inRange = w.enemies.filter { e =>
+      val (ex, ey) = e.pos
+      val dx       = ex - t.cell.centerX
+      val dy       = ey - t.cell.centerY
+      dx * dx + dy * dy <= range2
+    }
+    t.spec.targeting match
+      case Targeting.First   => inRange.maxByOption(_.progress)
+      // ties go to the one further along
+      case Targeting.Weakest => inRange.minByOption(e => (e.hp, -e.progress))
+
+  def targetOf(w: World, t: Tower): Option[Enemy] = targetOf(w, t, effects(w))
+
   private def fireTowers(w: World, dt: Float): World =
     val fresh = Vector.newBuilder[Projectile]
     val eff   = effects(w)
@@ -598,28 +617,16 @@ object Sim:
       else
         val spec   = t.spec
         val tw     = twistFx(w, t.tpe)
-        val range  = spec.range * Config.CellPx * eff.rangeMult
-        val range2 = range * range
-        // Standard tower-defense targeting: whatever is closest to leaking.
-        val target = w.enemies
-          .filter { e =>
-            val (ex, ey) = e.pos
-            val dx       = ex - t.cell.centerX
-            val dy       = ey - t.cell.centerY
-            dx * dx + dy * dy <= range2
-          }
-          .maxByOption(_.progress)
-
-        target match
+        targetOf(w, t, eff) match
           case None => t.copy(cooldown = 0f)
           case Some(e) =>
-            val dest   = if spec.kind == DamageKind.Explosion then Some(e.pos) else None
+            val dest   = if spec.groundTarget then Some(e.pos) else None
             val fx     = augmentFx(t)
             val fired  = t.shotsFired + 1
             val bounce = tw.bounceEvery > 0 && fired % tw.bounceEvery == 0
             val crit   = eff.critChance > 0f && critRoll(w, t, fired) < eff.critChance
             val slowOv =
-              if spec.kind == DamageKind.Slow then Some((Config.SlowFactor, Config.SlowDuration * tw.slowDurationMult))
+              if spec.slows then Some((spec.slowFactor, spec.slowDuration * tw.slowDurationMult))
               else fx.slow
             fresh += Projectile(
               t.cell.centerX,
@@ -637,7 +644,9 @@ object Sim:
               armorPierce = tw.armorPierce,
               bounce = bounce,
               bounceRadius = tw.bounceRadius * Config.CellPx,
-              crit = crit
+              crit = crit,
+              burn = Option.when(spec.burns)((spec.burnDps, spec.burnDuration)),
+              puddleMult = spec.puddleMult
             )
             t.copy(cooldown = spec.fireInterval * tw.fireIntervalMult / eff.fireRateMult, shotsFired = fired)
     }
@@ -664,7 +673,8 @@ object Sim:
       slow: Option[(Float, Float)],
       noBurnStack: Boolean = false,
       armorPierce: Boolean = false,
-      crit: Boolean = false
+      crit: Boolean = false,
+      puddleMult: Float = 1f
   )
 
   /** The shred talent: each hit lowers the target's resistance to that hit's
@@ -719,7 +729,7 @@ object Sim:
           es.foldLeft(e) { (acc, h) =>
             // the current resist: earlier hits this step may have shredded it
             val resistFrac = acc.resist(h.kind)
-            val wet        = if h.kind == DamageKind.Shock && inPuddle(e.pos, puddles) then Config.PuddleShockMult else 1f
+            val wet        = if h.puddleMult != 1f && inPuddle(e.pos, puddles) then h.puddleMult else 1f
             val base       = h.damage * (1f - resistFrac) * wet
             val armored    = if h.armorPierce then base else base * (1f - e.armor)
             val dmg        = math.max(0f,
@@ -790,15 +800,10 @@ object Sim:
         }
       else w.enemies.filter(_.id == p.targetId)
 
+    // what a hit does besides damage comes from the firing tower, carried on the shot
     def make(e: Enemy): Hit =
-      val base = p.kind match
-        case DamageKind.Kinetic   => Hit(e.id, DamageKind.Kinetic, p.damage, None, None, p.noBurnStack, p.armorPierce)
-        case DamageKind.Fire      => Hit(e.id, DamageKind.Fire, p.damage, Some((Config.BurnDps * p.burnTickRate, Config.BurnDuration)), None, p.noBurnStack, p.armorPierce)
-        case DamageKind.Slow      => Hit(e.id, DamageKind.Slow, p.damage, None, Some((Config.SlowFactor, Config.SlowDuration)), p.noBurnStack, p.armorPierce)
-        case DamageKind.Splash    => Hit(e.id, DamageKind.Splash, p.damage, None, None, p.noBurnStack, p.armorPierce)
-        case DamageKind.Shock     => Hit(e.id, DamageKind.Shock, p.damage, None, None, p.noBurnStack, p.armorPierce)
-        case DamageKind.Explosion => Hit(e.id, DamageKind.Explosion, p.damage, None, None, p.noBurnStack, p.armorPierce)
-      p.slow.fold(base)(s => base.copy(slow = Some(s))).copy(crit = p.crit)
+      Hit(e.id, p.kind, p.damage, p.burn.map((dps, dur) => (dps * p.burnTickRate, dur)), p.slow, p.noBurnStack,
+        p.armorPierce, p.crit, p.puddleMult)
 
     val hits = primary.map(make)
     if p.bounce then

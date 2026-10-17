@@ -89,14 +89,10 @@ object ConfigWriter:
       "maxStepDt"   -> num(c.maxStepDt),
       "fastForward" -> num(c.fastForward),
       "hitRadius"   -> num(c.hitRadius),
-      "burnDps"     -> num(c.burnDps),
-      "burnDuration" -> num(c.burnDuration),
-      "slowFactor"  -> num(c.slowFactor),
-      "slowDuration" -> num(c.slowDuration),
       "breakTime"   -> num(c.breakTime),
       "studyHits"   -> num(c.studyHits),
-      "puddleShockMult" -> num(c.puddleShockMult),
-      "critMult"    -> num(c.critMult)
+      "critMult"    -> num(c.critMult),
+      "immuneAt"    -> num(c.immuneAt)
     )
 
   private def i18n(i: I18nConfig): JsonValue =
@@ -121,7 +117,14 @@ object ConfigWriter:
       "damage"          -> num(t.damage),
       "projectileSpeed" -> num(t.projectileSpeed),
       "kind"            -> str(t.kind.toString),
-      "splashRadius"    -> num(t.splashRadius)
+      "splashRadius"    -> num(t.splashRadius),
+      "targeting"       -> str(t.targeting.toString),
+      "burnDps"         -> num(t.burnDps),
+      "burnDuration"    -> num(t.burnDuration),
+      "slowFactor"      -> num(t.slowFactor),
+      "slowDuration"    -> num(t.slowDuration),
+      "groundTarget"    -> bool(t.groundTarget),
+      "puddleMult"      -> num(t.puddleMult)
     )
 
   private def enemy(cfg: GameConfig, e: EnemySpec): JsonValue =

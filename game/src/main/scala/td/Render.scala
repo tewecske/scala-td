@@ -93,11 +93,11 @@ class Render:
     hits.foreach { h =>
       // resisted hits show their (reduced) damage in a cool color; immune ones say so
       val (label, color) =
-        if h.resistFrac >= 0.99f then (Messages.t("popup.immune"), Config.EnemyColor)
+        if h.resistFrac >= Config.ImmuneAt then (Messages.t("popup.immune"), Config.EnemyColor)
         else if h.resistFrac > 0f then (math.round(h.dealt).toString, ResistedColor)
         else if h.crit then (s"${math.round(h.dealt)}!", CritColor)
         else (math.round(h.dealt).toString, Config.TextColor)
-      floating += Floating(h.x, h.y + 14f, label, color, PopupLife, PopupLife, big = h.crit && h.resistFrac < 0.99f)
+      floating += Floating(h.x, h.y + 14f, label, color, PopupLife, PopupLife, big = h.crit && h.resistFrac < Config.ImmuneAt)
       for _ <- 0 until Config.SparkCount do
         val ang = rng.nextFloat() * math.Pi * 2f
         val spd = Config.SparkSpeed * (0.4f + rng.nextFloat() * 0.6f)
@@ -974,13 +974,8 @@ class Render:
   private def turnTowards(w: World, t: Tower): Float =
     val cx    = t.cell.centerX
     val cy    = t.cell.centerY
-    val range = t.spec.range * Config.CellPx
     val now   = aim.getOrElse(t.cell, 90f)
-    val target = w.enemies.filter { e =>
-      val (ex, ey) = e.pos
-      (ex - cx) * (ex - cx) + (ey - cy) * (ey - cy) <= range * range
-    }.maxByOption(_.progress)
-    val next = target.fold(now) { e =>
+    val next = Sim.targetOf(w, t).fold(now) { e =>
       val (ex, ey) = drawnPos(e)
       val want = math.toDegrees(math.atan2(ey - cy, ex - cx)).toFloat
       val diff = ((want - now) % 360f + 540f) % 360f - 180f

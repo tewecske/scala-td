@@ -105,17 +105,14 @@ object Config:
 
   // -- combat ----------------------------------------------------------------
   def HitRadius: Float    = current.combat.hitRadius
-  def BurnDps: Float      = current.combat.burnDps
-  def BurnDuration: Float = current.combat.burnDuration
-  def SlowFactor: Float   = current.combat.slowFactor
-  def SlowDuration: Float = current.combat.slowDuration
   def MaxStepDt: Float    = current.combat.maxStepDt
   def FastForward: Int    = current.combat.fastForward
   def BreakTime: Float    = current.combat.breakTime
   def StudyHits: Int      = current.combat.studyHits
-  def PuddleShockMult: Float = current.combat.puddleShockMult
   /** Damage of a critical hit, as a multiple of a normal hit, before talents. */
   def CritMult: Float = current.combat.critMult
+  /** Resistance at or above this counts as immune (shown as "immune", no damage number). */
+  def ImmuneAt: Float = current.combat.immuneAt
 
   // -- specs ------------------------------------------------------------------
   def towerSpec(name: String): TowerSpec =

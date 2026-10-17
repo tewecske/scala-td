@@ -13,9 +13,14 @@ class TwistTest extends TestBase:
     Sim.initial(RunContext(seed = 1L, twists = twists))
       .copy(towers = towers, enemies = enemies, spawnQueue = Vector.empty, breakTimer = 999f)
 
+  private def matchbox = Config.towerSpec("Matchbox")
+  private def iceCube  = Config.towerSpec("Ice Cube")
+
+  /** A shot about to land on `e`; fire shots burn like the Matchbox's. */
   private def shotAt(e: Enemy, kind: DamageKind, damage: Float = 10f): Projectile =
     val (x, y) = e.pos
-    Projectile(x, y, e.id, kind, damage, 1e6f, 0f, None)
+    Projectile(x, y, e.id, kind, damage, 1e6f, 0f, None,
+      burn = Option.when(kind == DamageKind.Fire)((matchbox.burnDps, matchbox.burnDuration)))
 
   test("brittle: slowed enemies take bonus kinetic damage") {
     val e     = startEnemy(1L).copy(slowUntil = 5f, slowFactor = 0.5f)
@@ -31,7 +36,7 @@ class TwistTest extends TestBase:
     val t     = Tower(towerCell, 0f, "Ice Cube")
     val fired = Sim.step(worldWith(Vector("brittle"), Vector(t), Vector(e)), Config.MaxStepDt, Vector.empty)
     assert(fired.shots.nonEmpty)
-    assertEquals(fired.shots.head.slow, Some((Config.SlowFactor, Config.SlowDuration * 0.5f)))
+    assertEquals(fired.shots.head.slow, Some((iceCube.slowFactor, iceCube.slowDuration * 0.5f)))
   }
 
   test("backdraft bakes faster, non-stacking burns into fire shots") {
@@ -48,7 +53,7 @@ class TwistTest extends TestBase:
     val p    = shotAt(e, DamageKind.Fire).copy(burnTickRate = 2f)
     val w    = worldWith(Vector("backdraft"), enemies = Vector(e)).copy(shots = Vector(p))
     val step = Sim.step(w, Config.MaxStepDt, Vector.empty)
-    assertEquals(step.enemies.head.burnDps, Config.BurnDps * 2f)
+    assertEquals(step.enemies.head.burnDps, matchbox.burnDps * 2f)
   }
 
   test("backdraft burns no longer stack") {
@@ -56,8 +61,8 @@ class TwistTest extends TestBase:
     val stacked = Sim.step(worldWith(Vector.empty, enemies = Vector(e)).copy(shots = Vector(shotAt(e, DamageKind.Fire))), Config.MaxStepDt, Vector.empty)
     val plain   = shotAt(e, DamageKind.Fire).copy(burnTickRate = 2f, noBurnStack = true)
     val capped  = Sim.step(worldWith(Vector("backdraft"), enemies = Vector(e)).copy(shots = Vector(plain)), Config.MaxStepDt, Vector.empty)
-    assertEquals(stacked.enemies.head.burnUntil, Config.BurnDuration)
-    assert(capped.enemies.head.burnUntil < Config.BurnDuration)
+    assertEquals(stacked.enemies.head.burnUntil, matchbox.burnDuration)
+    assert(capped.enemies.head.burnUntil < matchbox.burnDuration)
   }
 
   test("shaped charge shrinks radius and pierces armor") {

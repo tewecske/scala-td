@@ -24,14 +24,10 @@
 	"maxStepDt": 0.05,
 	"fastForward": 3,
 	"hitRadius": 6.0,
-	"burnDps": 6.0,
-	"burnDuration": 3.0,
-	"slowFactor": 0.5,
-	"slowDuration": 2.0,
 	"breakTime": 4.0,
 	"studyHits": 5,
-	"puddleShockMult": 1.5,
-	"critMult": 1.5
+	"critMult": 1.5,
+	"immuneAt": 0.99
 },
 "i18n": {
 	"lang": "en",
@@ -47,7 +43,14 @@
 		"damage": 12.0,
 		"projectileSpeed": 13.125,
 		"kind": "Kinetic",
-		"splashRadius": 0.0
+		"splashRadius": 0.0,
+		"targeting": "First",
+		"burnDps": 0.0,
+		"burnDuration": 0.0,
+		"slowFactor": 1.0,
+		"slowDuration": 0.0,
+		"groundTarget": false,
+		"puddleMult": 1.0
 	},
 	{
 		"name": "Matchbox",
@@ -58,7 +61,14 @@
 		"damage": 8.0,
 		"projectileSpeed": 15.0,
 		"kind": "Fire",
-		"splashRadius": 0.0
+		"splashRadius": 0.0,
+		"targeting": "First",
+		"burnDps": 6.0,
+		"burnDuration": 3.0,
+		"slowFactor": 1.0,
+		"slowDuration": 0.0,
+		"groundTarget": false,
+		"puddleMult": 1.0
 	},
 	{
 		"name": "Ice Cube",
@@ -69,7 +79,14 @@
 		"damage": 5.0,
 		"projectileSpeed": 13.75,
 		"kind": "Slow",
-		"splashRadius": 0.0
+		"splashRadius": 0.0,
+		"targeting": "First",
+		"burnDps": 0.0,
+		"burnDuration": 0.0,
+		"slowFactor": 0.5,
+		"slowDuration": 2.0,
+		"groundTarget": false,
+		"puddleMult": 1.0
 	},
 	{
 		"name": "Hole Punch",
@@ -80,7 +97,14 @@
 		"damage": 10.0,
 		"projectileSpeed": 12.5,
 		"kind": "Splash",
-		"splashRadius": 1.2
+		"splashRadius": 1.2,
+		"targeting": "First",
+		"burnDps": 0.0,
+		"burnDuration": 0.0,
+		"slowFactor": 1.0,
+		"slowDuration": 0.0,
+		"groundTarget": false,
+		"puddleMult": 1.0
 	},
 	{
 		"name": "Jack-in-the-Box",
@@ -91,7 +115,14 @@
 		"damage": 16.0,
 		"projectileSpeed": 10.0,
 		"kind": "Explosion",
-		"splashRadius": 1.6
+		"splashRadius": 1.6,
+		"targeting": "First",
+		"burnDps": 0.0,
+		"burnDuration": 0.0,
+		"slowFactor": 1.0,
+		"slowDuration": 0.0,
+		"groundTarget": true,
+		"puddleMult": 1.0
 	},
 	{
 		"name": "Static Box",
@@ -102,7 +133,14 @@
 		"damage": 9.0,
 		"projectileSpeed": 14.0,
 		"kind": "Shock",
-		"splashRadius": 0.0
+		"splashRadius": 0.0,
+		"targeting": "First",
+		"burnDps": 0.0,
+		"burnDuration": 0.0,
+		"slowFactor": 1.0,
+		"slowDuration": 0.0,
+		"groundTarget": false,
+		"puddleMult": 1.5
 	}
 ],
 "enemies": [

@@ -73,7 +73,7 @@ object ConfigLoader:
     catch case e: Exception => Left(s"config parse error: ${e.getMessage}")
 
   private def parseRoot(root: JsonValue): GameConfig =
-    val towers  = arr(root, "towers").map(parseTower)
+    val towers  = arr(root, "towers").map(parseTower(_, root.get("combat")))
     val enemies = arr(root, "enemies").map(parseEnemy)
     val colors  = parseColors(obj(root, "colors"))
 
@@ -137,14 +137,10 @@ object ConfigLoader:
         f(cmbt, "maxStepDt"),
         i(cmbt, "fastForward"),
         f(cmbt, "hitRadius"),
-        f(cmbt, "burnDps"),
-        f(cmbt, "burnDuration"),
-        f(cmbt, "slowFactor"),
-        f(cmbt, "slowDuration"),
         f(cmbt, "breakTime"),
         i(cmbt, "studyHits"),
-        fo(cmbt, "puddleShockMult", 1.5f),
-        fo(cmbt, "critMult", 1.5f)
+        fo(cmbt, "critMult", 1.5f),
+        fo(cmbt, "immuneAt", 0.99f)
       ),
       i18n = parseI18n(obj(root, "i18n")),
       towers = towers,
@@ -206,8 +202,22 @@ object ConfigLoader:
 
     LoadoutConfig(maxSel, defSel, unlocked, locked, costs)
 
-  private def parseTower(v: JsonValue): TowerSpec =
+  /** A tower. Its hit effects (burn, slow, landing spot, puddle bonus) used to come
+    * from its damage kind and the combat section; a config written before they
+    * were per-tower gets those old values as defaults.
+    */
+  private def parseTower(v: JsonValue, combat: JsonValue): TowerSpec =
+    val kind = DamageKind.valueOf(s(v, "kind"))
+    def legacy(name: String, default: Float): Float = if combat == null then default else fo(combat, name, default)
+    def when(k: DamageKind, value: Float, otherwise: Float) = if kind == k then value else otherwise
     TowerSpec(
+      targeting = Option(v.getString("targeting", null)).fold(Targeting.First)(enumValue(_, "targeting", Targeting.values)),
+      burnDps = fo(v, "burnDps", when(DamageKind.Fire, legacy("burnDps", 6f), 0f)),
+      burnDuration = fo(v, "burnDuration", when(DamageKind.Fire, legacy("burnDuration", 3f), 0f)),
+      slowFactor = fo(v, "slowFactor", when(DamageKind.Slow, legacy("slowFactor", 0.5f), 1f)),
+      slowDuration = fo(v, "slowDuration", when(DamageKind.Slow, legacy("slowDuration", 2f), 0f)),
+      groundTarget = v.getBoolean("groundTarget", kind == DamageKind.Explosion),
+      puddleMult = fo(v, "puddleMult", when(DamageKind.Shock, legacy("puddleShockMult", 1.5f), 1f)),
       name = s(v, "name"),
       cost = i(v, "cost"),
       color = parseColor(s(v, "color")),
@@ -215,7 +225,7 @@ object ConfigLoader:
       fireInterval = f(v, "fireInterval"),
       damage = f(v, "damage"),
       projectileSpeed = f(v, "projectileSpeed"),
-      kind = DamageKind.valueOf(s(v, "kind")),
+      kind = kind,
       splashRadius = f(v, "splashRadius")
     )
 

@@ -14,8 +14,26 @@ case class TowerSpec(
     damage: Float,
     projectileSpeed: Float,
     kind: DamageKind,
-    splashRadius: Float
-)
+    splashRadius: Float,
+    targeting: Targeting = Targeting.First,
+    burnDps: Float = 0f,
+    burnDuration: Float = 0f,
+    slowFactor: Float = 1f,
+    slowDuration: Float = 0f,
+    groundTarget: Boolean = false,
+    puddleMult: Float = 1f
+):
+  /** Hits set enemies burning for `burnDps` per second over `burnDuration`. */
+  def burns: Boolean = burnDps > 0f && burnDuration > 0f
+  /** Hits slow enemies to `slowFactor` of their speed for `slowDuration`. */
+  def slows: Boolean = slowFactor < 1f && slowDuration > 0f
+
+/** Which enemy in range a tower shoots. */
+enum Targeting:
+  /** The one furthest along the road (closest to leaking). */
+  case First
+  /** The one with the least health left. */
+  case Weakest
 
 /** Which side of a fork a lane (or a side-taking enemy) favours. A branch
   * declares its side; the trunk lane it bypasses is the opposite side.
@@ -113,14 +131,10 @@ case class CombatConfig(
     maxStepDt: Float,
     fastForward: Int,
     hitRadius: Float,
-    burnDps: Float,
-    burnDuration: Float,
-    slowFactor: Float,
-    slowDuration: Float,
     breakTime: Float,
     studyHits: Int,
-    puddleShockMult: Float = 1.5f,
-    critMult: Float = 1.5f
+    critMult: Float = 1.5f,
+    immuneAt: Float = 0.99f
 )
 
 /** One wave of a level: a fixed enemy mix and its pacing. [[composition]] lists

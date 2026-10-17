@@ -116,9 +116,12 @@ case class Projectile(
     armorPierce: Boolean = false,
     bounce: Boolean = false,
     bounceRadius: Float = 0f,
-    crit: Boolean = false
+    crit: Boolean = false,
+    burn: Option[(Float, Float)] = None,
+    puddleMult: Float = 1f
 ):
-  def homes: Boolean = kind != DamageKind.Explosion
+  /** Follows its target; shots with a [[dest]] fly to a fixed point instead. */
+  def homes: Boolean = dest.isEmpty
 
 /** A temporary ground hazard (a dead heavy's wreckage) that slows enemies moving
   * through it. [[remaining]] counts down each step.

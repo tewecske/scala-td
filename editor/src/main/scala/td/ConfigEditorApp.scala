@@ -331,12 +331,10 @@ final class ConfigEditorFrame extends JFrame:
     FloatField("maxStepDt", 0.0001f, 1000f, c.maxStepDt),
     IntField("fastForward", 1, Int.MaxValue, c.fastForward),
     FloatField("hitRadius", 0f, 100000f, c.hitRadius),
-    FloatField("burnDps", 0f, 100000f, c.burnDps),
-    FloatField("burnDuration", 0f, 100000f, c.burnDuration),
-    FloatField("slowFactor", 0f, 1f, c.slowFactor),
-    FloatField("slowDuration", 0f, 100000f, c.slowDuration),
     FloatField("breakTime", 0f, 100000f, c.breakTime),
-    IntField("studyHits", 0, Int.MaxValue, c.studyHits)
+    IntField("studyHits", 0, Int.MaxValue, c.studyHits),
+    FloatField("critMult", 0f, 100f, c.critMult),
+    FloatField("immuneAt", 0f, 1f, c.immuneAt)
   )
 
   private def readCombat(fs: Vector[Field]): Either[String, CombatConfig] =
@@ -344,13 +342,11 @@ final class ConfigEditorFrame extends JFrame:
       ms <- fs(0).asInstanceOf[FloatField].read
       ff <- fs(1).asInstanceOf[IntField].read
       hr <- fs(2).asInstanceOf[FloatField].read
-      bd <- fs(3).asInstanceOf[FloatField].read
-      bu <- fs(4).asInstanceOf[FloatField].read
-      sf <- fs(5).asInstanceOf[FloatField].read
-      sd <- fs(6).asInstanceOf[FloatField].read
-      bt <- fs(7).asInstanceOf[FloatField].read
-      sh <- fs(8).asInstanceOf[IntField].read
-    yield CombatConfig(ms, ff, hr, bd, bu, sf, sd, bt, sh)
+      bt <- fs(3).asInstanceOf[FloatField].read
+      sh <- fs(4).asInstanceOf[IntField].read
+      cm <- fs(5).asInstanceOf[FloatField].read
+      im <- fs(6).asInstanceOf[FloatField].read
+    yield CombatConfig(ms, ff, hr, bt, sh, cm, im)
 
   private def buildI18n(i: I18nConfig): Vector[Field] = Vector(
     StringField("lang", i.lang),

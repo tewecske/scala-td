@@ -39,6 +39,35 @@ object ConfigEdits:
     Effect("crushed", Map("hazardDuration" -> 3f, "slowFactor" -> 0.4f, "radius" -> 1f)),
     Effect("recycling", Map("livesLossMult" -> 0.5f, "killGoldBonus" -> 1f, "swarmSizeMult" -> 1.4f)))
 
+  /** The talent effect kinds [[Meta]] applies, each with its parameters' starting values. */
+  val TalentEffectKinds: Vector[Effect] = Vector(
+    Effect("damageBonus", Map("mult" -> 0.1f)),
+    Effect("rangeBonus", Map("mult" -> 0.1f)),
+    Effect("fireRateBonus", Map("mult" -> 0.1f)),
+    Effect("critChance", Map("chance" -> 0.1f)),
+    Effect("critDamage", Map("mult" -> 0.5f)),
+    Effect("kindDamageBonus", DamageKind.values.map(k => k.toString.toLowerCase -> 0f).toMap.updated("kinetic", 0.25f)),
+    Effect("shred", Map("perHit" -> 0.03f, "max" -> 0.3f)),
+    Effect("goldBonus", Map("mult" -> 0.15f)),
+    Effect("extraLives", Map("lives" -> 1f)),
+    Effect("startGold", Map("gold" -> 30f)),
+    Effect("loadoutSlots", Map("slots" -> 1f)),
+    Effect("reroll", Map.empty))
+
+  def updateTalent(cfg: GameConfig, id: String)(f: Talent => Talent): GameConfig =
+    cfg.copy(talents = cfg.talents.map(t => if t.id == id then f(t) else t))
+
+  /** What still needs a talent: other talents that require it and relics gated on it. */
+  def talentUses(cfg: GameConfig, id: String): Vector[String] =
+    cfg.talents.collect { case t if t.prereqs.contains(id) => s"talent ${t.name} requires it" } ++
+      cfg.relics.collect { case r if r.requiredTalent.contains(id) => s"relic ${r.name} needs it" }
+
+  /** An id for a new talent, from its name ("Quick Reload" -> "quick-reload"). */
+  def freshTalentId(cfg: GameConfig, name: String): String =
+    val stem  = name.toLowerCase.replaceAll("[^a-z0-9]+", "-").stripPrefix("-").stripSuffix("-")
+    val taken = cfg.talents.map(_.id).toSet
+    if !taken(stem) then stem else Iterator.from(2).map(i => s"$stem-$i").find(i => !taken(i)).get
+
   def updateTower(cfg: GameConfig, name: String)(f: TowerSpec => TowerSpec): GameConfig =
     cfg.copy(towers = cfg.towers.map(t => if t.name == name then f(t) else t))
 

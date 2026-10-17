@@ -8,7 +8,7 @@ import javax.swing.*
 import javax.swing.filechooser.FileNameExtensionFilter
 import td.ConfigEdits.LevelSet
 
-/** The level / wave / enemy / tower / biome editor: a separate window, not part of the game.
+/** The config editor (levels, waves, enemies, towers, biomes, talents, economy): a separate window, not part of the game.
   * Opens a config file, edits it with sliders, steppers and dropdowns, and saves
   * it back. The game reads `config.json` in its working directory at start and
   * again when R is pressed, so saving there and pressing R tries a change at once.
@@ -66,6 +66,8 @@ final class EditorFrame(start: Option[File]) extends JFrame:
   private val levels  = LevelsTab(state)
   private val biomes  = BiomesTab(state)
   private val towers  = TowersTab(state)
+  private val talents = TalentsTab(state)
+  private val economy = EconomyTab(state)
   private val tabs = JTabbedPane()
 
   setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE)
@@ -75,6 +77,8 @@ final class EditorFrame(start: Option[File]) extends JFrame:
   tabs.addTab("Levels & waves", levels)
   tabs.addTab("Towers", towers)
   tabs.addTab("Biomes", biomes)
+  tabs.addTab("Talents", talents)
+  tabs.addTab("Economy & combat", economy)
 
   private val bar = Controls.row(
     Controls.button("Open…", "Open a config file")(open()),
@@ -126,6 +130,8 @@ final class EditorFrame(start: Option[File]) extends JFrame:
     levels.rebuild()
     biomes.rebuild()
     towers.rebuild()
+    talents.rebuild()
+    economy.rebuild()
 
   private def saveAs(): Unit =
     val c = chooser()
@@ -164,6 +170,10 @@ final class EditorFrame(start: Option[File]) extends JFrame:
         case 5 => shot(File(dir, "editor-towers.png"))
         case 6 => tabs.setSelectedIndex(3)
         case 7 => shot(File(dir, "editor-biomes.png"))
+        case 8 => tabs.setSelectedIndex(4)
+        case 9 => shot(File(dir, "editor-talents.png"))
+        case 10 => tabs.setSelectedIndex(5)
+        case 11 => shot(File(dir, "editor-economy.png"))
         case _ => timer.stop(); dispose(); sys.exit(0)
       step += 1
     }
@@ -815,11 +825,27 @@ final class TowersTab(state: EditorState) extends JPanel(BorderLayout()):
         "Seconds between two shots (lower fires faster)")
       f.field("Range", Controls.slider(0.5, 10, 0.1, t.range, v => edit(_.copy(range = v.toFloat)), "tiles"))
       f.field("Damage type", Controls.dropdown(DamageKind.values.toVector, t.kind, k => edit(_.copy(kind = k)),
-        k => if k == DamageKind.Slow then "frost (slows)" else k.toString.toLowerCase),
-        "Fire also burns, frost also slows, explosions land where the target was")
+        k => if k == DamageKind.Slow then "frost" else k.toString.toLowerCase),
+        "Which resistance it meets and which damage talents boost it. Burn and slow are set below")
       f.field("Blast radius", Controls.slider(0, 5, 0.1, t.splashRadius, v => edit(_.copy(splashRadius = v.toFloat)), "tiles"),
         "0 hits one enemy; above 0 hits every enemy within this radius of the impact")
       f.field("Shot speed", Controls.slider(1, 40, 0.25, t.projectileSpeed, v => edit(_.copy(projectileSpeed = v.toFloat)), "tiles/s"))
+      f.field("Targets", Controls.dropdown(Targeting.values.toVector, t.targeting, m => edit(_.copy(targeting = m)), {
+        case Targeting.First   => "first: furthest along the road"
+        case Targeting.Weakest => "weakest: least health left"
+      }))
+
+      f.section("What a hit does besides damage")
+      f.field("Burn", Controls.slider(0, 50, 0.5, t.burnDps, v => edit(_.copy(burnDps = v.toFloat)), "damage/s"),
+        "0 = no burn. Burning enemies take this much fire damage per second")
+      f.field("  burn lasts", Controls.slider(0, 10, 0.25, t.burnDuration, v => edit(_.copy(burnDuration = v.toFloat)), "s"))
+      f.field("Slow", Controls.slider(0, 95, 5, math.round((1f - t.slowFactor) * 100), v =>
+        edit(_.copy(slowFactor = 1f - (v / 100).toFloat)), "% slower"), "0 = no slow. How much slower a hit enemy walks")
+      f.field("  slow lasts", Controls.slider(0, 10, 0.25, t.slowDuration, v => edit(_.copy(slowDuration = v.toFloat)), "s"))
+      f.field("Puddle bonus", Controls.slider(100, 300, 5, math.round(t.puddleMult * 100), v =>
+        edit(_.copy(puddleMult = (v / 100).toFloat)), "% damage"), "Damage against enemies standing in a puddle (100% = no bonus)")
+      f.field("Lands where aimed", Controls.checkbox(t.groundTarget, v => edit(_.copy(groundTarget = v))),
+        "On: the shot flies to where the target was and hits there (it can miss a moving enemy). Off: it follows the target")
 
       f.section("Availability")
       val access = ConfigEdits.towerAccess(state.cfg, t.name)
@@ -838,3 +864,204 @@ final class TowersTab(state: EditorState) extends JPanel(BorderLayout()):
     }
     right.revalidate()
     right.repaint()
+
+// -- talents -----------------------------------------------------------------------------
+
+/** The meta talent tree: what each talent costs, needs and does. */
+final class TalentsTab(state: EditorState) extends JPanel(BorderLayout()):
+  import TalentsTab.*
+  private val model = DefaultListModel[String]()
+  private val list = JList[String](model)
+  private val right = JPanel(BorderLayout())
+  private var selected: Option[String] = None // talent id
+  private var listing = false
+
+  list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION)
+  list.addListSelectionListener(e => if !e.getValueIsAdjusting && !listing && list.getSelectedIndex >= 0 then
+    selected = ordered.lift(list.getSelectedIndex).map(_.id)
+    showForm())
+  private val left = JPanel(BorderLayout())
+  left.add(JScrollPane(list), BorderLayout.CENTER)
+  left.add(Controls.row(
+    Controls.button("New", "Add a new talent")(add(None)),
+    Controls.button("Duplicate", "Copy the selected talent")(selected.foreach(id => add(Some(id)))),
+    Controls.button("Delete", "Remove the selected talent (only when nothing needs it)")(delete())), BorderLayout.SOUTH)
+  left.setPreferredSize(Dimension(260, 600))
+  add(left, BorderLayout.WEST)
+  add(right, BorderLayout.CENTER)
+  rebuild()
+
+  /** In the order the game shows them: by column, then config order. */
+  private def ordered: Vector[Talent] =
+    TalentLayer.values.toVector.flatMap(l => state.cfg.talents.filter(_.layer == l))
+
+  private def label(t: Talent): String = s"${t.layer.toString.toLowerCase} · ${t.name}  (${t.cost})"
+
+  def rebuild(): Unit =
+    listing = true
+    model.clear()
+    ordered.foreach(t => model.addElement(label(t)))
+    if !selected.exists(id => state.cfg.talents.exists(_.id == id)) then selected = ordered.headOption.map(_.id)
+    val i = ordered.indexWhere(t => selected.contains(t.id))
+    if i >= 0 then list.setSelectedIndex(i)
+    listing = false
+    showForm()
+
+  private def current: Option[Talent] = selected.flatMap(id => state.cfg.talents.find(_.id == id))
+
+  private def edit(f: Talent => Talent, structural: Boolean = false): Unit =
+    selected.foreach(id => state.update(c => ConfigEdits.updateTalent(c, id)(f)))
+    if structural then rebuild()
+    else
+      val i = ordered.indexWhere(t => selected.contains(t.id))
+      current.foreach(t => if i >= 0 then model.set(i, label(t)))
+
+  private def add(copyOf: Option[String]): Unit =
+    val base = copyOf.flatMap(id => state.cfg.talents.find(_.id == id)).getOrElse(
+      Talent("", "New talent", TalentLayer.Filler, 1, Vector.empty, ConfigEdits.TalentEffectKinds.head))
+    val name = copyOf.fold("New talent")(_ => s"${base.name} copy")
+    val id   = ConfigEdits.freshTalentId(state.cfg, name)
+    state.update(c => c.copy(talents = c.talents :+ base.copy(id = id, name = name)))
+    selected = Some(id)
+    rebuild()
+
+  private def delete(): Unit = selected.foreach { id =>
+    ConfigEdits.talentUses(state.cfg, id) match
+      case uses if uses.nonEmpty =>
+        JOptionPane.showMessageDialog(this, uses.mkString("\n"), "Cannot delete", JOptionPane.WARNING_MESSAGE)
+      case _ =>
+        state.update(c => c.copy(talents = c.talents.filterNot(_.id == id)))
+        selected = None
+        rebuild()
+  }
+
+  private def showForm(): Unit =
+    right.removeAll()
+    current.foreach { t =>
+      val f = Form()
+      f.section(t.name)
+      f.field("Name", Controls.text(t.name, n => if n.trim.nonEmpty then edit(_.copy(name = n.trim))))
+      f.full(JLabel(s"id: ${t.id}  (saved progress refers to talents by id, so it does not change)"))
+      f.field("Column", Controls.dropdown(TalentLayer.values.toVector, t.layer, l => edit(_.copy(layer = l), structural = true),
+        _.toString.toLowerCase))
+      val inColumn = state.cfg.talents.count(_.layer == t.layer)
+      if inColumn > MaxPerColumn then
+        f.full(JLabel(s"<html><font color='#B00020'>This column has $inColumn talents; the game screen fits $MaxPerColumn.</font></html>"))
+      f.field("Cost", Controls.stepper(0, 99, t.cost, v => edit(_.copy(cost = v))), "Meta currency")
+
+      f.section("Needs")
+      val others = state.cfg.talents.filterNot(_.id == t.id)
+      if others.isEmpty then f.full(JLabel("no other talents"))
+      others.foreach { o =>
+        f.full(Controls.checkbox(t.prereqs.contains(o.id), on =>
+          edit(x => x.copy(prereqs = if on then (x.prereqs :+ o.id).distinct else x.prereqs.filterNot(_ == o.id))),
+          s"${o.name}  (${o.layer.toString.toLowerCase})"))
+      }
+
+      f.section("Effect")
+      val kinds = (ConfigEdits.TalentEffectKinds.map(_.kind) ++ Option.when(!known(t.effect.kind))(t.effect.kind)).distinct
+      f.field("Does", Controls.dropdown(kinds, t.effect.kind, k => edit(x => x.copy(effect =
+        ConfigEdits.TalentEffectKinds.find(_.kind == k).getOrElse(Effect(k, Map.empty))), structural = true), effectLabel))
+      if !known(t.effect.kind) then f.full(JLabel("The game does not apply this effect yet."))
+      t.effect.params.toVector.sortBy(_._1).foreach { (key, value) =>
+        def set(v: Double) = edit(x => x.copy(effect = x.effect.copy(params = x.effect.params.updated(key, v.toFloat))))
+        key match
+          case "lives" | "slots" => f.field(paramLabel(key), Controls.stepper(0, 20, value.toInt, v => set(v)))
+          case "gold"            => f.field(paramLabel(key), Controls.slider(0, 300, 5, value, set, "gold"))
+          case _ => f.field(paramLabel(key), Controls.slider(0, 200, 1, math.round(value * 100), v => set(v / 100), "%"))
+      }
+      val uses = ConfigEdits.talentUses(state.cfg, t.id)
+      if uses.nonEmpty then
+        f.section("Needed by")
+        uses.foreach(u => f.full(JLabel(u)))
+      right.add(JScrollPane(f.finish()), BorderLayout.CENTER)
+    }
+    right.revalidate()
+    right.repaint()
+
+object TalentsTab:
+  /** How many talents one column of the game's talent screen fits. */
+  val MaxPerColumn = 9
+
+  def known(kind: String): Boolean = ConfigEdits.TalentEffectKinds.exists(_.kind == kind)
+
+  def effectLabel(kind: String): String = kind match
+    case "damageBonus"     => "more damage (all towers)"
+    case "rangeBonus"      => "more range (all towers)"
+    case "fireRateBonus"   => "faster fire rate (all towers)"
+    case "critChance"      => "critical hit chance"
+    case "critDamage"      => "critical hit damage"
+    case "kindDamageBonus" => "more damage for some damage types"
+    case "shred"           => "hits shred resistance"
+    case "goldBonus"       => "more gold per kill"
+    case "extraLives"      => "extra lives"
+    case "startGold"       => "more start gold every level"
+    case "loadoutSlots"    => "more towers per run"
+    case "reroll"          => "can reroll the draft"
+    case other             => s"$other (not in effect)"
+
+  def paramLabel(key: String): String = key match
+    case "mult"   => "Bonus"
+    case "chance" => "Chance"
+    case "perHit" => "Per hit"
+    case "max"    => "Up to"
+    case "lives"  => "Lives"
+    case "slots"  => "Slots"
+    case "gold"   => "Gold"
+    case "slow"   => "Frost"
+    case k        => k.capitalize
+
+// -- economy and combat ------------------------------------------------------------------
+
+/** Run-wide numbers: gold, lives, meta currency, the draft and combat rules. */
+final class EconomyTab(state: EditorState) extends JPanel(BorderLayout()):
+  rebuild()
+
+  def rebuild(): Unit =
+    removeAll()
+    val c = state.cfg
+    val f = Form()
+    def eco(g: EconomyConfig => EconomyConfig)  = state.update(x => x.copy(economy = g(x.economy)))
+    def meta(g: MetaConfig => MetaConfig)       = state.update(x => x.copy(meta = g(x.meta)))
+    def draft(g: DraftConfig => DraftConfig)    = state.update(x => x.copy(draft = g(x.draft)))
+    def combat(g: CombatConfig => CombatConfig) = state.update(x => x.copy(combat = g(x.combat)))
+
+    f.section("Economy")
+    f.field("Lives", Controls.stepper(1, 50, c.economy.startLives, v => eco(_.copy(startLives = v))),
+      "Lives a run starts with (talents add more); they carry over between levels")
+    f.field("Gold per kill", Controls.slider(0, 30, 1, c.economy.killReward, v => eco(_.copy(killReward = v.toInt)), "gold"),
+      "Each enemy type multiplies this by its own kill reward")
+    f.field("Start gold", Controls.slider(0, 1000, 10, c.economy.startGold, v => eco(_.copy(startGold = v.toInt)), "gold"),
+      "Used by levels that do not set their own start gold")
+
+    f.section("Meta currency (paid when a run ends)")
+    f.field("Per level cleared", Controls.stepper(0, 200, c.meta.payoutPerLevel, v => meta(_.copy(payoutPerLevel = v))))
+    f.field("Per wave cleared", Controls.stepper(0, 50, c.meta.payoutPerWave, v => meta(_.copy(payoutPerWave = v))))
+    f.field("Win bonus", Controls.stepper(0, 500, c.meta.payoutWinBonus, v => meta(_.copy(payoutWinBonus = v))))
+
+    f.section("Draft (pick after each level)")
+    f.field("Offers", Controls.stepper(1, 6, c.draft.offerCount, v => draft(_.copy(offerCount = v))))
+    f.field("Reroll cost", Controls.slider(0, 200, 5, c.draft.rerollCost, v => draft(_.copy(rerollCost = v.toInt)), "gold"))
+    f.field("  more per reroll", Controls.slider(0, 100, 5, c.draft.rerollCostGrowth, v => draft(_.copy(rerollCostGrowth = v.toInt)), "gold"))
+    f.field("Rounds rolled ahead", Controls.stepper(1, 50, c.draft.poolRounds, v => draft(_.copy(poolRounds = v))),
+      "How many rounds of offers a run rolls up front")
+
+    f.section("Combat")
+    f.field("Break between waves", Controls.slider(0, 30, 0.5, c.combat.breakTime, v => combat(_.copy(breakTime = v.toFloat)), "s"))
+    f.field("Critical hit damage", Controls.slider(100, 500, 5, math.round(c.combat.critMult * 100), v =>
+      combat(_.copy(critMult = (v / 100).toFloat)), "%"), "Damage of a critical hit before talents (150% = 1.5x)")
+    f.field("Immune from", Controls.slider(50, 100, 1, math.round(c.combat.immuneAt * 100), v =>
+      combat(_.copy(immuneAt = (v / 100).toFloat)), "% resistance"), "At or above this an enemy shows \"immune\"")
+    f.field("Hits to study", Controls.stepper(1, 50, c.combat.studyHits, v => combat(_.copy(studyHits = v))),
+      "Hits on a type before the journal records its exact resistance")
+
+    f.section("Advanced")
+    f.field("Hit radius", Controls.slider(0, 30, 0.5, c.combat.hitRadius, v => combat(_.copy(hitRadius = v.toFloat)), "px"),
+      "How close a shot must get to land")
+    f.field("Fast-forward", Controls.stepper(1, 10, c.combat.fastForward, v => combat(_.copy(fastForward = v))),
+      "Simulation steps per frame at fast speed")
+    f.field("Longest step", Controls.slider(0.01, 0.2, 0.01, c.combat.maxStepDt, v => combat(_.copy(maxStepDt = v.toFloat)), "s"),
+      "Longest time one simulation step may cover")
+    add(JScrollPane(f.finish()), BorderLayout.CENTER)
+    revalidate()
+    repaint()
