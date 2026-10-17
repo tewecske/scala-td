@@ -9,6 +9,18 @@ class EnvRulesTest extends TestBase:
     val b = Config.biome(biomeId)
     RunContext(seed = 7L, biome = b.id, resistTheme = b.resistTheme, roster = b.roster)
 
+  /** The biome each rule used to ship on; the shipped biomes have none now, so each
+    * rule's test puts it back (with its default values) for the length of the test.
+    */
+  private val RuleOf = Map("cube-farm" -> "openFloorPlan", "shipping-yard" -> "crushed", "cardboard-wastes" -> "recycling")
+
+  private def withRule[A](biomeId: String)(body: => A): A =
+    val shipped = Config.game
+    val rule    = ConfigEdits.EnvironmentRules.find(r => RuleOf.get(biomeId).contains(r.kind))
+    Config.use(ConfigEdits.updateBiome(shipped, biomeId)(_.copy(environment = rule)))
+    try body
+    finally Config.use(shipped)
+
   private def enemy(run: RunContext, tpe: String, id: Long, progress: Float = 0f, hp: Float = 100f): Enemy =
     val spec = Config.enemySpec(tpe)
     Enemy(id = id, progress = progress, hp = hp, maxHp = 100f, speed = spec.baseSpeed * Config.CellPx,
@@ -75,56 +87,66 @@ class EnvRulesTest extends TestBase:
   }
 
   test("openFloorPlan grants armor while enemies cluster") {
-    val run = runFor("cube-farm")
-    val e1  = enemy(run, "Cardboard", 1L)
-    val e2  = enemy(run, "Cardboard", 2L)
-    val w   = Sim.initial(run).copy(level = 1, enemies = Vector(e1, e2), spawnQueue = Vector.empty, breakTimer = 999f)
-    val stepped = Sim.step(w, Config.MaxStepDt, Vector.empty)
-    assert(stepped.enemies.forall(_.armor > 0f))
-    val per = Config.biome("cube-farm").environment.get.params("armorPerNeighbor")
-    assertEquals(stepped.enemies.head.armor, per)
+    withRule("cube-farm") {
+      val run = runFor("cube-farm")
+      val e1  = enemy(run, "Cardboard", 1L)
+      val e2  = enemy(run, "Cardboard", 2L)
+      val w   = Sim.initial(run).copy(level = 1, enemies = Vector(e1, e2), spawnQueue = Vector.empty, breakTimer = 999f)
+      val stepped = Sim.step(w, Config.MaxStepDt, Vector.empty)
+      assert(stepped.enemies.forall(_.armor > 0f))
+      val per = Config.biome("cube-farm").environment.get.params("armorPerNeighbor")
+      assertEquals(stepped.enemies.head.armor, per)
+    }
   }
 
   test("crushed: a dying heavy leaves a temporary hazard") {
-    val run   = runFor("shipping-yard")
-    assert(Config.enemySpec("Brick").heavy)
-    val dying = enemy(run, "Brick", 1L).copy(hp = 1f, burnDps = 100f, burnUntil = 10f)
-    val w     = Sim.initial(run).copy(level = 1, enemies = Vector(dying), spawnQueue = Vector.empty, breakTimer = 999f)
-    val stepped = Sim.step(w, Config.MaxStepDt, Vector.empty)
-    assert(stepped.enemies.isEmpty)
-    assert(stepped.hazards.nonEmpty)
-    assert(stepped.hazards.head.remaining > 0f)
+    withRule("shipping-yard") {
+      val run   = runFor("shipping-yard")
+      assert(Config.enemySpec("Brick").heavy)
+      val dying = enemy(run, "Brick", 1L).copy(hp = 1f, burnDps = 100f, burnUntil = 10f)
+      val w     = Sim.initial(run).copy(level = 1, enemies = Vector(dying), spawnQueue = Vector.empty, breakTimer = 999f)
+      val stepped = Sim.step(w, Config.MaxStepDt, Vector.empty)
+      assert(stepped.enemies.isEmpty)
+      assert(stepped.hazards.nonEmpty)
+      assert(stepped.hazards.head.remaining > 0f)
+    }
   }
 
   test("crushed: a dying light enemy leaves no hazard") {
-    val run   = runFor("shipping-yard")
-    assert(!Config.enemySpec("Ember").heavy)
-    val dying = enemy(run, "Ember", 1L).copy(hp = 1f, burnDps = 100f, burnUntil = 10f)
-    val w     = Sim.initial(run).copy(level = 1, enemies = Vector(dying), spawnQueue = Vector.empty, breakTimer = 999f)
-    assert(Sim.step(w, Config.MaxStepDt, Vector.empty).hazards.isEmpty)
+    withRule("shipping-yard") {
+      val run   = runFor("shipping-yard")
+      assert(!Config.enemySpec("Ember").heavy)
+      val dying = enemy(run, "Ember", 1L).copy(hp = 1f, burnDps = 100f, burnUntil = 10f)
+      val w     = Sim.initial(run).copy(level = 1, enemies = Vector(dying), spawnQueue = Vector.empty, breakTimer = 999f)
+      assert(Sim.step(w, Config.MaxStepDt, Vector.empty).hazards.isEmpty)
+    }
   }
 
   test("recycling: leaks cost fewer lives") {
-    val run = runFor("cardboard-wastes")
-    val len = Config.withContext(run.biome, 1)(Grid.length(0))
-    val e   = enemy(run, "Paper Cut", 1L, progress = len - 1f).copy(speed = 100f)
-    val w   = Sim.initial(run).copy(level = 1, enemies = Vector(e), spawnQueue = Vector.empty, breakTimer = 999f)
-    val stepped = Sim.step(w, Config.MaxStepDt, Vector.empty)
-    assertEquals(stepped.leaks, 1)
-    assertEquals(stepped.lives, w.lives)
-    assertEquals(stepped.leakDamage, 0.5f)
+    withRule("cardboard-wastes") {
+      val run = runFor("cardboard-wastes")
+      val len = Config.withContext(run.biome, 1)(Grid.length(0))
+      val e   = enemy(run, "Paper Cut", 1L, progress = len - 1f).copy(speed = 100f)
+      val w   = Sim.initial(run).copy(level = 1, enemies = Vector(e), spawnQueue = Vector.empty, breakTimer = 999f)
+      val stepped = Sim.step(w, Config.MaxStepDt, Vector.empty)
+      assertEquals(stepped.leaks, 1)
+      assertEquals(stepped.lives, w.lives)
+      assertEquals(stepped.leakDamage, 0.5f)
+    }
   }
 
   test("recycling: swarms are larger") {
-    def waveQueueSize(biomeId: String, level: Int): Int =
-      val w = Sim.initial(runFor(biomeId)).copy(level = level, breakTimer = Config.MaxStepDt)
-      Sim.step(w, Config.MaxStepDt, Vector.empty).spawnQueue.size
-    assertEquals(waveQueueSize("tutorial", 0), 6)
-    // Recycling scales each group of the second level's first wave by swarmSizeMult
-    // (the first level is always in the plain starter biome).
-    val mult     = Config.game.biomes.find(_.id == "cardboard-wastes").flatMap(_.environment).get.params("swarmSizeMult")
-    val wave     = Config.game.levels(1).waves.head
-    val expected = wave.composition.map((_, n) => math.round(n * mult)).sum
-    assert(expected > wave.count)
-    assertEquals(waveQueueSize("cardboard-wastes", 1), expected)
+    withRule("cardboard-wastes") {
+      def waveQueueSize(biomeId: String, level: Int): Int =
+        val w = Sim.initial(runFor(biomeId)).copy(level = level, breakTimer = Config.MaxStepDt)
+        Sim.step(w, Config.MaxStepDt, Vector.empty).spawnQueue.size
+      assertEquals(waveQueueSize("tutorial", 0), 6)
+      // Recycling scales each group of the second level's first wave by swarmSizeMult
+      // (the first level is always in the plain starter biome).
+      val mult     = Config.game.biomes.find(_.id == "cardboard-wastes").flatMap(_.environment).get.params("swarmSizeMult")
+      val wave     = Config.game.levels(1).waves.head
+      val expected = wave.composition.map((_, n) => math.round(n * mult)).sum
+      assert(expected > wave.count)
+      assertEquals(waveQueueSize("cardboard-wastes", 1), expected)
+    }
   }

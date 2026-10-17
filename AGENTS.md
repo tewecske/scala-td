@@ -8,7 +8,7 @@ Scala 3 tower-defense game on libGDX (LWJGL3 desktop backend). Multi-project sbt
 - `nix run .#shots -- [WxH] [dir]` — screenshot every screen on a virtual display (default 1920x1080 into `data/screenshots/tour-<WxH>`)
 - `sbt compile` — build
 - `sbt "game/run"` — launches the GUI window; needs a display, so not runnable headless
-- `scripts/editor.sh` (`scripts\editor.cmd`, `sbt editor/run`) — level / wave / enemy editor window (`EditorApp`); saves `./config.json`, which the game loads at start and on R. The older all-fields form: `sbt "editor/runMain td.ConfigEditorApp"`
+- `scripts/editor.sh` (`scripts\editor.cmd`, `sbt editor/run`) — level / wave / enemy / biome editor window (`EditorApp`); saves `./config.json`, which the game loads at start and on R. The older all-fields form: `sbt "editor/runMain td.ConfigEditorApp"`
 - `scripts/sim.sh` — headless simulations (bots, balancing, replays): no args prints examples, `--help` every command and option
 - `sbt test` — munit unit tests (headless-safe). Tests are wired in by `TASKS/task01`; see `TASKS/context.md` section 5 for the testing convention. No scalafmt, no CI.
 

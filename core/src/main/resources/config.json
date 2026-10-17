@@ -7,7 +7,7 @@
 "economy": {
 	"startGold": 120,
 	"startLives": 5,
-	"killReward": 8
+	"killReward": 4
 },
 "meta": {
 	"payoutPerLevel": 10,
@@ -1962,18 +1962,12 @@
 			"Frostling",
 			"Commander"
 		],
-		"environment": {
-			"kind": "openFloorPlan",
-			"params": {
-				"armorPerNeighbor": 0.15,
-				"radius": 1.5
-			}
-		},
+		"environment": null,
 		"resistTheme": {
 			"primary": "Slow",
 			"primaryAmount": 0.4,
 			"secondary": "Kinetic",
-			"secondaryAmount": 0.2
+			"secondaryAmount": 0.0
 		}
 	},
 	{
@@ -1985,19 +1979,12 @@
 			"Ember",
 			"Commander"
 		],
-		"environment": {
-			"kind": "crushed",
-			"params": {
-				"hazardDuration": 3.0,
-				"slowFactor": 0.4,
-				"radius": 1.0
-			}
-		},
+		"environment": null,
 		"resistTheme": {
-			"primary": "Fire",
-			"primaryAmount": 0.4,
-			"secondary": "Kinetic",
-			"secondaryAmount": 0.3
+			"primary": "Kinetic",
+			"primaryAmount": 0.2,
+			"secondary": "Fire",
+			"secondaryAmount": 0.0
 		}
 	},
 	{
@@ -2009,19 +1996,12 @@
 			"Ember",
 			"Brick"
 		],
-		"environment": {
-			"kind": "recycling",
-			"params": {
-				"livesLossMult": 0.5,
-				"killGoldBonus": 1.0,
-				"swarmSizeMult": 1.4
-			}
-		},
+		"environment": null,
 		"resistTheme": {
-			"primary": "Splash",
-			"primaryAmount": 0.35,
-			"secondary": "Explosion",
-			"secondaryAmount": 0.25
+			"primary": "Slow",
+			"primaryAmount": 0.4,
+			"secondary": "Kinetic",
+			"secondaryAmount": 0.0
 		}
 	}
 ],

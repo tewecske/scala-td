@@ -8,7 +8,7 @@ import javax.swing.*
 import javax.swing.filechooser.FileNameExtensionFilter
 import td.ConfigEdits.LevelSet
 
-/** The level / wave / enemy editor: a separate window, not part of the game.
+/** The level / wave / enemy / biome editor: a separate window, not part of the game.
   * Opens a config file, edits it with sliders, steppers and dropdowns, and saves
   * it back. The game reads `config.json` in its working directory at start and
   * again when R is pressed, so saving there and pressing R tries a change at once.
@@ -64,6 +64,7 @@ final class EditorFrame(start: Option[File]) extends JFrame:
   private val status = JLabel(" ")
   private val enemies = EnemiesTab(state)
   private val levels  = LevelsTab(state)
+  private val biomes  = BiomesTab(state)
   private val tabs = JTabbedPane()
 
   setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE)
@@ -71,6 +72,7 @@ final class EditorFrame(start: Option[File]) extends JFrame:
   setLocationRelativeTo(null)
   tabs.addTab("Enemies", enemies)
   tabs.addTab("Levels & waves", levels)
+  tabs.addTab("Biomes", biomes)
 
   private val bar = Controls.row(
     Controls.button("Open…", "Open a config file")(open()),
@@ -120,6 +122,7 @@ final class EditorFrame(start: Option[File]) extends JFrame:
     state.replace(cfg, file)
     enemies.rebuild()
     levels.rebuild()
+    biomes.rebuild()
 
   private def saveAs(): Unit =
     val c = chooser()
@@ -154,6 +157,8 @@ final class EditorFrame(start: Option[File]) extends JFrame:
         case 1 => shot(File(dir, "editor-enemies.png"))
         case 2 => tabs.setSelectedIndex(1)
         case 3 => shot(File(dir, "editor-levels.png"))
+        case 4 => tabs.setSelectedIndex(2)
+        case 5 => shot(File(dir, "editor-biomes.png"))
         case _ => timer.stop(); dispose(); sys.exit(0)
       step += 1
     }
@@ -527,3 +532,107 @@ final class LevelsTab(state: EditorState) extends JPanel(BorderLayout()):
   }
 
 extension [A](a: A) private def tap(f: A => Unit): A = { f(a); a }
+
+// -- biomes ------------------------------------------------------------------------------
+
+/** A biome's resistances (added to every enemy played there) and its environment rule. */
+final class BiomesTab(state: EditorState) extends JPanel(BorderLayout()):
+  import BiomesTab.*
+  private val model = DefaultListModel[String]()
+  private val list = JList[String](model)
+  private val right = JPanel(BorderLayout())
+  private var selected: Option[String] = None
+  private var listing = false
+
+  list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION)
+  list.addListSelectionListener(e => if !e.getValueIsAdjusting && !listing && list.getSelectedIndex >= 0 then
+    selected = state.cfg.biomes.lift(list.getSelectedIndex).map(_.id)
+    showForm())
+  private val left = JPanel(BorderLayout())
+  left.add(JScrollPane(list), BorderLayout.CENTER)
+  left.setPreferredSize(Dimension(260, 600))
+  add(left, BorderLayout.WEST)
+  add(right, BorderLayout.CENTER)
+  rebuild()
+
+  def rebuild(): Unit =
+    listing = true
+    model.clear()
+    state.cfg.biomes.foreach(b => model.addElement(label(b)))
+    if !selected.exists(id => state.cfg.biomes.exists(_.id == id)) then
+      selected = state.cfg.biomes.find(b => !b.starter && b.id != "tutorial").orElse(state.cfg.biomes.headOption).map(_.id)
+    val i = state.cfg.biomes.indexWhere(b => selected.contains(b.id))
+    if i >= 0 then list.setSelectedIndex(i)
+    listing = false
+    showForm()
+
+  private def label(b: Biome): String =
+    if b.starter then s"${b.name}  (level 1)" else if b.id == "tutorial" then s"${b.name}  (tutorial)" else b.name
+
+  private def current: Option[Biome] = selected.flatMap(id => state.cfg.biomes.find(_.id == id))
+
+  private def edit(f: Biome => Biome, structural: Boolean = false): Unit =
+    selected.foreach(id => state.update(c => ConfigEdits.updateBiome(c, id)(f)))
+    current.foreach(b => model.set(list.getSelectedIndex, label(b)))
+    if structural then showForm()
+
+  private def ruleLabel(kind: String): String = kind match
+    case "openFloorPlan" => "open floor plan (crowded enemies are armored)"
+    case "crushed"       => "crushed (dying heavy enemies leave a slowing patch)"
+    case "recycling"     => "recycling (bigger waves, cheaper leaks, more gold)"
+    case other           => other
+
+  private def showForm(): Unit =
+    right.removeAll()
+    current.foreach { b =>
+      val f = Form()
+      f.section(b.name)
+      f.field("Name", Controls.text(b.name, n => if n.trim.nonEmpty then edit(_.copy(name = n.trim))))
+      f.full(JLabel(
+        if b.starter then "Every run's first level is played here. It must stay plain: no resistances, no rule."
+        else if b.id == "tutorial" then "The tutorial plays its own levels here."
+        else "A run rolls one of these biomes for levels 2 and on."))
+
+      if !b.starter then
+        val t = b.resistTheme
+        val kinds = DamageKind.values.toVector
+        def kindName(k: DamageKind) = if k == DamageKind.Slow then "frost (slow)" else k.toString.toLowerCase
+        f.section("Resistances  (added to every enemy here; negative = weakness)")
+        f.field("Resistance", Controls.dropdown(kinds, t.primary, k => edit(x => x.copy(resistTheme = x.resistTheme.copy(primary = k))), kindName))
+        f.field("  amount", Controls.slider(-100, 100, 5, math.round(t.primaryAmount * 100),
+          v => edit(x => x.copy(resistTheme = x.resistTheme.copy(primaryAmount = (v / 100).toFloat))), "%"))
+        f.field("Second resistance", Controls.dropdown(kinds, t.secondary, k => edit(x => x.copy(resistTheme = x.resistTheme.copy(secondary = k))), kindName))
+        f.field("  amount", Controls.slider(-100, 100, 5, math.round(t.secondaryAmount * 100),
+          v => edit(x => x.copy(resistTheme = x.resistTheme.copy(secondaryAmount = (v / 100).toFloat))), "%"),
+          "Leave at 0% for a biome with one resistance")
+
+        f.section("Environment rule")
+        val rules: Vector[Option[String]] = None +: ConfigEdits.EnvironmentRules.map(r => Some(r.kind))
+        f.field("Rule", Controls.dropdown(rules, b.environment.map(_.kind), k =>
+          edit(_.copy(environment = k.flatMap(kind => ConfigEdits.EnvironmentRules.find(_.kind == kind))), structural = true),
+          _.fold("none")(ruleLabel)))
+        b.environment.foreach { env =>
+          env.params.toVector.sortBy(_._1).foreach { (key, value) =>
+            val (name, lo, hi, step, unit, tip) = ParamUi.getOrElse(key, (key, 0d, 10d, 0.1, "", ""))
+            val scale = if Percent(key) then 100 else 1
+            f.field(name, Controls.slider(lo, hi, step, value * scale, v =>
+              edit(x => x.copy(environment = x.environment.map(e => e.copy(params = e.params.updated(key, (v / scale).toFloat))))),
+              unit), tip)
+          }
+        }
+      right.add(JScrollPane(f.finish()), BorderLayout.CENTER)
+    }
+    right.revalidate()
+    right.repaint()
+
+object BiomesTab:
+  /** Slider range, unit and help for each environment parameter. */
+  val ParamUi: Map[String, (String, Double, Double, Double, String, String)] = Map(
+    "armorPerNeighbor" -> ("Armor per neighbor", 0, 100, 5, "%", "Damage reduction an enemy gets for each other enemy near it"),
+    "radius"           -> ("Radius", 0.5, 4, 0.1, "tiles", "How far the rule reaches"),
+    "hazardDuration"   -> ("Hazard lasts", 0.5, 10, 0.5, "s", "How long the patch a heavy enemy leaves behind stays"),
+    "slowFactor"       -> ("Hazard slow", 0, 100, 5, "%", "How much the patch slows enemies walking through it"),
+    "livesLossMult"    -> ("Lives per leak", 0, 200, 5, "%", "Share of the usual lives a leaking enemy costs"),
+    "killGoldBonus"    -> ("Extra gold per kill", 0, 10, 0.5, "gold", "Added to the gold every kill pays"),
+    "swarmSizeMult"    -> ("Wave size", 50, 300, 5, "%", "Every group in a wave is this big compared with the level's wave"))
+  val Percent = Set("armorPerNeighbor", "slowFactor", "livesLossMult", "swarmSizeMult")

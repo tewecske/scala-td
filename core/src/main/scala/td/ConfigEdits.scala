@@ -30,6 +30,15 @@ object ConfigEdits:
   def updateEnemy(cfg: GameConfig, name: String)(f: EnemySpec => EnemySpec): GameConfig =
     cfg.copy(enemies = cfg.enemies.map(e => if e.name == name then f(e) else e))
 
+  def updateBiome(cfg: GameConfig, id: String)(f: Biome => Biome): GameConfig =
+    cfg.copy(biomes = cfg.biomes.map(b => if b.id == id then f(b) else b))
+
+  /** The environment rules [[Sim]] knows, each with its parameters' starting values. */
+  val EnvironmentRules: Vector[Effect] = Vector(
+    Effect("openFloorPlan", Map("armorPerNeighbor" -> 0.15f, "radius" -> 1.5f)),
+    Effect("crushed", Map("hazardDuration" -> 3f, "slowFactor" -> 0.4f, "radius" -> 1f)),
+    Effect("recycling", Map("livesLossMult" -> 0.5f, "killGoldBonus" -> 1f, "swarmSizeMult" -> 1.4f)))
+
   /** A wave with `count` matching its composition (the loader requires it). */
   def wave(spawnInterval: Float, hpScale: Float, composition: Vector[(String, Int)]): WaveSpec =
     val comp = composition.filter(_._2 > 0)
