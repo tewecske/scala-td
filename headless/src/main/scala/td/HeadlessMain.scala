@@ -122,7 +122,6 @@ object HeadlessMain:
       case "balance" :: rest => Experiments.balance(rest)
       case "stage" :: rest   => Experiments.stage(rest)
       case "gen-levels" :: rest => Experiments.genLevels(rest)
-      case "gen-campaign" :: rest => Experiments.genCampaign(rest)
       case "replay" :: rest  => Experiments.replay(rest)
       case "progress" :: rest => Experiments.progress(rest)
       case "run" :: rest     => runCommand(rest)

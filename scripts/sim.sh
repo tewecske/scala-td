@@ -11,7 +11,7 @@ cd "$root"
 td="$root/scripts/td.sh"
 stamp="$root/headless/target/sim-compiled"
 
-commands=(run bench train balance stage gen-levels gen-campaign replay progress)
+commands=(run bench train balance stage gen-levels replay progress)
 
 examples() {
   cat <<'EOF'

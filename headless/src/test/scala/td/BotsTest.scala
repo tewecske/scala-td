@@ -66,27 +66,22 @@ class BotsTest extends FunSuite:
   private def bosses(cfg: GameConfig) =
     cfg.levels.head.waves.map(_.composition.filter { case (n, _) => specOf(cfg, n).boss })
 
-  test("hardening a level only reshapes its waves: more units, later waves move up the ladder, stats untouched") {
+  test("hardening a level only reshapes its waves: more units of types already there, stats untouched") {
     val base = Config.game
     val (hard, _) = Balance.harden(base, Balance.Steps(0.25, 0.1), biome, 0)
     assert(ConfigLoader.parse(ConfigWriter.toJson(hard)).isRight)
-    def rungUp(wave: Int): Boolean =
-      val before = waveOf(base, wave)
-      waveOf(hard, wave).composition.exists { case (n, c) =>
-        base.enemies.exists(e => e.promotesTo.contains(n)) && c > before.composition.find(_._1 == n).fold(0)(_._2) }
     assertEquals(waveOf(hard, 0), waveOf(base, 0), "the first wave is never hardened")
     hard.levels.head.waves.zip(base.levels.head.waves).drop(1).foreach { (a, b) =>
       assert(a.count > b.count)
       assertEquals(a.composition.map(_._2).sum, a.count)
+      assertEquals(a.composition.map(_._1).toSet, b.composition.map(_._1).toSet, "no new enemy types")
     }
-    assert(!rungUp(0), "the first wave never gets promoted units")
-    assert(rungUp(1))
     assertEquals(hard.enemies, base.enemies)
     assertEquals(hard.towers, base.towers)
     assertEquals(bosses(hard), bosses(base))
   }
 
-  test("easing a level removes units and moves one down its ladder; a wave never empties") {
+  test("easing a level removes units; a wave never empties") {
     val base = Config.game
     val (easy, _) = Balance.ease(base, Balance.Steps(0.25, 0.1), biome, 0)
     val last = base.levels.head.waves.size - 1

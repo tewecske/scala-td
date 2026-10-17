@@ -112,14 +112,6 @@ object Experiments:
       |  --seed <long>        generator seed (default 42)
       |  --into <path>        config file to change (default core/src/main/resources/config.json)""".stripMargin
 
-  private val CampaignUsage =
-    """usage: headless gen-campaign [options]
-      |  --seed <long>        seed for route order and puddles (default 7)
-      |  --into <path>        config file to rebuild (default core/src/main/resources/config.json)
-      |  rebuilds the global campaign as ten themed levels: waves, start gold and puddles.
-      |  The first run takes its maps from the shoebox biome and removes it; later runs
-      |  keep the current maps""".stripMargin
-
   private val ReplayUsage =
     """usage: headless replay <file.json>
       |  replays the saved game against its saved config snapshot and checks the end state""".stripMargin
@@ -316,19 +308,6 @@ object Experiments:
     LevelGen.writeInto(into, o.int("--count", 5), size, o.long("--seed", 42L), shape, biome) match
       case Left(err) => Opts.fail(s"could not add levels to $into: $err", GenUsage)
       case Right(n)  => println(s"added $n generated levels (${size}x$size) to $into")
-
-  def genCampaign(args: List[String]): Unit =
-    val o = Opts.parse(args, CampaignUsage, valued = Set("--seed", "--into"))
-    val into = o.str("--into", "core/src/main/resources/config.json")
-    ConfigLoader.load(into) match
-      case Left(err) => Opts.fail(err, CampaignUsage)
-      case Right(cfg) =>
-        Campaign.build(cfg, o.long("--seed", 7L)) match
-          case Left(err) => Opts.fail(err, CampaignUsage)
-          case Right(next) =>
-            ConfigWriter.write(next, into) match
-              case Left(err) => Opts.fail(s"could not write $into: $err", CampaignUsage)
-              case Right(_)  => println(s"campaign rebuilt: ${next.levels.size} levels in $into")
 
   def replay(args: List[String]): Unit =
     args match

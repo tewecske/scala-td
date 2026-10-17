@@ -127,13 +127,14 @@
 		"boss": false,
 		"onDeath": null,
 		"promotesTo": null,
-		"leakCost": 1
+		"leakCost": 1,
+		"shape": "Square"
 	},
 	{
 		"name": "Paper Cut",
 		"baseHp": 10.0,
 		"baseSpeed": 2.1875,
-		"color": "#FEA4A6",
+		"color": "#FFD54F",
 		"size": 12.0,
 		"resist": {
 			"kinetic": 0.0,
@@ -151,7 +152,8 @@
 		"boss": false,
 		"onDeath": null,
 		"promotesTo": null,
-		"leakCost": 1
+		"leakCost": 1,
+		"shape": "Triangle"
 	},
 	{
 		"name": "Brick",
@@ -160,7 +162,7 @@
 		"color": "#A8383B",
 		"size": 26.0,
 		"resist": {
-			"kinetic": 0.35,
+			"kinetic": 0.0,
 			"fire": 0.0,
 			"slow": 0.0,
 			"splash": 0.0,
@@ -175,7 +177,8 @@
 		"boss": false,
 		"onDeath": null,
 		"promotesTo": null,
-		"leakCost": 2
+		"leakCost": 2,
+		"shape": "Square"
 	},
 	{
 		"name": "Ember",
@@ -199,7 +202,8 @@
 		"boss": false,
 		"onDeath": null,
 		"promotesTo": null,
-		"leakCost": 1
+		"leakCost": 1,
+		"shape": "Diamond"
 	},
 	{
 		"name": "Frostling",
@@ -223,7 +227,8 @@
 		"boss": false,
 		"onDeath": null,
 		"promotesTo": null,
-		"leakCost": 1
+		"leakCost": 1,
+		"shape": "Square"
 	},
 	{
 		"name": "Commander",
@@ -251,7 +256,8 @@
 		"boss": false,
 		"onDeath": null,
 		"promotesTo": null,
-		"leakCost": 1
+		"leakCost": 1,
+		"shape": "Hexagon"
 	},
 	{
 		"name": "Shieldbearer",
@@ -279,7 +285,8 @@
 		"boss": false,
 		"onDeath": null,
 		"promotesTo": null,
-		"leakCost": 2
+		"leakCost": 2,
+		"shape": "Hexagon"
 	},
 	{
 		"name": "Edgelord",
@@ -303,86 +310,15 @@
 		"boss": false,
 		"onDeath": null,
 		"promotesTo": null,
-		"leakCost": 1
-	},
-	{
-		"name": "Cardboard II",
-		"baseHp": 30.0,
-		"baseSpeed": 1.625,
-		"color": "#ED7477",
-		"size": 16.0,
-		"resist": {
-			"kinetic": 0.0,
-			"fire": 0.0,
-			"slow": 0.0,
-			"splash": 0.0,
-			"explosion": 0.0,
-			"shock": 0.0
-		},
-		"aura": null,
-		"heavy": false,
-		"sidePreference": null,
-		"killReward": 1.0,
-		"speedVariance": 0.0,
-		"boss": false,
-		"onDeath": null,
-		"promotesTo": null,
-		"leakCost": 1
-	},
-	{
-		"name": "Paper Cut II",
-		"baseHp": 10.0,
-		"baseSpeed": 2.8125,
-		"color": "#FEA4A6",
-		"size": 12.0,
-		"resist": {
-			"kinetic": 0.0,
-			"fire": 0.0,
-			"slow": 0.0,
-			"splash": 0.0,
-			"explosion": 0.0,
-			"shock": 0.0
-		},
-		"aura": null,
-		"heavy": false,
-		"sidePreference": null,
-		"killReward": 1.0,
-		"speedVariance": 0.35,
-		"boss": false,
-		"onDeath": null,
-		"promotesTo": null,
-		"leakCost": 1
-	},
-	{
-		"name": "Brick II",
-		"baseHp": 130.0,
-		"baseSpeed": 0.75,
-		"color": "#A8383B",
-		"size": 26.0,
-		"resist": {
-			"kinetic": 0.5,
-			"fire": 0.0,
-			"slow": 0.0,
-			"splash": 0.0,
-			"explosion": 0.0,
-			"shock": 0.0
-		},
-		"aura": null,
-		"heavy": true,
-		"sidePreference": null,
-		"killReward": 1.0,
-		"speedVariance": 0.0,
-		"boss": false,
-		"onDeath": null,
-		"promotesTo": null,
-		"leakCost": 2
+		"leakCost": 1,
+		"shape": "Diamond"
 	},
 	{
 		"name": "Crate",
 		"baseHp": 24.0,
 		"baseSpeed": 1.2,
 		"color": "#8D6E63",
-		"size": 16.0,
+		"size": 17.0,
 		"resist": {
 			"kinetic": 0.2,
 			"fire": -0.5,
@@ -398,39 +334,16 @@
 		"speedVariance": 0.0,
 		"boss": false,
 		"onDeath": null,
-		"promotesTo": "Pallet",
-		"leakCost": 1
-	},
-	{
-		"name": "Crate II",
-		"baseHp": 450.0,
-		"baseSpeed": 0.4375,
-		"color": "#6D4C41",
-		"size": 32.0,
-		"resist": {
-			"kinetic": 0.0,
-			"fire": 0.0,
-			"slow": -0.3,
-			"splash": 0.0,
-			"explosion": 0.0,
-			"shock": 0.0
-		},
-		"aura": null,
-		"heavy": false,
-		"sidePreference": null,
-		"killReward": 6.0,
-		"speedVariance": 0.0,
-		"boss": false,
-		"onDeath": null,
 		"promotesTo": null,
-		"leakCost": 1
+		"leakCost": 1,
+		"shape": "Hexagon"
 	},
 	{
 		"name": "Pallet",
 		"baseHp": 60.0,
 		"baseSpeed": 1.0,
 		"color": "#6D4C41",
-		"size": 20.0,
+		"size": 21.0,
 		"resist": {
 			"kinetic": 0.3,
 			"fire": -0.5,
@@ -446,8 +359,9 @@
 		"speedVariance": 0.0,
 		"boss": false,
 		"onDeath": null,
-		"promotesTo": "Crate Captain",
-		"leakCost": 2
+		"promotesTo": null,
+		"leakCost": 2,
+		"shape": "Square"
 	},
 	{
 		"name": "Crate Captain",
@@ -478,17 +392,18 @@
 			"count": 3
 		},
 		"promotesTo": null,
-		"leakCost": 3
+		"leakCost": 3,
+		"shape": "Hexagon"
 	},
 	{
 		"name": "Splinter",
 		"baseHp": 8.0,
 		"baseSpeed": 1.8,
 		"color": "#A1887F",
-		"size": 8.0,
+		"size": 9.0,
 		"resist": {
 			"kinetic": 0.0,
-			"fire": -0.5,
+			"fire": 0.0,
 			"slow": 0.0,
 			"splash": 0.0,
 			"explosion": 0.0,
@@ -502,13 +417,14 @@
 		"boss": false,
 		"onDeath": null,
 		"promotesTo": null,
-		"leakCost": 1
+		"leakCost": 1,
+		"shape": "Diamond"
 	},
 	{
 		"name": "The Trespasser",
-		"baseHp": 700.0,
+		"baseHp": 1200.0,
 		"baseSpeed": 0.6,
-		"color": "#6D4C41",
+		"color": "#5D4037",
 		"size": 40.0,
 		"resist": {
 			"kinetic": 0.2,
@@ -526,31 +442,8 @@
 		"boss": true,
 		"onDeath": null,
 		"promotesTo": null,
-		"leakCost": 4
-	},
-	{
-		"name": "The Trespasser II",
-		"baseHp": 1000.0,
-		"baseSpeed": 0.6,
-		"color": "#5D4037",
-		"size": 44.0,
-		"resist": {
-			"kinetic": 0.2,
-			"fire": -0.5,
-			"slow": 0.0,
-			"splash": 0.0,
-			"explosion": 0.0,
-			"shock": 0.0
-		},
-		"aura": null,
-		"heavy": false,
-		"sidePreference": null,
-		"killReward": 1.0,
-		"speedVariance": 0.0,
-		"boss": true,
-		"onDeath": null,
-		"promotesTo": null,
-		"leakCost": 4
+		"leakCost": 4,
+		"shape": "Square"
 	},
 	{
 		"name": "Drip",
@@ -573,8 +466,9 @@
 		"speedVariance": 0.0,
 		"boss": false,
 		"onDeath": null,
-		"promotesTo": "Soaked Box",
-		"leakCost": 1
+		"promotesTo": null,
+		"leakCost": 1,
+		"shape": "Triangle"
 	},
 	{
 		"name": "Soaked Box",
@@ -597,8 +491,9 @@
 		"speedVariance": 0.0,
 		"boss": false,
 		"onDeath": null,
-		"promotesTo": "Puddle Captain",
-		"leakCost": 2
+		"promotesTo": null,
+		"leakCost": 2,
+		"shape": "Hexagon"
 	},
 	{
 		"name": "Puddle Captain",
@@ -626,11 +521,12 @@
 		"boss": false,
 		"onDeath": null,
 		"promotesTo": null,
-		"leakCost": 3
+		"leakCost": 3,
+		"shape": "Diamond"
 	},
 	{
 		"name": "The Pentagon",
-		"baseHp": 900.0,
+		"baseHp": 1100.0,
 		"baseSpeed": 0.6,
 		"color": "#0277BD",
 		"size": 40.0,
@@ -640,7 +536,7 @@
 			"slow": 0.0,
 			"splash": 0.0,
 			"explosion": 0.0,
-			"shock": -0.6
+			"shock": 0.0
 		},
 		"aura": null,
 		"heavy": false,
@@ -650,31 +546,8 @@
 		"boss": true,
 		"onDeath": null,
 		"promotesTo": null,
-		"leakCost": 4
-	},
-	{
-		"name": "The Pentagon II",
-		"baseHp": 1200.0,
-		"baseSpeed": 0.6,
-		"color": "#01579B",
-		"size": 44.0,
-		"resist": {
-			"kinetic": 0.0,
-			"fire": 0.0,
-			"slow": 0.0,
-			"splash": 0.0,
-			"explosion": 0.0,
-			"shock": -0.6
-		},
-		"aura": null,
-		"heavy": false,
-		"sidePreference": null,
-		"killReward": 1.0,
-		"speedVariance": 0.0,
-		"boss": true,
-		"onDeath": null,
-		"promotesTo": null,
-		"leakCost": 4
+		"leakCost": 4,
+		"shape": "Pentagon"
 	},
 	{
 		"name": "Frostbox",
@@ -697,8 +570,9 @@
 		"speedVariance": 0.0,
 		"boss": false,
 		"onDeath": null,
-		"promotesTo": "Chilled Pallet",
-		"leakCost": 1
+		"promotesTo": null,
+		"leakCost": 1,
+		"shape": "Triangle"
 	},
 	{
 		"name": "Chilled Pallet",
@@ -721,8 +595,9 @@
 		"speedVariance": 0.0,
 		"boss": false,
 		"onDeath": null,
-		"promotesTo": "Ice Captain",
-		"leakCost": 2
+		"promotesTo": null,
+		"leakCost": 2,
+		"shape": "Hexagon"
 	},
 	{
 		"name": "Ice Captain",
@@ -750,14 +625,15 @@
 		"boss": false,
 		"onDeath": null,
 		"promotesTo": null,
-		"leakCost": 3
+		"leakCost": 3,
+		"shape": "Diamond"
 	},
 	{
 		"name": "Hexcellent",
-		"baseHp": 1100.0,
+		"baseHp": 1600.0,
 		"baseSpeed": 0.6,
-		"color": "#4FC3F7",
-		"size": 40.0,
+		"color": "#4DD0E1",
+		"size": 42.0,
 		"resist": {
 			"kinetic": 0.0,
 			"fire": 0.0,
@@ -774,31 +650,8 @@
 		"boss": true,
 		"onDeath": null,
 		"promotesTo": null,
-		"leakCost": 4
-	},
-	{
-		"name": "Hexcellent II",
-		"baseHp": 1400.0,
-		"baseSpeed": 0.6,
-		"color": "#29B6F6",
-		"size": 44.0,
-		"resist": {
-			"kinetic": 0.0,
-			"fire": 0.0,
-			"slow": 1.0,
-			"splash": 0.0,
-			"explosion": -0.5,
-			"shock": 0.0
-		},
-		"aura": null,
-		"heavy": false,
-		"sidePreference": null,
-		"killReward": 1.0,
-		"speedVariance": 0.0,
-		"boss": true,
-		"onDeath": null,
-		"promotesTo": null,
-		"leakCost": 4
+		"leakCost": 4,
+		"shape": "Hexagon"
 	},
 	{
 		"name": "Memo",
@@ -821,20 +674,21 @@
 		"speedVariance": 0.0,
 		"boss": false,
 		"onDeath": null,
-		"promotesTo": "Stapled Stack",
-		"leakCost": 1
+		"promotesTo": null,
+		"leakCost": 1,
+		"shape": "Triangle"
 	},
 	{
 		"name": "Stapled Stack",
-		"baseHp": 90.0,
-		"baseSpeed": 1.0,
-		"color": "#FFF176",
-		"size": 18.0,
+		"baseHp": 60.0,
+		"baseSpeed": 1.1,
+		"color": "#4FC3F7",
+		"size": 19.0,
 		"resist": {
-			"kinetic": 0.2,
+			"kinetic": 0.0,
 			"fire": 0.0,
 			"slow": 0.0,
-			"splash": -0.4,
+			"splash": 0.0,
 			"explosion": 0.0,
 			"shock": 0.0
 		},
@@ -845,8 +699,9 @@
 		"speedVariance": 0.0,
 		"boss": false,
 		"onDeath": null,
-		"promotesTo": "Cubicle Captain",
-		"leakCost": 2
+		"promotesTo": null,
+		"leakCost": 2,
+		"shape": "Triangle"
 	},
 	{
 		"name": "Cubicle Captain",
@@ -874,14 +729,15 @@
 		"boss": false,
 		"onDeath": null,
 		"promotesTo": null,
-		"leakCost": 3
+		"leakCost": 3,
+		"shape": "Diamond"
 	},
 	{
 		"name": "The Roundabout",
-		"baseHp": 1200.0,
+		"baseHp": 1800.0,
 		"baseSpeed": 0.5,
 		"color": "#F9A825",
-		"size": 40.0,
+		"size": 42.0,
 		"resist": {
 			"kinetic": 0.3,
 			"fire": 0.0,
@@ -898,31 +754,8 @@
 		"boss": true,
 		"onDeath": null,
 		"promotesTo": null,
-		"leakCost": 4
-	},
-	{
-		"name": "The Roundabout II",
-		"baseHp": 1500.0,
-		"baseSpeed": 0.5,
-		"color": "#F57F17",
-		"size": 44.0,
-		"resist": {
-			"kinetic": 0.3,
-			"fire": 0.0,
-			"slow": 0.0,
-			"splash": -0.4,
-			"explosion": 0.0,
-			"shock": 0.0
-		},
-		"aura": null,
-		"heavy": false,
-		"sidePreference": null,
-		"killReward": 1.0,
-		"speedVariance": 0.0,
-		"boss": true,
-		"onDeath": null,
-		"promotesTo": null,
-		"leakCost": 4
+		"leakCost": 4,
+		"shape": "Octagon"
 	},
 	{
 		"name": "Drum",
@@ -945,8 +778,9 @@
 		"speedVariance": 0.0,
 		"boss": false,
 		"onDeath": null,
-		"promotesTo": "Barrel Veteran",
-		"leakCost": 1
+		"promotesTo": null,
+		"leakCost": 1,
+		"shape": "Triangle"
 	},
 	{
 		"name": "Barrel Veteran",
@@ -969,8 +803,9 @@
 		"speedVariance": 0.0,
 		"boss": false,
 		"onDeath": null,
-		"promotesTo": "Drum Captain",
-		"leakCost": 2
+		"promotesTo": null,
+		"leakCost": 2,
+		"shape": "Hexagon"
 	},
 	{
 		"name": "Drum Captain",
@@ -998,14 +833,15 @@
 		"boss": false,
 		"onDeath": null,
 		"promotesTo": null,
-		"leakCost": 3
+		"leakCost": 3,
+		"shape": "Diamond"
 	},
 	{
 		"name": "The Stop Sign",
-		"baseHp": 1500.0,
+		"baseHp": 2000.0,
 		"baseSpeed": 0.5,
-		"color": "#78909C",
-		"size": 42.0,
+		"color": "#E53935",
+		"size": 44.0,
 		"resist": {
 			"kinetic": 0.5,
 			"fire": 0.0,
@@ -1022,21 +858,22 @@
 		"boss": true,
 		"onDeath": null,
 		"promotesTo": null,
-		"leakCost": 4
+		"leakCost": 4,
+		"shape": "Octagon"
 	},
 	{
-		"name": "The Stop Sign II",
-		"baseHp": 1900.0,
-		"baseSpeed": 0.5,
-		"color": "#546E7A",
-		"size": 46.0,
+		"name": "The Shredder",
+		"baseHp": 600.0,
+		"baseSpeed": 0.6,
+		"color": "#EF5350",
+		"size": 36.0,
 		"resist": {
-			"kinetic": 0.5,
+			"kinetic": 0.0,
 			"fire": 0.0,
-			"slow": 1.0,
+			"slow": 0.0,
 			"splash": 0.0,
 			"explosion": 0.0,
-			"shock": -0.5
+			"shock": 0.0
 		},
 		"aura": null,
 		"heavy": false,
@@ -1046,7 +883,108 @@
 		"boss": true,
 		"onDeath": null,
 		"promotesTo": null,
-		"leakCost": 4
+		"leakCost": 4,
+		"shape": "Octagon"
+	},
+	{
+		"name": "The Inbox",
+		"baseHp": 1000.0,
+		"baseSpeed": 0.6,
+		"color": "#FFB300",
+		"size": 38.0,
+		"resist": {
+			"kinetic": 0.0,
+			"fire": 0.0,
+			"slow": 0.0,
+			"splash": 0.0,
+			"explosion": 0.0,
+			"shock": 0.0
+		},
+		"aura": null,
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": true,
+		"onDeath": null,
+		"promotesTo": null,
+		"leakCost": 4,
+		"shape": "Square"
+	},
+	{
+		"name": "The Filing Cabinet",
+		"baseHp": 1100.0,
+		"baseSpeed": 0.5,
+		"color": "#78909C",
+		"size": 40.0,
+		"resist": {
+			"kinetic": 0.0,
+			"fire": 0.0,
+			"slow": 0.0,
+			"splash": 0.0,
+			"explosion": 0.0,
+			"shock": 0.0
+		},
+		"aura": null,
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": true,
+		"onDeath": null,
+		"promotesTo": null,
+		"leakCost": 4,
+		"shape": "Hexagon"
+	},
+	{
+		"name": "The Revolving Door",
+		"baseHp": 1400.0,
+		"baseSpeed": 0.7,
+		"color": "#26A69A",
+		"size": 40.0,
+		"resist": {
+			"kinetic": 0.2,
+			"fire": 0.0,
+			"slow": 0.0,
+			"splash": 0.0,
+			"explosion": 0.0,
+			"shock": 0.0
+		},
+		"aura": null,
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": true,
+		"onDeath": null,
+		"promotesTo": null,
+		"leakCost": 4,
+		"shape": "Diamond"
+	},
+	{
+		"name": "The Landlord",
+		"baseHp": 2600.0,
+		"baseSpeed": 0.5,
+		"color": "#7E57C2",
+		"size": 46.0,
+		"resist": {
+			"kinetic": 0.3,
+			"fire": 0.3,
+			"slow": 0.0,
+			"splash": 0.0,
+			"explosion": 0.0,
+			"shock": 0.0
+		},
+		"aura": null,
+		"heavy": false,
+		"sidePreference": null,
+		"killReward": 1.0,
+		"speedVariance": 0.0,
+		"boss": true,
+		"onDeath": null,
+		"promotesTo": null,
+		"leakCost": 4,
+		"shape": "Pentagon"
 	}
 ],
 "levels": [
@@ -1072,8 +1010,7 @@
 				"spawnInterval": 0.9,
 				"hpScale": 1.0,
 				"composition": {
-					"Crate": 2,
-					"Cardboard": 2
+					"Cardboard": 4
 				}
 			},
 			{
@@ -1081,9 +1018,7 @@
 				"spawnInterval": 0.9,
 				"hpScale": 1.0,
 				"composition": {
-					"Pallet": 1,
-					"Crate": 4,
-					"Cardboard": 2
+					"Cardboard": 7
 				}
 			},
 			{
@@ -1091,10 +1026,8 @@
 				"spawnInterval": 0.9,
 				"hpScale": 1.0,
 				"composition": {
-					"Crate Captain": 3,
-					"The Trespasser": 1,
-					"Pallet": 3,
-					"Crate": 2
+					"Cardboard": 8,
+					"The Shredder": 1
 				}
 			}
 		],
@@ -1118,34 +1051,30 @@
 		},
 		"waves": [
 			{
-				"count": 4,
+				"count": 5,
 				"spawnInterval": 0.86,
 				"hpScale": 1.0,
 				"composition": {
-					"Crate": 2,
-					"Cardboard": 2
+					"Cardboard": 5
 				}
 			},
 			{
-				"count": 8,
+				"count": 9,
 				"spawnInterval": 0.86,
 				"hpScale": 1.0,
 				"composition": {
-					"Crate Captain": 1,
-					"Pallet": 1,
-					"Crate": 4,
-					"Cardboard": 2
+					"Cardboard": 6,
+					"Paper Cut": 3
 				}
 			},
 			{
-				"count": 12,
+				"count": 14,
 				"spawnInterval": 0.86,
 				"hpScale": 1.0,
 				"composition": {
-					"The Trespasser II": 1,
-					"Crate Captain": 4,
-					"Pallet": 4,
-					"Crate": 3
+					"Cardboard": 8,
+					"Paper Cut": 5,
+					"The Inbox": 1
 				}
 			}
 		],
@@ -1179,33 +1108,31 @@
 		},
 		"waves": [
 			{
-				"count": 5,
+				"count": 6,
 				"spawnInterval": 0.82,
 				"hpScale": 1.0,
 				"composition": {
-					"Drip": 3,
-					"Paper Cut": 2
+					"Cardboard": 5,
+					"Paper Cut": 1
 				}
 			},
 			{
-				"count": 8,
+				"count": 9,
 				"spawnInterval": 0.82,
 				"hpScale": 1.0,
 				"composition": {
-					"Soaked Box": 1,
-					"Drip": 5,
-					"Paper Cut": 2
+					"Cardboard": 6,
+					"Paper Cut": 3
 				}
 			},
 			{
-				"count": 12,
+				"count": 11,
 				"spawnInterval": 0.82,
 				"hpScale": 1.0,
 				"composition": {
-					"Puddle Captain": 2,
-					"Soaked Box": 3,
-					"Drip": 5,
-					"Paper Cut": 2
+					"Cardboard": 5,
+					"Paper Cut": 4,
+					"Brick": 2
 				}
 			},
 			{
@@ -1213,10 +1140,10 @@
 				"spawnInterval": 0.82,
 				"hpScale": 1.0,
 				"composition": {
-					"The Pentagon": 1,
-					"Puddle Captain": 6,
-					"Soaked Box": 5,
-					"Drip": 3
+					"Cardboard": 6,
+					"Paper Cut": 5,
+					"Brick": 3,
+					"The Filing Cabinet": 1
 				}
 			}
 		],
@@ -1257,44 +1184,44 @@
 		},
 		"waves": [
 			{
-				"count": 5,
+				"count": 7,
 				"spawnInterval": 0.78,
 				"hpScale": 1.0,
 				"composition": {
-					"Drip": 3,
-					"Paper Cut": 2
+					"Cardboard": 4,
+					"Paper Cut": 3
 				}
 			},
 			{
-				"count": 9,
+				"count": 12,
 				"spawnInterval": 0.78,
 				"hpScale": 1.0,
 				"composition": {
-					"Soaked Box": 1,
-					"Drip": 6,
-					"Paper Cut": 2
+					"Cardboard": 4,
+					"Splinter": 8
 				}
 			},
 			{
-				"count": 14,
+				"count": 16,
 				"spawnInterval": 0.78,
 				"hpScale": 1.0,
 				"composition": {
-					"Puddle Captain": 2,
-					"Soaked Box": 3,
-					"Drip": 8,
-					"Paper Cut": 1
+					"Cardboard": 4,
+					"Paper Cut": 4,
+					"Brick": 2,
+					"Splinter": 6
 				}
 			},
 			{
-				"count": 18,
+				"count": 23,
 				"spawnInterval": 0.78,
 				"hpScale": 1.0,
 				"composition": {
-					"The Pentagon II": 1,
-					"Puddle Captain": 7,
-					"Soaked Box": 6,
-					"Drip": 4
+					"Cardboard": 4,
+					"Paper Cut": 4,
+					"Brick": 4,
+					"Splinter": 10,
+					"The Pentagon": 1
 				}
 			}
 		],
@@ -1334,33 +1261,31 @@
 		},
 		"waves": [
 			{
-				"count": 6,
+				"count": 7,
 				"spawnInterval": 0.74,
 				"hpScale": 1.0,
 				"composition": {
-					"Frostbox": 4,
-					"Cardboard II": 2
+					"Cardboard": 5,
+					"Paper Cut": 2
 				}
 			},
 			{
-				"count": 10,
+				"count": 8,
 				"spawnInterval": 0.74,
 				"hpScale": 1.0,
 				"composition": {
-					"Chilled Pallet": 1,
-					"Frostbox": 7,
-					"Cardboard II": 2
+					"Cardboard": 4,
+					"Crate": 4
 				}
 			},
 			{
-				"count": 14,
+				"count": 12,
 				"spawnInterval": 0.74,
 				"hpScale": 1.0,
 				"composition": {
-					"Ice Captain": 1,
-					"Chilled Pallet": 2,
-					"Frostbox": 9,
-					"Cardboard II": 2
+					"Cardboard": 4,
+					"Paper Cut": 3,
+					"Crate": 5
 				}
 			},
 			{
@@ -1368,21 +1293,21 @@
 				"spawnInterval": 0.74,
 				"hpScale": 1.0,
 				"composition": {
-					"Ice Captain": 4,
-					"Chilled Pallet": 4,
-					"Frostbox": 8,
-					"Cardboard II": 1
+					"Brick": 3,
+					"Splinter": 8,
+					"Crate": 6
 				}
 			},
 			{
-				"count": 21,
+				"count": 20,
 				"spawnInterval": 0.74,
 				"hpScale": 1.0,
 				"composition": {
-					"Ice Captain": 8,
-					"Hexcellent": 1,
-					"Chilled Pallet": 7,
-					"Frostbox": 5
+					"Cardboard": 4,
+					"Paper Cut": 4,
+					"Brick": 3,
+					"Crate": 8,
+					"The Trespasser": 1
 				}
 			}
 		],
@@ -1406,44 +1331,41 @@
 		},
 		"waves": [
 			{
-				"count": 6,
+				"count": 8,
 				"spawnInterval": 0.7,
 				"hpScale": 1.0,
 				"composition": {
-					"Frostbox": 5,
-					"Cardboard II": 1
+					"Cardboard": 5,
+					"Crate": 3
 				}
 			},
 			{
-				"count": 11,
+				"count": 8,
 				"spawnInterval": 0.7,
 				"hpScale": 1.0,
 				"composition": {
-					"Chilled Pallet": 1,
-					"Frostbox": 8,
-					"Cardboard II": 2
+					"Paper Cut": 4,
+					"Edgelord": 4
 				}
 			},
 			{
-				"count": 15,
+				"count": 13,
 				"spawnInterval": 0.7,
 				"hpScale": 1.0,
 				"composition": {
-					"Ice Captain": 1,
-					"Chilled Pallet": 3,
-					"Frostbox": 9,
-					"Cardboard II": 2
+					"Cardboard": 5,
+					"Crate": 4,
+					"Edgelord": 4
 				}
 			},
 			{
-				"count": 20,
+				"count": 19,
 				"spawnInterval": 0.7,
 				"hpScale": 1.0,
 				"composition": {
-					"Ice Captain": 5,
-					"Chilled Pallet": 5,
-					"Frostbox": 9,
-					"Cardboard II": 1
+					"Brick": 4,
+					"Splinter": 10,
+					"Edgelord": 5
 				}
 			},
 			{
@@ -1451,10 +1373,11 @@
 				"spawnInterval": 0.7,
 				"hpScale": 1.0,
 				"composition": {
-					"Hexcellent II": 1,
-					"Ice Captain": 9,
-					"Chilled Pallet": 8,
-					"Frostbox": 6
+					"Crate": 7,
+					"Brick": 4,
+					"Edgelord": 8,
+					"Paper Cut": 4,
+					"The Revolving Door": 1
 				}
 			}
 		],
@@ -1491,43 +1414,42 @@
 		},
 		"waves": [
 			{
-				"count": 7,
+				"count": 9,
 				"spawnInterval": 0.66,
 				"hpScale": 1.0,
 				"composition": {
-					"Memo": 6,
-					"Paper Cut II": 1
+					"Cardboard": 6,
+					"Crate": 3
 				}
 			},
 			{
-				"count": 11,
+				"count": 10,
 				"spawnInterval": 0.66,
 				"hpScale": 1.0,
 				"composition": {
-					"Stapled Stack": 1,
-					"Memo": 9,
-					"Paper Cut II": 1
+					"Crate": 5,
+					"Pallet": 2,
+					"Paper Cut": 3
 				}
 			},
 			{
-				"count": 15,
+				"count": 14,
 				"spawnInterval": 0.66,
 				"hpScale": 1.0,
 				"composition": {
-					"Stapled Stack": 2,
-					"Memo": 12,
-					"Paper Cut II": 1
+					"Edgelord": 6,
+					"Pallet": 3,
+					"Cardboard": 5
 				}
 			},
 			{
-				"count": 19,
+				"count": 18,
 				"spawnInterval": 0.66,
 				"hpScale": 1.0,
 				"composition": {
-					"Cubicle Captain": 3,
-					"Stapled Stack": 4,
-					"Memo": 11,
-					"Paper Cut II": 1
+					"Brick": 4,
+					"Splinter": 10,
+					"Pallet": 4
 				}
 			},
 			{
@@ -1535,10 +1457,10 @@
 				"spawnInterval": 0.66,
 				"hpScale": 1.0,
 				"composition": {
-					"Cubicle Captain": 6,
-					"Stapled Stack": 6,
-					"Memo": 10,
-					"Paper Cut II": 1
+					"Crate": 8,
+					"Pallet": 5,
+					"Edgelord": 6,
+					"Paper Cut": 4
 				}
 			},
 			{
@@ -1546,10 +1468,11 @@
 				"spawnInterval": 0.66,
 				"hpScale": 1.0,
 				"composition": {
-					"The Roundabout": 1,
-					"Cubicle Captain": 10,
-					"Stapled Stack": 9,
-					"Memo": 7
+					"Pallet": 7,
+					"Brick": 5,
+					"Edgelord": 8,
+					"Crate": 6,
+					"Hexcellent": 1
 				}
 			}
 		],
@@ -1574,64 +1497,65 @@
 		},
 		"waves": [
 			{
-				"count": 7,
+				"count": 9,
 				"spawnInterval": 0.62,
 				"hpScale": 1.0,
 				"composition": {
-					"Memo": 6,
-					"Paper Cut II": 1
+					"Cardboard": 6,
+					"Edgelord": 3
 				}
 			},
 			{
-				"count": 12,
+				"count": 10,
 				"spawnInterval": 0.62,
 				"hpScale": 1.0,
 				"composition": {
-					"Stapled Stack": 1,
-					"Memo": 10,
-					"Paper Cut II": 1
+					"Stapled Stack": 3,
+					"Cardboard": 7
 				}
 			},
 			{
-				"count": 16,
+				"count": 15,
 				"spawnInterval": 0.62,
 				"hpScale": 1.0,
 				"composition": {
-					"Stapled Stack": 2,
-					"Memo": 13,
-					"Paper Cut II": 1
-				}
-			},
-			{
-				"count": 21,
-				"spawnInterval": 0.62,
-				"hpScale": 1.0,
-				"composition": {
-					"Cubicle Captain": 3,
 					"Stapled Stack": 4,
-					"Memo": 13,
-					"Paper Cut II": 1
+					"Crate": 6,
+					"Paper Cut": 5
 				}
 			},
 			{
-				"count": 25,
+				"count": 19,
 				"spawnInterval": 0.62,
 				"hpScale": 1.0,
 				"composition": {
-					"Cubicle Captain": 7,
-					"Stapled Stack": 7,
-					"Memo": 11
+					"Stapled Stack": 5,
+					"Pallet": 4,
+					"Splinter": 10
 				}
 			},
 			{
-				"count": 30,
+				"count": 23,
 				"spawnInterval": 0.62,
 				"hpScale": 1.0,
 				"composition": {
-					"Cubicle Captain": 12,
-					"The Roundabout II": 1,
-					"Stapled Stack": 10,
-					"Memo": 7
+					"Stapled Stack": 6,
+					"Pallet": 5,
+					"Edgelord": 8,
+					"Brick": 4
+				}
+			},
+			{
+				"count": 31,
+				"spawnInterval": 0.62,
+				"hpScale": 1.0,
+				"composition": {
+					"Stapled Stack": 8,
+					"Pallet": 6,
+					"Edgelord": 8,
+					"Brick": 5,
+					"Crate": 3,
+					"The Roundabout": 1
 				}
 			}
 		],
@@ -1655,70 +1579,78 @@
 		},
 		"waves": [
 			{
-				"count": 8,
+				"count": 10,
 				"spawnInterval": 0.58,
 				"hpScale": 1.0,
 				"composition": {
-					"Drum": 8
+					"Cardboard": 6,
+					"Paper Cut": 4
 				}
 			},
 			{
-				"count": 12,
+				"count": 11,
 				"spawnInterval": 0.58,
 				"hpScale": 1.0,
 				"composition": {
-					"Barrel Veteran": 1,
-					"Drum": 11
+					"Commander": 1,
+					"Cardboard": 10
 				}
 			},
 			{
-				"count": 16,
+				"count": 15,
 				"spawnInterval": 0.58,
 				"hpScale": 1.0,
 				"composition": {
-					"Barrel Veteran": 2,
-					"Drum": 14
+					"Commander": 2,
+					"Edgelord": 8,
+					"Crate": 5
 				}
 			},
 			{
-				"count": 21,
+				"count": 19,
 				"spawnInterval": 0.58,
 				"hpScale": 1.0,
 				"composition": {
-					"Drum Captain": 1,
-					"Barrel Veteran": 4,
-					"Drum": 16
+					"Commander": 2,
+					"Stapled Stack": 5,
+					"Pallet": 4,
+					"Splinter": 8
 				}
 			},
 			{
-				"count": 25,
+				"count": 23,
 				"spawnInterval": 0.58,
 				"hpScale": 1.0,
 				"composition": {
-					"Drum Captain": 4,
-					"Barrel Veteran": 6,
-					"Drum": 15
+					"Commander": 3,
+					"Brick": 5,
+					"Pallet": 5,
+					"Edgelord": 10
 				}
 			},
 			{
-				"count": 29,
+				"count": 28,
 				"spawnInterval": 0.58,
 				"hpScale": 1.0,
 				"composition": {
-					"Drum Captain": 8,
-					"Barrel Veteran": 8,
-					"Drum": 13
+					"Commander": 4,
+					"Stapled Stack": 7,
+					"Pallet": 6,
+					"Crate": 8,
+					"Paper Cut": 3
 				}
 			},
 			{
-				"count": 33,
+				"count": 34,
 				"spawnInterval": 0.58,
 				"hpScale": 1.0,
 				"composition": {
-					"Drum Captain": 13,
-					"The Stop Sign": 1,
-					"Barrel Veteran": 11,
-					"Drum": 8
+					"Commander": 5,
+					"Stapled Stack": 8,
+					"Pallet": 7,
+					"Brick": 5,
+					"Edgelord": 8,
+					"The Stop Sign": 1
 				}
 			}
 		],
@@ -1754,70 +1686,77 @@
 		},
 		"waves": [
 			{
-				"count": 8,
+				"count": 11,
 				"spawnInterval": 0.54,
 				"hpScale": 1.0,
 				"composition": {
-					"Drum": 8
+					"Cardboard": 6,
+					"Paper Cut": 5
 				}
 			},
 			{
-				"count": 13,
+				"count": 12,
 				"spawnInterval": 0.54,
 				"hpScale": 1.0,
 				"composition": {
-					"Barrel Veteran": 1,
-					"Drum": 12
+					"Crate": 6,
+					"Edgelord": 6
 				}
 			},
 			{
-				"count": 17,
+				"count": 16,
 				"spawnInterval": 0.54,
 				"hpScale": 1.0,
 				"composition": {
-					"Barrel Veteran": 2,
-					"Drum": 15
+					"Brick": 4,
+					"Splinter": 12
 				}
 			},
 			{
-				"count": 22,
+				"count": 20,
 				"spawnInterval": 0.54,
 				"hpScale": 1.0,
 				"composition": {
-					"Drum Captain": 1,
-					"Barrel Veteran": 4,
-					"Drum": 17
+					"Commander": 2,
+					"Pallet": 5,
+					"Stapled Stack": 5,
+					"Crate": 8
 				}
 			},
 			{
-				"count": 27,
+				"count": 24,
 				"spawnInterval": 0.54,
 				"hpScale": 1.0,
 				"composition": {
-					"Drum Captain": 5,
-					"Barrel Veteran": 6,
-					"Drum": 16
+					"Commander": 3,
+					"Edgelord": 10,
+					"Brick": 5,
+					"Stapled Stack": 6
 				}
 			},
 			{
-				"count": 31,
+				"count": 30,
 				"spawnInterval": 0.54,
 				"hpScale": 1.0,
 				"composition": {
-					"Drum Captain": 9,
-					"Barrel Veteran": 9,
-					"Drum": 13
+					"Commander": 4,
+					"Pallet": 8,
+					"Stapled Stack": 8,
+					"Crate": 8,
+					"Paper Cut": 2
 				}
 			},
 			{
-				"count": 36,
+				"count": 39,
 				"spawnInterval": 0.54,
 				"hpScale": 1.0,
 				"composition": {
-					"The Stop Sign II": 1,
-					"Drum Captain": 14,
-					"Barrel Veteran": 12,
-					"Drum": 9
+					"Commander": 6,
+					"Pallet": 9,
+					"Stapled Stack": 9,
+					"Brick": 6,
+					"Edgelord": 8,
+					"The Landlord": 1
 				}
 			}
 		],

@@ -32,7 +32,7 @@ object LevelGen:
   /** Shapes accepted by [[generate]]; `mixed` cycles through all three. */
   val Shapes: Vector[String] = Vector("snake", "loop", "fork")
 
-  val SmallRoster: Vector[String] = Vector("Cardboard", "Paper Cut", "Cardboard II", "Ember", "Frostling", "Brick")
+  val SmallRoster: Vector[String] = Vector("Cardboard", "Paper Cut", "Ember", "Frostling", "Brick")
 
   final case class Generated(name: String, waypoints: Vector[GridPos], branches: Vector[Branch], waves: Vector[WaveSpec])
 
@@ -53,9 +53,9 @@ object LevelGen:
     * level sits: basic types first, then the armoured and aura types, then heavies.
     */
   private def pool(position: Int): Vector[String] =
-    val early = Vector("Cardboard", "Paper Cut", "Cardboard II", "Ember", "Frostling")
-    val mid   = Vector("Brick", "Commander", "Edgelord", "Paper Cut II", "Shieldbearer")
-    val late  = Vector("Brick II", "Crate", "Crate II")
+    val early = Vector("Cardboard", "Paper Cut", "Ember", "Frostling")
+    val mid   = Vector("Brick", "Commander", "Edgelord", "Shieldbearer")
+    val late  = Vector("Crate", "Pallet")
     early ++ (if position >= 1 then mid else Vector.empty) ++ (if position >= 3 then late else Vector.empty)
 
   /** Levels for `count` maps on a `size` board. `shapes` is cycled per level. */
@@ -317,113 +317,3 @@ object LevelGen:
               levels.size
             }
     }
-
-/** The themed campaign: ten levels, five themes of two levels each. Every theme has a
-  * variant ladder (base, veteran, captain), a basic unit it replaces, a boss per level,
-  * and a map feature. The first five levels reuse the 10x10 routes of the shoebox biome;
-  * the last five are new 14x14 routes.
-  */
-object Campaign:
-
-  final case class Theme(name: String, basic: String, ladder: Vector[String], bosses: Vector[String], puddles: Boolean)
-
-  val Themes: Vector[Theme] = Vector(
-    Theme("wooden crates", "Cardboard", Vector("Crate", "Pallet", "Crate Captain"),
-      Vector("The Trespasser", "The Trespasser II"), puddles = false),
-    Theme("soggy cardboard", "Paper Cut", Vector("Drip", "Soaked Box", "Puddle Captain"),
-      Vector("The Pentagon", "The Pentagon II"), puddles = true),
-    Theme("frozen freezer", "Cardboard II", Vector("Frostbox", "Chilled Pallet", "Ice Captain"),
-      Vector("Hexcellent", "Hexcellent II"), puddles = false),
-    Theme("office paper", "Paper Cut II", Vector("Memo", "Stapled Stack", "Cubicle Captain"),
-      Vector("The Roundabout", "The Roundabout II"), puddles = false),
-    Theme("steel drums", "Brick II", Vector("Drum", "Barrel Veteran", "Drum Captain"),
-      Vector("The Stop Sign", "The Stop Sign II"), puddles = false)
-  )
-
-  val WavesPerLevel: Vector[Int] = Vector(3, 3, 4, 4, 5, 5, 6, 6, 7, 7)
-  val LevelShapes: Vector[String] = Vector("loop", "fork", "snake", "loop", "fork")
-  val SmallLevelNames: Vector[String] = Vector("Shoebox Lane", "Tiny Crossing", "Cramped Loop", "Little Fork", "Closet Circuit")
-
-  /** Gold each level starts with; gold does not carry over, and later boards are
-    * bigger and busier, so it grows with the level.
-    */
-  def startGoldFor(level: Int): Int = 120 + 20 * level
-
-  /** A level's waves. The first wave is small and plain (base units and the first
-    * rung only); each later wave is bigger and climbs the ladder, and the last wave
-    * adds the boss. Later levels start bigger, peak higher and phase out the theme's
-    * basic filler unit.
-    */
-  def wavesFor(theme: Theme, level: Int, boss: String, rng: scala.util.Random): Vector[WaveSpec] =
-    val n      = WavesPerLevel(level)
-    val ladder = theme.ladder
-    val first  = 4 + level / 2
-    val peak   = 9 + 3 * level
-    (0 until n).toVector.map { j =>
-      val f     = if n == 1 then 1.0 else j.toDouble / (n - 1)
-      val last  = j == n - 1
-      val total = math.round(first + (peak - first) * f).toInt
-      val basicShare = math.max(0.0, 0.5 - 0.06 * level)
-      val fighting   = if last then total - 1 else total
-      val basic = math.round(fighting * basicShare * (1 - f)).toInt
-      val t2    = math.round(fighting * 0.35 * f).toInt
-      val t3    = math.round(fighting * 0.4 * math.max(0.0, (f - 0.4) / 0.6)).toInt
-      val t1    = math.max(0, fighting - basic - t2 - t3)
-      val parts = Vector(theme.basic -> basic, ladder(0) -> t1, ladder(1) -> t2, ladder(2) -> t3)
-      val comp  = (parts.filter(_._2 > 0) ++ (if last then Vector(boss -> 1) else Vector.empty))
-        .groupBy(_._1).toVector.map { case (k, vs) => k -> vs.map(_._2).sum }
-        .sortBy { case (name, _) => -comp_rank(name, theme, boss) }
-      WaveSpec(
-        count = comp.map(_._2).sum,
-        spawnInterval = math.round((0.9 - 0.04 * level) * 100).toFloat / 100f,
-        hpScale = 1.0f,
-        composition = comp
-      )
-    }
-
-  private def comp_rank(name: String, theme: Theme, boss: String): Int =
-    if name == boss then 3 else theme.ladder.indexOf(name) + 1
-
-  /** Rebuilds the global campaign. The first time it takes the five 10x10 routes
-    * from the shoebox biome (then drops it) and generates five 14x14 ones; once the
-    * campaign exists it keeps the current ten maps and only rebuilds waves, start
-    * gold and puddles. Returns the new config, or why it cannot be built.
-    */
-  def build(cfg: GameConfig, seed: Long): Either[String, GameConfig] =
-    val known   = cfg.enemies.map(_.name).toSet
-    val needed  = Themes.flatMap(t => t.basic +: t.ladder) ++ Themes.flatMap(_.bosses)
-    val missing = needed.filterNot(known.contains).distinct
-    if missing.nonEmpty then Left(s"missing enemy types: ${missing.mkString(", ")}")
-    else
-      val rng = new scala.util.Random(seed)
-      val maps: Either[String, Vector[(String, Route, Int)]] =
-        cfg.biomes.find(_.id == "shoebox") match
-          case Some(sb) =>
-            val names     = rng.shuffle(LevelGen.Names)
-            val generated = LevelGen.generate(rng, 5, 14, names, 0, LevelShapes)
-            Right(sb.levels.take(5).zipWithIndex.map((l, i) => (SmallLevelNames(i), l.route, 10)) ++
-              generated.map(g => (g.name, Route(g.waypoints, g.branches), 14)))
-          case None if cfg.levels.size == 10 =>
-            Right(cfg.levels.map(l => (l.name, l.route, l.gridSize.getOrElse(cfg.board.gridSize))))
-          case None => Left("need the shoebox biome or an existing ten-level campaign")
-      maps.map { ms =>
-        val levels = ms.zipWithIndex.map { case ((name, route, size), i) =>
-          val theme = Themes(i / 2)
-          val waves = wavesFor(theme, i, theme.bosses(i % 2), rng)
-          LevelConfig(name, waves, route, Some(size), puddlesFor(theme, route, size, rng), Some(startGoldFor(i)))
-        }
-        cfg.copy(levels = levels, biomes = cfg.biomes.filterNot(_.id == "shoebox"))
-      }
-
-  /** Water levels get puddles two cells off the road, so shock hits land harder there. */
-  private def puddlesFor(theme: Theme, route: Route, size: Int, rng: scala.util.Random): Vector[Puddle] =
-    if !theme.puddles then Vector.empty
-    else
-      val road = route.waypoints.sliding(2).flatMap { case Seq(a, b) => LevelGen.cellsBetween(a, b) }.toVector.distinct
-      (0 until 3).toVector.map { _ =>
-        val c = road(rng.nextInt(road.size))
-        val d = Vector((2, 0), (-2, 0), (0, 2), (0, -2))(rng.nextInt(4))
-        val x = math.max(0, math.min(size - 1, c.x + d._1))
-        val y = math.max(0, math.min(size - 1, c.y + d._2))
-        Puddle(x + 0.5f, y + 0.5f, 1.3f)
-      }

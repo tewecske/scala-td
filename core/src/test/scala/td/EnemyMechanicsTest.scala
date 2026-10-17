@@ -4,13 +4,13 @@ import munit.FunSuite
 
 class EnemyMechanicsTest extends FunSuite:
 
-  test("negative resist is a weakness: amplifies frost and survives theme layering") {
-    // Crate II is weak to frost; in the plain front-lawn biome (no slow theme) the
+  test("negative resist is a weakness: amplifies fire and survives theme layering") {
+    // Crate is weak to fire; in the plain front-lawn biome (no fire theme) the
     // negative resist is preserved through layering instead of being clamped to 0.
     val biome = Config.biome("front-lawn")
-    val got   = Config.enemySpec("Crate II").resist.layered(biome.resistTheme)
-    assertEquals(got.slow, -0.3f)
-    val dmg = 10f * (1f - got.slow)
+    val got   = Config.enemySpec("Crate").resist.layered(biome.resistTheme)
+    assertEquals(got.fire, -0.5f)
+    val dmg = 10f * (1f - got.fire)
     assert(dmg > 10f) // takes more damage than an unresisted hit
   }
 
@@ -32,12 +32,16 @@ class EnemyMechanicsTest extends FunSuite:
   }
 
   test("speedMults are rolled once per run and are deterministic") {
-    val a = RunGen.roll(123L)
-    val b = RunGen.roll(123L)
-    assertEquals(a.speedMults, b.speedMults)
-    assert(a.speedMults.contains("Paper Cut II"))
-    val m = a.speedMults("Paper Cut II")
-    assert(m >= 1f && m <= 1.35f)
+    val shipped = Config.game
+    Config.use(ConfigEdits.updateEnemy(shipped, "Paper Cut")(_.copy(speedVariance = 0.35f)))
+    try
+      val a = RunGen.roll(123L)
+      val b = RunGen.roll(123L)
+      assertEquals(a.speedMults, b.speedMults)
+      assert(a.speedMults.contains("Paper Cut"))
+      val m = a.speedMults("Paper Cut")
+      assert(m >= 1f && m <= 1.35f)
+    finally Config.use(shipped)
   }
 
   test("tutorial applies no speed variance (identical every run)") {

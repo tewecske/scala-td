@@ -42,9 +42,9 @@ class JournalTest extends TestBase:
   }
 
   test("first hit emits Sighting; Nth hit emits Studied with the exact value") {
-    val collected = fire("Brick", DamageKind.Kinetic, Config.StudyHits)
+    val collected = fire("Pallet", DamageKind.Kinetic, Config.StudyHits)
     assert(collected.exists(e => e.tier == Precision.Sighting && e.value == "resists"))
-    assert(collected.exists(e => e.tier == Precision.Studied && e.value == "0.35"))
+    assert(collected.exists(e => e.tier == Precision.Studied && e.value == "0.3"))
   }
 
   test("spawning an enemy with an aura records its ability as Studied") {
