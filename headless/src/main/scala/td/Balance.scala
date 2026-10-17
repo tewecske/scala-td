@@ -23,9 +23,16 @@ object Balance:
   /** How far one local step moves a level: `promoteShare` of a wave's chosen unit
     * changes rung, and the wave grows or shrinks by `resizeShare` (at least one).
     */
-  final case class Steps(promoteShare: Double, resizeShare: Double):
+  /** `keepLength`: a resized wave keeps its length, so added units come with shorter
+    * gaps between spawns (a denser wave) and removed ones with longer gaps.
+    */
+  final case class Steps(promoteShare: Double, resizeShare: Double, keepLength: Boolean = false):
     def describe: String =
-      s"${"%.0f".format(promoteShare * 100)}% of a unit changes rung, waves resize by ${"%.0f".format(resizeShare * 100)}%"
+      s"${"%.0f".format(promoteShare * 100)}% of a unit changes rung, waves resize by ${"%.0f".format(resizeShare * 100)}%" +
+        (if keepLength then ", keeping their length" else "")
+
+  /** The shortest gap between two spawns a resized wave can get. */
+  val MinSpawnInterval = 0.1f
 
   /** One global step multiplies (or divides) every enemy's health and speed. */
   final case class GlobalSteps(hp: Double, speed: Double)
@@ -116,8 +123,15 @@ object Balance:
           val change  = if harder then delta else -math.min(delta, math.min(biggest._2, total - 1))
           if change != 0 then log += s"wave ${wi + 1}: ${if change > 0 then "+" else ""}$change ${biggest._1}"
           add(moved, biggest._1, change)
-      val comp = resized.filter(_._2 > 0)
-      w.copy(count = comp.map(_._2).sum, composition = comp)
+      val comp  = resized.filter(_._2 > 0)
+      val count = comp.map(_._2).sum
+      val interval =
+        if !s.keepLength || count == w.count then w.spawnInterval
+        else
+          val gap = math.max(MinSpawnInterval, math.round(w.spawnInterval * w.count / count * 1000f) / 1000f)
+          if gap != w.spawnInterval then log += f"wave ${wi + 1}: gap ${w.spawnInterval}%.2fs -> $gap%.2fs"
+          gap
+      w.copy(count = count, spawnInterval = interval, composition = comp)
     }
 
     val next0 = withLevels(cfg, biome, all.updated(level, lvl.copy(waves = waves)))

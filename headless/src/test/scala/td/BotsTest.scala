@@ -81,6 +81,22 @@ class BotsTest extends FunSuite:
     assertEquals(bosses(hard), bosses(base))
   }
 
+  test("keeping wave length: hardening shortens the gaps by as much as it adds units, easing lengthens them") {
+    val base = Config.game
+    def length(w: WaveSpec) = w.count * w.spawnInterval
+    val (dense, _) = Balance.harden(base, Balance.Steps(0.25, 0.25, keepLength = true), biome, 0)
+    val (plain, _) = Balance.harden(base, Balance.Steps(0.25, 0.25), biome, 0)
+    dense.levels.head.waves.zip(base.levels.head.waves).drop(1).foreach { (a, b) =>
+      assert(a.count > b.count)
+      assert(a.spawnInterval < b.spawnInterval)
+      assertEqualsDouble(length(a).toDouble, length(b).toDouble, 0.01 * a.count)
+    }
+    assertEquals(plain.levels.head.waves.map(_.spawnInterval), base.levels.head.waves.map(_.spawnInterval))
+    val (sparse, _) = Balance.ease(base, Balance.Steps(0.25, 0.25, keepLength = true), biome, 0)
+    val last = base.levels.head.waves.size - 1
+    assert(waveOf(sparse, last).spawnInterval > waveOf(base, last).spawnInterval)
+  }
+
   test("easing a level removes units; a wave never empties") {
     val base = Config.game
     val (easy, _) = Balance.ease(base, Balance.Steps(0.25, 0.1), biome, 0)

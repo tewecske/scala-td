@@ -107,7 +107,7 @@
 "enemies": [
 	{
 		"name": "Cardboard",
-		"baseHp": 22.0,
+		"baseHp": 44.0,
 		"baseSpeed": 1.3125,
 		"color": "#ED7477",
 		"size": 16.0,
@@ -132,7 +132,7 @@
 	},
 	{
 		"name": "Paper Cut",
-		"baseHp": 10.0,
+		"baseHp": 20.0,
 		"baseSpeed": 2.1875,
 		"color": "#FFD54F",
 		"size": 12.0,
@@ -157,7 +157,7 @@
 	},
 	{
 		"name": "Brick",
-		"baseHp": 90.0,
+		"baseHp": 180.0,
 		"baseSpeed": 0.75,
 		"color": "#A8383B",
 		"size": 26.0,
@@ -182,7 +182,7 @@
 	},
 	{
 		"name": "Ember",
-		"baseHp": 26.0,
+		"baseHp": 52.0,
 		"baseSpeed": 1.25,
 		"color": "#EFCE75",
 		"size": 16.0,
@@ -207,7 +207,7 @@
 	},
 	{
 		"name": "Frostling",
-		"baseHp": 24.0,
+		"baseHp": 48.0,
 		"baseSpeed": 1.3125,
 		"color": "#9CA2E1",
 		"size": 16.0,
@@ -232,7 +232,7 @@
 	},
 	{
 		"name": "Commander",
-		"baseHp": 60.0,
+		"baseHp": 120.0,
 		"baseSpeed": 0.9375,
 		"color": "#5C63A5",
 		"size": 18.0,
@@ -261,7 +261,7 @@
 	},
 	{
 		"name": "Shieldbearer",
-		"baseHp": 55.0,
+		"baseHp": 110.0,
 		"baseSpeed": 1.0,
 		"color": "#323875",
 		"size": 18.0,
@@ -290,7 +290,7 @@
 	},
 	{
 		"name": "Edgelord",
-		"baseHp": 30.0,
+		"baseHp": 60.0,
 		"baseSpeed": 1.875,
 		"color": "#C9A8E1",
 		"size": 14.0,
@@ -315,7 +315,7 @@
 	},
 	{
 		"name": "Crate",
-		"baseHp": 24.0,
+		"baseHp": 48.0,
 		"baseSpeed": 1.2,
 		"color": "#8D6E63",
 		"size": 17.0,
@@ -340,7 +340,7 @@
 	},
 	{
 		"name": "Pallet",
-		"baseHp": 60.0,
+		"baseHp": 120.0,
 		"baseSpeed": 1.0,
 		"color": "#6D4C41",
 		"size": 21.0,
@@ -365,7 +365,7 @@
 	},
 	{
 		"name": "Crate Captain",
-		"baseHp": 130.0,
+		"baseHp": 260.0,
 		"baseSpeed": 0.9,
 		"color": "#4E342E",
 		"size": 24.0,
@@ -397,7 +397,7 @@
 	},
 	{
 		"name": "Splinter",
-		"baseHp": 8.0,
+		"baseHp": 16.0,
 		"baseSpeed": 1.8,
 		"color": "#A1887F",
 		"size": 9.0,
@@ -422,7 +422,7 @@
 	},
 	{
 		"name": "The Trespasser",
-		"baseHp": 1200.0,
+		"baseHp": 2400.0,
 		"baseSpeed": 0.6,
 		"color": "#5D4037",
 		"size": 40.0,
@@ -442,12 +442,12 @@
 		"boss": true,
 		"onDeath": null,
 		"promotesTo": null,
-		"leakCost": 4,
+		"leakCost": 2,
 		"shape": "Square"
 	},
 	{
 		"name": "Drip",
-		"baseHp": 18.0,
+		"baseHp": 36.0,
 		"baseSpeed": 1.9,
 		"color": "#4FC3F7",
 		"size": 12.0,
@@ -472,7 +472,7 @@
 	},
 	{
 		"name": "Soaked Box",
-		"baseHp": 55.0,
+		"baseHp": 110.0,
 		"baseSpeed": 1.1,
 		"color": "#0288D1",
 		"size": 18.0,
@@ -497,7 +497,7 @@
 	},
 	{
 		"name": "Puddle Captain",
-		"baseHp": 120.0,
+		"baseHp": 240.0,
 		"baseSpeed": 1.0,
 		"color": "#01579B",
 		"size": 22.0,
@@ -526,7 +526,7 @@
 	},
 	{
 		"name": "The Pentagon",
-		"baseHp": 1100.0,
+		"baseHp": 2200.0,
 		"baseSpeed": 0.6,
 		"color": "#0277BD",
 		"size": 40.0,
@@ -546,12 +546,12 @@
 		"boss": true,
 		"onDeath": null,
 		"promotesTo": null,
-		"leakCost": 4,
+		"leakCost": 2,
 		"shape": "Pentagon"
 	},
 	{
 		"name": "Frostbox",
-		"baseHp": 40.0,
+		"baseHp": 80.0,
 		"baseSpeed": 1.2,
 		"color": "#B3E5FC",
 		"size": 16.0,
@@ -576,7 +576,7 @@
 	},
 	{
 		"name": "Chilled Pallet",
-		"baseHp": 80.0,
+		"baseHp": 160.0,
 		"baseSpeed": 1.0,
 		"color": "#81D4FA",
 		"size": 20.0,
@@ -601,7 +601,7 @@
 	},
 	{
 		"name": "Ice Captain",
-		"baseHp": 150.0,
+		"baseHp": 300.0,
 		"baseSpeed": 0.9,
 		"color": "#29B6F6",
 		"size": 24.0,
@@ -630,7 +630,7 @@
 	},
 	{
 		"name": "Hexcellent",
-		"baseHp": 1600.0,
+		"baseHp": 3200.0,
 		"baseSpeed": 0.6,
 		"color": "#4DD0E1",
 		"size": 42.0,
@@ -650,12 +650,12 @@
 		"boss": true,
 		"onDeath": null,
 		"promotesTo": null,
-		"leakCost": 4,
+		"leakCost": 2,
 		"shape": "Hexagon"
 	},
 	{
 		"name": "Memo",
-		"baseHp": 16.0,
+		"baseHp": 32.0,
 		"baseSpeed": 2.0,
 		"color": "#FFF59D",
 		"size": 12.0,
@@ -680,7 +680,7 @@
 	},
 	{
 		"name": "Stapled Stack",
-		"baseHp": 60.0,
+		"baseHp": 120.0,
 		"baseSpeed": 1.1,
 		"color": "#4FC3F7",
 		"size": 19.0,
@@ -705,7 +705,7 @@
 	},
 	{
 		"name": "Cubicle Captain",
-		"baseHp": 170.0,
+		"baseHp": 340.0,
 		"baseSpeed": 0.9,
 		"color": "#FBC02D",
 		"size": 22.0,
@@ -734,7 +734,7 @@
 	},
 	{
 		"name": "The Roundabout",
-		"baseHp": 1800.0,
+		"baseHp": 3600.0,
 		"baseSpeed": 0.5,
 		"color": "#F9A825",
 		"size": 42.0,
@@ -754,12 +754,12 @@
 		"boss": true,
 		"onDeath": null,
 		"promotesTo": null,
-		"leakCost": 4,
+		"leakCost": 2,
 		"shape": "Octagon"
 	},
 	{
 		"name": "Drum",
-		"baseHp": 110.0,
+		"baseHp": 220.0,
 		"baseSpeed": 0.8,
 		"color": "#90A4AE",
 		"size": 18.0,
@@ -784,7 +784,7 @@
 	},
 	{
 		"name": "Barrel Veteran",
-		"baseHp": 200.0,
+		"baseHp": 400.0,
 		"baseSpeed": 0.7,
 		"color": "#607D8B",
 		"size": 22.0,
@@ -809,7 +809,7 @@
 	},
 	{
 		"name": "Drum Captain",
-		"baseHp": 320.0,
+		"baseHp": 640.0,
 		"baseSpeed": 0.7,
 		"color": "#455A64",
 		"size": 26.0,
@@ -838,7 +838,7 @@
 	},
 	{
 		"name": "The Stop Sign",
-		"baseHp": 2000.0,
+		"baseHp": 4000.0,
 		"baseSpeed": 0.5,
 		"color": "#E53935",
 		"size": 44.0,
@@ -858,12 +858,12 @@
 		"boss": true,
 		"onDeath": null,
 		"promotesTo": null,
-		"leakCost": 4,
+		"leakCost": 2,
 		"shape": "Octagon"
 	},
 	{
 		"name": "The Shredder",
-		"baseHp": 600.0,
+		"baseHp": 1200.0,
 		"baseSpeed": 0.6,
 		"color": "#EF5350",
 		"size": 36.0,
@@ -883,12 +883,12 @@
 		"boss": true,
 		"onDeath": null,
 		"promotesTo": null,
-		"leakCost": 4,
+		"leakCost": 2,
 		"shape": "Octagon"
 	},
 	{
 		"name": "The Inbox",
-		"baseHp": 1000.0,
+		"baseHp": 2000.0,
 		"baseSpeed": 0.6,
 		"color": "#FFB300",
 		"size": 38.0,
@@ -908,12 +908,12 @@
 		"boss": true,
 		"onDeath": null,
 		"promotesTo": null,
-		"leakCost": 4,
+		"leakCost": 2,
 		"shape": "Square"
 	},
 	{
 		"name": "The Filing Cabinet",
-		"baseHp": 1100.0,
+		"baseHp": 2200.0,
 		"baseSpeed": 0.5,
 		"color": "#78909C",
 		"size": 40.0,
@@ -933,12 +933,12 @@
 		"boss": true,
 		"onDeath": null,
 		"promotesTo": null,
-		"leakCost": 4,
+		"leakCost": 2,
 		"shape": "Hexagon"
 	},
 	{
 		"name": "The Revolving Door",
-		"baseHp": 1400.0,
+		"baseHp": 2800.0,
 		"baseSpeed": 0.7,
 		"color": "#26A69A",
 		"size": 40.0,
@@ -958,12 +958,12 @@
 		"boss": true,
 		"onDeath": null,
 		"promotesTo": null,
-		"leakCost": 4,
+		"leakCost": 2,
 		"shape": "Diamond"
 	},
 	{
 		"name": "The Landlord",
-		"baseHp": 2600.0,
+		"baseHp": 5200.0,
 		"baseSpeed": 0.5,
 		"color": "#7E57C2",
 		"size": 46.0,
@@ -983,7 +983,7 @@
 		"boss": true,
 		"onDeath": null,
 		"promotesTo": null,
-		"leakCost": 4,
+		"leakCost": 2,
 		"shape": "Pentagon"
 	}
 ],
@@ -1059,20 +1059,20 @@
 				}
 			},
 			{
-				"count": 9,
-				"spawnInterval": 0.86,
+				"count": 31,
+				"spawnInterval": 0.249,
 				"hpScale": 1.0,
 				"composition": {
-					"Cardboard": 6,
+					"Cardboard": 28,
 					"Paper Cut": 3
 				}
 			},
 			{
-				"count": 14,
-				"spawnInterval": 0.86,
+				"count": 50,
+				"spawnInterval": 0.24,
 				"hpScale": 1.0,
 				"composition": {
-					"Cardboard": 8,
+					"Cardboard": 44,
 					"Paper Cut": 5,
 					"The Inbox": 1
 				}

@@ -129,12 +129,12 @@ class CampaignTest extends TestBase:
     val w = Sim.initial(run).copy(enemies = Vector(e), spawnQueue = Vector.empty, breakTimer = 999f)
     Sim.step(w, Config.MaxStepDt, Vector.empty)
 
-  test("bigger units cost more lives when they leak: base 1, veteran 2, captain 3, boss 4") {
+  test("leaks cost the lives the type says: base 1, veteran 2, captain 3, boss 2") {
     val start = Config.StartLives
     assertEquals(start - leakOf("Crate").lives, 1)
     assertEquals(start - leakOf("Pallet").lives, 2)
     assertEquals(start - leakOf("Crate Captain").lives, 3)
-    assertEquals(leakOf("The Trespasser").lives, math.max(0, start - 4))
+    assertEquals(leakOf("The Trespasser").lives, math.max(0, start - 2))
   }
 
   test("life talents add starting lives, and lives never reset between levels") {

@@ -68,6 +68,8 @@ object Experiments:
       |  --promote <f>        share of a wave's unit moved one variant up or down per step
       |                       (default 0.25)
       |  --resize <f>         share of a wave added or removed per step, at least 1 (default 0.1)
+      |  --keep-length        a resized wave keeps its length: added units shorten the gaps
+      |                       between spawns (denser), removed ones lengthen them
       |  --global-hp <f>      enemy health factor per global step (default 1.1)
       |  --global-speed <f>   enemy speed factor per global step (default 1.03)
       |  --towers <a,b,..>    towers the explorer may use (default all)
@@ -91,6 +93,8 @@ object Experiments:
       |                       win with no unlock (default 0.3); too hard when nothing wins
       |  --promote <f>        share of a wave's unit moved one variant per step (default 0.25)
       |  --resize <f>         share of a wave added or removed per step (default 0.1)
+      |  --keep-length        a resized wave keeps its length: added units shorten the gaps
+      |                       between spawns (denser), removed ones lengthen them
       |  --seed <long>        first seed (default 1)
       |  --think <n>          bot acts every n steps (default 5)
       |  --biome <id>         biome to play in (default front-lawn)
@@ -184,7 +188,7 @@ object Experiments:
     val o = Opts.parse(args, BalanceUsage,
       valued = Set("--pass", "--level", "--rounds", "--batches", "--batch-size", "--eval-games", "--easy-win",
         "--easy-lives", "--hard-win", "--promote", "--resize", "--global-hp", "--global-speed", "--seed", "--think",
-        "--biome", "--out", "--config", "--towers"))
+        "--biome", "--out", "--config", "--towers"), flagged = Set("--keep-length"))
     loadConfig(o)
     val settings = Balance.Settings(
       rounds = o.int("--rounds", 6),
@@ -194,7 +198,8 @@ object Experiments:
       easyWin = o.dbl("--easy-win", 0.9),
       easyLives = o.dbl("--easy-lives", 2.0),
       hardWin = o.dbl("--hard-win", 0.5),
-      steps = Balance.Steps(promoteShare = o.dbl("--promote", 0.25), resizeShare = o.dbl("--resize", 0.1)),
+      steps = Balance.Steps(promoteShare = o.dbl("--promote", 0.25), resizeShare = o.dbl("--resize", 0.1),
+        keepLength = o.flag("--keep-length")),
       seed = o.long("--seed", 1L),
       think = o.int("--think", 5),
       biome = o.str("--biome", Scenario.DefaultBiome),
@@ -223,7 +228,8 @@ object Experiments:
   def stage(args: List[String]): Unit =
     val o = Opts.parse(args, StageUsage,
       valued = Set("--level", "--rounds", "--games", "--combo-games", "--first-low", "--lives-low", "--lives-high", "--win-bar",
-        "--good-share", "--promote", "--resize", "--seed", "--think", "--biome", "--out", "--config", "--record"))
+        "--good-share", "--promote", "--resize", "--seed", "--think", "--biome", "--out", "--config", "--record"),
+      flagged = Set("--keep-length"))
     loadConfig(o)
     val s = Stages.Settings(
       rounds = o.int("--rounds", 12),
@@ -234,7 +240,8 @@ object Experiments:
       livesHigh = o.dbl("--lives-high", 3.0),
       goodShare = o.dbl("--good-share", 0.3),
       winBar = o.dbl("--win-bar", 0.5),
-      steps = Balance.Steps(promoteShare = o.dbl("--promote", 0.25), resizeShare = o.dbl("--resize", 0.1)),
+      steps = Balance.Steps(promoteShare = o.dbl("--promote", 0.25), resizeShare = o.dbl("--resize", 0.1),
+        keepLength = o.flag("--keep-length")),
       seed = o.long("--seed", 1L),
       think = o.int("--think", 5),
       biome = o.str("--biome", Scenario.DefaultBiome)
