@@ -23,7 +23,9 @@ object Experiments:
 
   private val BenchUsage =
     """usage: headless bench [options]
-      |  --bot <name>         naive | spender | explorer | explorer-fresh (default explorer)
+      |  --bot <name>         naive | spender | builder | explorer | explorer-fresh (default explorer)
+      |                       spender builds only the cheapest tower; builder uses every
+      |                       tower it may, picking the best damage per gold
       |                       explorer continues from its saved knowledge and saves what it
       |                       learns; explorer-fresh starts from nothing and saves nothing
       |  --learn <n>          training batches a learning bot plays before it is measured
@@ -315,6 +317,31 @@ object Experiments:
     LevelGen.writeInto(into, o.int("--count", 5), size, o.long("--seed", 42L), shape, biome) match
       case Left(err) => Opts.fail(s"could not add levels to $into: $err", GenUsage)
       case Right(n)  => println(s"added $n generated levels (${size}x$size) to $into")
+
+  private val SetupUsage =
+    """usage: headless setup <file.json>
+      |  plays the simulations a setup file describes: which config, bot, biome and start
+      |  level, and what the player has by then (unlocked towers, talents, draft picks,
+      |  lives already lost). One line per loadout. Make and edit setup files in the
+      |  simulator window: scripts/simulator.sh""".stripMargin
+
+  def setup(args: List[String]): Unit =
+    args match
+      case ("--help" | "-h") :: _ =>
+        println(SetupUsage)
+        throw CommandDone
+      case path :: Nil =>
+        val s = SimSetup.load(path).fold(err => Opts.fail(err, SetupUsage), identity)
+        val cfg = SimSetup.loadConfig(s).fold(err => Opts.fail(s"config error: $err", SetupUsage), identity)
+        Config.use(cfg)
+        SimSetup.problems(cfg, s) match
+          case ps if ps.nonEmpty => Opts.fail(ps.mkString("; "), SetupUsage)
+          case _ =>
+        SimSetup.warnings(cfg, s).foreach(w => println(s"note: $w"))
+        println(s"${if s.name.nonEmpty then s.name + ": " else ""}L${s.level} biome=${s.biome} bot=${s.bot} " +
+          s"talents=${SimSetup.withPrereqs(cfg, s.talents).mkString("+")} lives down=${s.livesLost}")
+        SimSetup.run(cfg, s, result = r => println(f"  ${r.loadout.mkString(" + ")}%-40s ${r.stats.line}"))
+      case _ => Opts.fail("expected one setup file", SetupUsage)
 
   def replay(args: List[String]): Unit =
     args match

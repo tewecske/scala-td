@@ -200,7 +200,19 @@ object ConfigLoader:
           c = c.next
         b.result()
 
-    LoadoutConfig(maxSel, defSel, unlocked, locked, costs)
+    val levelsV = v.get("unlockLevels")
+    val levels =
+      if levelsV == null then Map.empty[String, Int]
+      else
+        (0 until levelsV.size).map { idx =>
+          val c = levelsV.get(idx)
+          if !locked.contains(c.name) then
+            throw IllegalArgumentException(s"loadout unlockLevels references '${c.name}', which is not locked")
+          if c.asInt() < 0 then throw IllegalArgumentException(s"loadout unlockLevels for '${c.name}' is negative")
+          c.name -> c.asInt()
+        }.toMap
+
+    LoadoutConfig(maxSel, defSel, unlocked, locked, costs, levels)
 
   /** A tower. Its hit effects (burn, slow, landing spot, puddle bonus) used to come
     * from its damage kind and the combat section; a config written before they

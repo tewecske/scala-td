@@ -53,6 +53,24 @@
 		"puddleMult": 1.0
 	},
 	{
+		"name": "Ice Cube",
+		"cost": 70,
+		"color": "#9CA2E1",
+		"range": 3.0,
+		"fireInterval": 0.6,
+		"damage": 5.0,
+		"projectileSpeed": 13.75,
+		"kind": "Slow",
+		"splashRadius": 0.0,
+		"targeting": "First",
+		"burnDps": 0.0,
+		"burnDuration": 0.0,
+		"slowFactor": 0.5,
+		"slowDuration": 2.0,
+		"groundTarget": false,
+		"puddleMult": 1.0
+	},
+	{
 		"name": "Matchbox",
 		"cost": 80,
 		"color": "#ED7477",
@@ -71,22 +89,22 @@
 		"puddleMult": 1.0
 	},
 	{
-		"name": "Ice Cube",
-		"cost": 70,
-		"color": "#9CA2E1",
+		"name": "Static Box",
+		"cost": 90,
+		"color": "#7FD8FF",
 		"range": 3.0,
-		"fireInterval": 0.6,
-		"damage": 5.0,
-		"projectileSpeed": 13.75,
-		"kind": "Slow",
+		"fireInterval": 0.7,
+		"damage": 9.0,
+		"projectileSpeed": 14.0,
+		"kind": "Shock",
 		"splashRadius": 0.0,
 		"targeting": "First",
 		"burnDps": 0.0,
 		"burnDuration": 0.0,
-		"slowFactor": 0.5,
-		"slowDuration": 2.0,
+		"slowFactor": 1.0,
+		"slowDuration": 0.0,
 		"groundTarget": false,
-		"puddleMult": 1.0
+		"puddleMult": 1.5
 	},
 	{
 		"name": "Hole Punch",
@@ -123,24 +141,6 @@
 		"slowDuration": 0.0,
 		"groundTarget": true,
 		"puddleMult": 1.0
-	},
-	{
-		"name": "Static Box",
-		"cost": 90,
-		"color": "#7FD8FF",
-		"range": 3.0,
-		"fireInterval": 0.7,
-		"damage": 9.0,
-		"projectileSpeed": 14.0,
-		"kind": "Shock",
-		"splashRadius": 0.0,
-		"targeting": "First",
-		"burnDps": 0.0,
-		"burnDuration": 0.0,
-		"slowFactor": 1.0,
-		"slowDuration": 0.0,
-		"groundTarget": false,
-		"puddleMult": 1.5
 	}
 ],
 "enemies": [
@@ -1810,18 +1810,28 @@
 		"Cuboid"
 	],
 	"unlocked": [
-		"Cuboid",
-		"Matchbox",
-		"Ice Cube",
-		"Jack-in-the-Box"
+		"Cuboid"
 	],
 	"locked": [
+		"Ice Cube",
+		"Matchbox",
+		"Static Box",
 		"Hole Punch",
-		"Static Box"
+		"Jack-in-the-Box"
 	],
 	"unlockCosts": {
+		"Ice Cube": 20,
+		"Matchbox": 20,
+		"Static Box": 30,
 		"Hole Punch": 40,
-		"Static Box": 30
+		"Jack-in-the-Box": 40
+	},
+	"unlockLevels": {
+		"Ice Cube": 1,
+		"Matchbox": 2,
+		"Static Box": 3,
+		"Hole Punch": 4,
+		"Jack-in-the-Box": 5
 	}
 },
 "colors": {

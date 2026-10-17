@@ -118,7 +118,8 @@ class MetaTest extends TestBase:
     val locked = Config.Loadout.locked.head
     val cost   = Config.Loadout.unlockCosts(locked)
     assert(!Meta.unlockedTowers(MetaData.empty).contains(locked))
-    val next = Meta.purchaseTower(MetaData(cost, Vector.empty), locked).toOption.get
+    val ready = MetaData(cost, Vector.empty, bestCleared = Config.Loadout.levelsToUnlock(locked))
+    val next = Meta.purchaseTower(ready, locked).toOption.get
     assertEquals(next.balance, 0)
     assert(Meta.unlockedTowers(next).contains(locked))
   }
@@ -126,7 +127,7 @@ class MetaTest extends TestBase:
   test("tower purchase rejects short balance, duplicates and starting towers") {
     val locked = Config.Loadout.locked.head
     val cost   = Config.Loadout.unlockCosts(locked)
-    assert(Meta.purchaseTower(MetaData(cost - 1, Vector.empty), locked).isLeft)
+    assert(Meta.purchaseTower(MetaData(cost - 1, Vector.empty, bestCleared = 99), locked).isLeft)
     val owned = MetaData(cost * 2, Vector.empty, Vector(locked))
     assert(Meta.purchaseTower(owned, locked).isLeft)
     assert(Meta.purchaseTower(owned, Config.Loadout.unlocked.head).isLeft)
@@ -134,4 +135,32 @@ class MetaTest extends TestBase:
 
   test("every locked tower in the bundled config has a price") {
     Config.Loadout.locked.foreach(t => assert(Config.Loadout.unlockCosts.contains(t), t))
+  }
+
+class TowerUnlockGateTest extends TestBase:
+
+  test("a locked tower can only be bought once the player's best run cleared its level") {
+    val tower = "Matchbox"
+    val needs = Config.Loadout.levelsToUnlock(tower)
+    assert(needs > 0)
+    val rich  = MetaData(balance = 999, talents = Vector.empty)
+    assert(Meta.purchaseTower(rich.copy(bestCleared = needs - 1), tower).left.exists(_.contains(s"clear level $needs")))
+    assert(Meta.purchaseTower(rich.copy(bestCleared = needs), tower).exists(_.towers.contains(tower)))
+    assert(Meta.purchaseTower(MetaData(0, Vector.empty, bestCleared = needs), tower).isLeft, "still costs currency")
+  }
+
+  test("a finished run raises the best levels cleared, never lowers it, and the save keeps it") {
+    val lostOnThird = Sim.initial(RunContext(seed = 1L)).copy(level = 2, lives = 0)
+    assertEquals(Meta.bank(lostOnThird, MetaData.empty).bestCleared, 2)
+    assertEquals(Meta.bank(lostOnThird, MetaData(0, Vector.empty, bestCleared = 4)).bestCleared, 4)
+    val path = java.nio.file.Files.createTempFile("meta-best", ".json").toString
+    Meta.save(path, MetaData(3, Vector("filler-damage"), Vector("Ice Cube"), bestCleared = 3))
+    assertEquals(Meta.load(path).map(_.bestCleared), Right(3))
+  }
+
+  test("unlock levels survive the config writer and only name locked towers") {
+    val back = ConfigLoader.parse(ConfigWriter.toJson(Config.game)).fold(e => fail(e), identity)
+    assertEquals(back.loadout.unlockLevels, Config.Loadout.unlockLevels)
+    val bad = ConfigWriter.toJson(Config.game).replace("\"unlockLevels\": {", "\"unlockLevels\": { \"Cuboid\": 2,")
+    assert(ConfigLoader.parse(bad).left.exists(_.contains("unlockLevels")))
   }

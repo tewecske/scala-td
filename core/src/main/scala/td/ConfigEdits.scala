@@ -78,7 +78,7 @@ object ConfigEdits:
     cfg.copy(
       towers = cfg.towers.map(t => t.copy(name = r(t.name))),
       loadout = l.copy(defaultSelected = l.defaultSelected.map(r), unlocked = l.unlocked.map(r), locked = l.locked.map(r),
-        unlockCosts = l.unlockCosts.map((n, c) => r(n) -> c)),
+        unlockCosts = l.unlockCosts.map((n, c) => r(n) -> c), unlockLevels = l.unlockLevels.map((n, c) => r(n) -> c)),
       twists = cfg.twists.map(t => t.copy(targetTower = r(t.targetTower))))
 
   /** How a tower becomes available to the player. */
@@ -97,10 +97,10 @@ object ConfigEdits:
     val next = access match
       case TowerAccess.Starting =>
         l.copy(defaultSelected = without(l.defaultSelected) :+ name, unlocked = without(l.unlocked) :+ name,
-          locked = without(l.locked), unlockCosts = l.unlockCosts - name)
+          locked = without(l.locked), unlockCosts = l.unlockCosts - name, unlockLevels = l.unlockLevels - name)
       case TowerAccess.Unlocked =>
         l.copy(defaultSelected = without(l.defaultSelected), unlocked = without(l.unlocked) :+ name,
-          locked = without(l.locked), unlockCosts = l.unlockCosts - name)
+          locked = without(l.locked), unlockCosts = l.unlockCosts - name, unlockLevels = l.unlockLevels - name)
       case TowerAccess.Locked =>
         l.copy(defaultSelected = without(l.defaultSelected), unlocked = without(l.unlocked),
           locked = without(l.locked) :+ name, unlockCosts = l.unlockCosts.updated(name, l.unlockCosts.getOrElse(name, unlockCost)))

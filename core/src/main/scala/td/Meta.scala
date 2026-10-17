@@ -4,10 +4,11 @@ import com.badlogic.gdx.utils.{JsonReader, JsonValue, JsonWriter}
 import java.io.{File, PrintWriter}
 import scala.io.Source
 
-/** Permanent meta-progression: currency balance, owned talent ids, and towers
-  * bought out of the loadout's locked list.
+/** Permanent meta-progression: currency balance, owned talent ids, towers
+  * bought out of the loadout's locked list, and the most levels cleared in one
+  * run (which gates some tower unlocks).
   */
-case class MetaData(balance: Int, talents: Vector[String], towers: Vector[String] = Vector.empty)
+case class MetaData(balance: Int, talents: Vector[String], towers: Vector[String] = Vector.empty, bestCleared: Int = 0)
 
 object MetaData:
   val empty: MetaData = MetaData(0, Vector.empty)
@@ -61,6 +62,7 @@ object Meta:
     root.addChild("balance", JsonValue(data.balance))
     root.addChild("talents", strArray(data.talents))
     root.addChild("towers", strArray(data.towers))
+    root.addChild("bestCleared", JsonValue(data.bestCleared.toLong))
     val f = File(path)
     Option(f.getParentFile).foreach(_.mkdirs())
     val w = new PrintWriter(f)
@@ -70,7 +72,7 @@ object Meta:
   def active(): MetaData = load().getOrElse(MetaData.empty)
 
   private def parse(root: JsonValue): MetaData =
-    MetaData(root.getInt("balance", 0), strArray(root, "talents"), strArray(root, "towers"))
+    MetaData(root.getInt("balance", 0), strArray(root, "talents"), strArray(root, "towers"), root.getInt("bestCleared", 0))
 
   private def strArray(root: JsonValue, name: String): Vector[String] =
     val child = root.get(name)
@@ -86,14 +88,17 @@ object Meta:
   /** Currency earned at run end, scaled by progress; win adds a flat bonus.
     * Every number comes from the `meta` config section.
     */
+  /** Levels a finished run cleared. */
+  def levelsCleared(w: World): Int = if w.won then Config.levelCount else w.level
+
   def payout(w: World): Int =
-    val levels = if w.won then Config.levelCount else w.level
+    val levels = levelsCleared(w)
     val base   = levels * Config.PayoutPerLevel + w.wave * Config.PayoutPerWave
     val bonus  = if w.won then Config.PayoutWinBonus else 0
     math.max(0, base + bonus)
 
   def bank(w: World, data: MetaData): MetaData =
-    data.copy(balance = data.balance + payout(w))
+    data.copy(balance = data.balance + payout(w), bestCleared = math.max(data.bestCleared, levelsCleared(w)))
 
   def bankRun(w: World): MetaData =
     val data = load().getOrElse(MetaData.empty)
@@ -164,7 +169,9 @@ object Meta:
     if !Config.Loadout.locked.contains(name) then Left(s"tower '$name' is not locked")
     else if data.towers.contains(name) then Left(s"tower '$name' already unlocked")
     else
-      Config.Loadout.unlockCosts.get(name) match
+      val needs = Config.Loadout.levelsToUnlock(name)
+      if data.bestCleared < needs then Left(s"clear level $needs first to unlock $name")
+      else Config.Loadout.unlockCosts.get(name) match
         case None => Left(s"tower '$name' cannot be bought")
         case Some(cost) =>
           if data.balance < cost then Left(s"tower '$name' costs $cost, balance is ${data.balance}")

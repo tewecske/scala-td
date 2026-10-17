@@ -8,8 +8,9 @@ Scala 3 tower-defense game on libGDX (LWJGL3 desktop backend). Multi-project sbt
 - `nix run .#shots -- [WxH] [dir]` — screenshot every screen on a virtual display (default 1920x1080 into `data/screenshots/tour-<WxH>`)
 - `sbt compile` — build
 - `sbt "game/run"` — launches the GUI window; needs a display, so not runnable headless
-- `scripts/editor.sh` (`scripts\editor.cmd`, `sbt editor/run`) — config editor window (`EditorApp`: enemies, levels & waves, towers, biomes, talents, economy & combat); saves `./config.json`, which the game loads at start and on R. The older all-fields form: `sbt "editor/runMain td.ConfigEditorApp"`
+- `scripts/editor.sh` (`scripts\editor.cmd`, `sbt editor/run`) — config editor window (`EditorApp`: enemies, levels & waves, towers, biomes, talents, economy & combat); saves `./config.json`, which the game loads at start and on R
 - `scripts/sim.sh` — headless simulations (bots, balancing, replays): no args prints examples, `--help` every command and option
+- `scripts/simulator.sh` (`scripts\simulator.cmd`, `sbt "editor/runMain td.SimulatorApp"`) — simulator window: set up a start point (level, unlocked towers, talents, draft picks, lives lost), run a bot on it, save it as a setup file (`data/sims/*.json`) that `scripts/sim.sh setup <file>` runs too. Bots: `builder` uses every tower its loadout allows, `spender` only the cheapest
 - `sbt test` — munit unit tests (headless-safe). Tests are wired in by `TASKS/task01`; see `TASKS/context.md` section 5 for the testing convention. No scalafmt, no CI.
 
 ## Architecture

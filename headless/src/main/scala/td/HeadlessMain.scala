@@ -26,6 +26,9 @@ object HeadlessMain:
       |  balance [options]      retune levels until the explorer stops beating them easily
       |  stage [options]        balance levels one at a time against the spender, with every
       |                         unlock and draft pick a player could have by then
+      |  setup <file>           run the simulations a setup file describes (start level,
+      |                         unlocked towers, talents, ...); make one in the simulator
+      |                         window (scripts/simulator.sh)
       |  gen-levels [options]   add random levels to the config
       |  replay <file>          check a saved game replays exactly
       |  progress [options]     summarize the progress log (games, wins, kills, time)
@@ -35,7 +38,7 @@ object HeadlessMain:
       |  --config <path>      load config from JSON file (default bundled)
       |  --max-levels <n>     stop after reaching level index n (0-based)
       |  --max-steps <n>      hard cap on Sim.step calls (default 1000000)
-      |  --bot <name>         naive | spender | explorer | explorer-fresh | none (default naive)
+      |  --bot <name>         naive | spender | builder | explorer | explorer-fresh | none (default naive)
       |  --think <n>          bot acts every n steps (default 1 for naive, 5 otherwise)
       |  --no-bot             same as --bot none
       |  --record             save this game as a replay in data/replays
@@ -121,6 +124,7 @@ object HeadlessMain:
       case "train" :: rest   => Experiments.train(rest)
       case "balance" :: rest => Experiments.balance(rest)
       case "stage" :: rest   => Experiments.stage(rest)
+      case "setup" :: rest   => Experiments.setup(rest)
       case "gen-levels" :: rest => Experiments.genLevels(rest)
       case "replay" :: rest  => Experiments.replay(rest)
       case "progress" :: rest => Experiments.progress(rest)

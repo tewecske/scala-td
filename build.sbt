@@ -44,11 +44,12 @@ lazy val game = (project in file("game"))
   )
 
 lazy val editor = (project in file("editor"))
-  .dependsOn(core)
+  // headless: the simulator window plays games with its bots
+  .dependsOn(core, headless)
   .settings(commonSettings)
   .settings(
     name := "editor",
-    // the level / wave / enemy editor; the older all-fields form is td.ConfigEditorApp
+    // the config editor window; td.SimulatorApp is the simulation window
     Compile / mainClass := Some("td.EditorApp"),
     // own JVM, started in the repo root so "config.json" is the file the game reloads
     fork := true,

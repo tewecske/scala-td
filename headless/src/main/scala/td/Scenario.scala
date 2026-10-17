@@ -21,7 +21,8 @@ object Scenario:
       wavesStarted: Int,
       leaks: Int,
       steps: Int,
-      timedOut: Boolean
+      timedOut: Boolean,
+      builtByType: Map[String, Int] = Map.empty
   )
 
   /** A finished game plus every command the player issued, keyed by the step it
@@ -52,6 +53,7 @@ object Scenario:
     var w     = Replay.scenarioWorld(seed, biome, level, setup)
     var spent = 0
     var built = 0
+    val byType = scala.collection.mutable.Map.empty[String, Int]
     var steps = 0
     var goldAtEnd = w.gold
     val livesStart = w.lives
@@ -67,6 +69,7 @@ object Scenario:
       val added = next.towers.drop(w.towers.size)
       spent += added.map(_.spec.cost).sum
       built += added.size
+      added.foreach(t => byType(t.tpe) = byType.getOrElse(t.tpe, 0) + 1)
       if next.wave > w.wave then
         marks += Mark(level, next.wave, (steps + 1) * Config.MaxStepDt, next.kills, next.lives)
       // A skipped draft moves straight on and resets gold; report the level's own gold.
@@ -84,7 +87,8 @@ object Scenario:
       wavesStarted = w.wave,
       leaks = w.leaks,
       steps = steps,
-      timedOut = !finished(w, level)
+      timedOut = !finished(w, level),
+      builtByType = byType.toMap
     )
     val wallMs = (System.nanoTime() - began) / 1000000L
     Game(seed, outcome, Replay.resultOf(w, steps, Some(level)), log.result(), marks.result(), wallMs, setup)

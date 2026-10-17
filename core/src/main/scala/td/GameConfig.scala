@@ -114,8 +114,11 @@ case class LoadoutConfig(
     defaultSelected: Vector[String],
     unlocked: Vector[String],
     locked: Vector[String],
-    unlockCosts: Map[String, Int] = Map.empty
-)
+    unlockCosts: Map[String, Int] = Map.empty,
+    unlockLevels: Map[String, Int] = Map.empty
+):
+  /** Levels a player must have cleared (in their best run) before buying `tower`. */
+  def levelsToUnlock(tower: String): Int = unlockLevels.getOrElse(tower, 0)
 
 /** Out-of-run meta-progression economy: how a finished run converts progress
   * into permanent currency.

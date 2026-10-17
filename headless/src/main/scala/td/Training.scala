@@ -12,14 +12,20 @@ final case class Stats(
     goldLeftWon: Double,
     goldSpent: Double,
     towers: Double,
-    steps: Double
+    steps: Double,
+    towersByType: Map[String, Double] = Map.empty
 ):
   def winRate: Double = if games == 0 then 0.0 else wins.toDouble / games
 
   def line: String =
     s"wins=$wins/$games (${Stats.fmt(100 * winRate)}%)  " +
       s"livesLostWhenWon=${Stats.fmt(livesLostWon)}  goldLeftWhenWon=${Stats.fmt(goldLeftWon)}  " +
-      s"goldSpent=${Stats.fmt(goldSpent)}  towers=${Stats.fmt(towers)}  steps=${Stats.fmt(steps)}"
+      s"goldSpent=${Stats.fmt(goldSpent)}  towers=${Stats.fmt(towers)}  steps=${Stats.fmt(steps)}" +
+      (if towersByType.nonEmpty then "  built: " + mix else "")
+
+  /** Mean towers built per game by type, most first ("Cuboid 4.2, Ice Cube 1.1"). */
+  def mix: String =
+    towersByType.toVector.sortBy(-_._2).map((n, c) => s"$n ${Stats.fmt(c)}").mkString(", ")
 
 object Stats:
   def fmt(x: Double): String = "%.1f".format(x)
@@ -34,7 +40,9 @@ object Stats:
       goldLeftWon = mean(won.map(_.goldLeft.toDouble)),
       goldSpent = mean(outcomes.map(_.goldSpent.toDouble)),
       towers = mean(outcomes.map(_.towersBuilt.toDouble)),
-      steps = mean(outcomes.map(_.steps.toDouble))
+      steps = mean(outcomes.map(_.steps.toDouble)),
+      towersByType = outcomes.flatMap(_.builtByType.keys).distinct.map(n =>
+        n -> mean(outcomes.map(_.builtByType.getOrElse(n, 0).toDouble))).toMap
     )
 
 object Training:

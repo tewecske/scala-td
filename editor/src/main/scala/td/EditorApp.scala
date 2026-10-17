@@ -785,7 +785,7 @@ final class TowersTab(state: EditorState) extends JPanel(BorderLayout()):
   private def accessLabel(a: TowerAccess): String = a match
     case TowerAccess.Starting => "starting: in a new player's loadout"
     case TowerAccess.Unlocked => "free: can be picked for any run"
-    case TowerAccess.Locked   => "locked: bought with meta currency"
+    case TowerAccess.Locked   => "locked: bought with meta currency, maybe after a level"
 
   private def describe(t: TowerSpec): String =
     val dps = t.damage / math.max(0.01f, t.fireInterval)
@@ -858,6 +858,10 @@ final class TowersTab(state: EditorState) extends JPanel(BorderLayout()):
         f.field("Unlock cost", Controls.stepper(0, 500, state.cfg.loadout.unlockCosts.getOrElse(t.name, 30), v =>
           state.update(c => c.copy(loadout = c.loadout.copy(unlockCosts = c.loadout.unlockCosts.updated(t.name, v))))),
           "Meta currency to unlock it for good")
+        f.field("Unlocks after clearing", Controls.stepper(0, 30, state.cfg.loadout.levelsToUnlock(t.name), v =>
+          state.update(c => c.copy(loadout = c.loadout.copy(unlockLevels =
+            if v == 0 then c.loadout.unlockLevels - t.name else c.loadout.unlockLevels.updated(t.name, v))))),
+          "Levels the player must have cleared in one run before it can be bought (0 = any time)")
       val twists = state.cfg.twists.filter(_.targetTower == t.name)
       if twists.nonEmpty then f.full(JLabel(s"Run twists that change it: ${twists.map(_.name).mkString(", ")}"))
       right.add(JScrollPane(f.finish()), BorderLayout.CENTER)
@@ -999,6 +1003,23 @@ object TalentsTab:
     case "loadoutSlots"    => "more towers per run"
     case "reroll"          => "can reroll the draft"
     case other             => s"$other (not in effect)"
+
+  /** What a talent does with its numbers, e.g. "+25% fire damage" or "+1 lives". */
+  def describe(t: Talent): String =
+    val p = t.effect.params
+    def pct(v: Float) = s"${math.round(v * 100)}%"
+    t.effect.kind match
+      case "kindDamageBonus" =>
+        p.toVector.filter(_._2 != 0f).sortBy(_._1)
+          .map((k, v) => s"+${pct(v)} ${if k == "slow" then "frost" else k} damage").mkString(", ")
+      case "shred"      => s"hits shred ${pct(p.getOrElse("perHit", 0f))} resistance, up to ${pct(p.getOrElse("max", 0f))}"
+      case "critChance" => s"+${pct(p.getOrElse("chance", 0f))} critical hit chance"
+      case "critDamage" => s"+${pct(p.getOrElse("mult", 0f))} critical hit damage"
+      case "extraLives" => s"+${p.getOrElse("lives", 0f).toInt} lives"
+      case "startGold"  => s"+${p.getOrElse("gold", 0f).toInt} start gold every level"
+      case "loadoutSlots" => s"+${p.getOrElse("slots", 0f).toInt} towers per run"
+      case k if p.contains("mult") => s"+${pct(p("mult"))} ${effectLabel(k).replaceFirst("^(more|faster) ", "")}"
+      case k => effectLabel(k)
 
   def paramLabel(key: String): String = key match
     case "mult"   => "Bonus"

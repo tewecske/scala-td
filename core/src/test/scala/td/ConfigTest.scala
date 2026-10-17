@@ -35,17 +35,12 @@ class ConfigTest extends TestBase:
     cfg.twists.foreach(t => assert(towerNames.contains(t.targetTower)))
   }
 
-  test("loadout config: max 3, Cuboid default, Hole Punch and Static Box locked, rest unlocked") {
+  test("loadout config: a new player has only the Cuboid; every other tower is bought with meta currency") {
     assertEquals(cfg.loadout.maxSelected, 3)
     assertEquals(cfg.loadout.defaultSelected, Vector("Cuboid"))
-    assertEquals(cfg.loadout.locked, Vector("Hole Punch", "Static Box"))
-    val unlocked = cfg.loadout.unlocked.toSet
-    assert(unlocked.contains("Cuboid"))
-    assert(unlocked.contains("Matchbox"))
-    assert(unlocked.contains("Ice Cube"))
-    assert(unlocked.contains("Jack-in-the-Box"))
-    // every tower is either unlocked or locked, with no gaps or overlaps
-    assertEquals((unlocked ++ cfg.loadout.locked.toSet), cfg.towers.map(_.name).toSet)
+    assertEquals(cfg.loadout.unlocked, Vector("Cuboid"))
+    assertEquals(cfg.loadout.locked.toSet, cfg.towers.map(_.name).toSet - "Cuboid")
+    assert(cfg.loadout.locked.forall(t => cfg.loadout.unlockCosts.get(t).exists(_ > 0)))
   }
 
   test("biome rosters reference existing enemies") {

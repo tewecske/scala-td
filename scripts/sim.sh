@@ -11,7 +11,7 @@ cd "$root"
 td="$root/scripts/td.sh"
 stamp="$root/headless/target/sim-compiled"
 
-commands=(run bench train balance stage gen-levels replay progress)
+commands=(run bench setup train balance stage gen-levels replay progress)
 
 examples() {
   cat <<'EOF'
@@ -26,6 +26,14 @@ Quick checks
       play the runs the game itself rolls (random biome and twist)
   scripts/sim.sh run --bot spender
       one full campaign, all levels, printed level by level
+  scripts/sim.sh bench --bot builder --level 2 --games 50 --biome cube-farm
+      the builder bot uses every tower it may (here all of them), picking by damage per gold
+
+Start points (unlocked towers, talents, draft picks, start level)
+  scripts/simulator.sh
+      window to set one up, run it and save it as a setup file
+  scripts/sim.sh setup data/sims/<name>.json
+      run a saved setup file; one result line per loadout
 
 Watch games in the GUI (main menu > REPLAYS)
   scripts/sim.sh bench --bot spender --level 1 --games 50 --record 2

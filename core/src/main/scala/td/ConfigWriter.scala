@@ -104,7 +104,8 @@ object ConfigWriter:
       "defaultSelected" -> arr(l.defaultSelected.map(str)),
       "unlocked"        -> arr(l.unlocked.map(str)),
       "locked"          -> arr(l.locked.map(str)),
-      "unlockCosts"     -> obj(l.locked.flatMap(t => l.unlockCosts.get(t).map(c => t -> num(c)))*)
+      "unlockCosts"     -> obj(l.locked.flatMap(t => l.unlockCosts.get(t).map(c => t -> num(c)))*),
+      "unlockLevels"    -> obj(l.locked.flatMap(t => l.unlockLevels.get(t).map(n => t -> num(n)))*)
     )
 
   private def tower(cfg: GameConfig, t: TowerSpec): JsonValue =

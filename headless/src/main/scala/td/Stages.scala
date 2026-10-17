@@ -73,7 +73,9 @@ object Stages:
     else
       val money   = budget(level, biome)
       val towers  = Meta.unlockedTowers(MetaData.empty).toVector.sorted.filterNot(defaultLoadout.contains)
-      val bought  = Config.Loadout.unlockCosts.toVector.sorted.collect { case (t, c) if c <= money => t }
+      // a run reaching `level` (0-based) has cleared `level` levels
+      val bought  = Config.Loadout.unlockCosts.toVector.sorted.collect {
+        case (t, c) if c <= money && Config.Loadout.levelsToUnlock(t) <= level => t }
       val unlocks: Vector[(Option[String], Setup)] =
         (None -> base) +:
           ((towers ++ bought).map(t => Some(s"tower:$t") -> base.copy(loadout = Vector(t))) ++

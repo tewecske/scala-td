@@ -26,7 +26,7 @@ object Tour:
       Step("settings", () => Phase.Settings(DisplaySettings(), Phase.Menu)),
       Step("talents", () => Phase.Talents(MetaData(12, Vector("filler-damage", "filler-lives")))),
       Step("briefing", () => Phase.Briefing(Sim.initial(RunGen.roll(7L)))),
-      Step("loadout", () => Phase.Loadout(RunGen.roll(7L), Vector("Cuboid", "Matchbox"), MetaData(35, Vector.empty))),
+      Step("loadout", () => Phase.Loadout(RunGen.roll(7L), Vector("Cuboid"), MetaData(35, Vector.empty, bestCleared = 1))),
       Step("game-10x10", () => Phase.Playing(battle(level = 0, steps = 900)), frames = 4),
       Step("game-14x14", () => Phase.Playing(battle(level = 5, steps = 1300)), frames = 40),
       Step("paused", () => Phase.Paused(battle(level = 0, steps = 900))),

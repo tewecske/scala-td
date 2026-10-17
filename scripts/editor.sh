@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Opens the level / wave / enemy editor (a separate window, not the game).
+# Opens the config editor (a separate window, not the game).
 # It opens ./config.json if there is one, else the bundled config; Save writes
 # ./config.json, which the game loads at start and when you press R.
 #   scripts/editor.sh [config file]

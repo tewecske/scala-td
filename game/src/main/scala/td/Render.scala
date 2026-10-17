@@ -623,7 +623,9 @@ class Render:
       val isLocked = locked.contains(t.name)
       val isSel    = selected.contains(t.name)
       val price    = Config.Loadout.unlockCosts.get(t.name)
-      val canBuy   = price.exists(_ <= meta.balance)
+      val needs    = Config.Loadout.levelsToUnlock(t.name)
+      val reached  = meta.bestCleared >= needs
+      val canBuy   = reached && price.exists(_ <= meta.balance)
       val base     = if isLocked then mix(surface, Config.PanelColor, 0.4f) else Config.ButtonFill
       val c        = if hovered(r) && (!isLocked || canBuy) then mix(base, Color.WHITE, 0.12f) else base
       if isSel then outline(r, 12f, 3f, t.color, c) else round(r, 12f, c)
@@ -633,7 +635,9 @@ class Render:
       text(t.name, r.x + 76f, r.top - 24f, TextStyle.Label, if isLocked then muted else text0)
       text(kindName(t.kind), r.x + 76f, r.y + 20f, TextStyle.Small, muted)
       if isLocked then
-        val label = price.fold(Messages.t("loadout.locked"))(c => Messages.t("loadout.unlock", c))
+        val label =
+          if !reached then Messages.t("loadout.needsLevel", needs)
+          else price.fold(Messages.t("loadout.locked"))(c => Messages.t("loadout.unlock", c))
         text(label, r.right - 24f, r.centerY, TextStyle.Button, if canBuy then accent else faint, Align.Right)
       else
         text(s"${t.cost}g", r.right - 24f, r.centerY, TextStyle.Stat, gold, Align.Right)
