@@ -33,14 +33,17 @@ final case class Replay(
 /** What a single-level game starts with besides the level itself: the towers
   * brought (empty = all), owned talents and relics, the augment picked in the
   * draft just before this level (held, waiting to be socketed), and the lives
-  * already lost on earlier levels (lives carry over in a run).
+  * already lost on earlier levels (lives carry over in a run). `rolled` plays the
+  * run the game itself would roll from the seed (random biome, twist and enemy
+  * speeds, see [[RunGen.roll]]) instead of the plain biome the scenario names.
   */
 final case class Setup(
     loadout: Vector[String] = Vector.empty,
     talents: Vector[String] = Vector.empty,
     relics: Vector[String] = Vector.empty,
     augment: Option[String] = None,
-    livesLost: Int = 0
+    livesLost: Int = 0,
+    rolled: Boolean = false
 ):
   def isEmpty: Boolean = this == Setup()
 
@@ -49,21 +52,27 @@ final case class Setup(
     val parts = Vector(
       if loadout.isEmpty then "all towers" else loadout.mkString("+"),
       if talents.isEmpty then "no talents" else talents.mkString("+")
-    ) ++ relics.map("relic:" + _) ++ augment.map("augment:" + _)
+    ) ++ relics.map("relic:" + _) ++ augment.map("augment:" + _) ++ Option.when(rolled)("rolled run")
     parts.mkString(" | ")
 
 object Replay:
 
-  /** The run a single-level game is played in: fixed biome, no talents or relics,
+  /** The run a single-level game is played in: a fixed biome with its resistances, no twist,
     * but enemies still draw their fork choices from the seed, just as a real run does.
+    * A rolled setup plays the run the game would roll from the seed instead.
     */
   def scenarioRun(seed: Long, biome: String, setup: Setup = Setup()): RunContext =
-    val lanes = Vector.iterate((Rng(seed), Vector.empty[Long]), 512) { case (rng, acc) =>
-      val (v, next) = rng.nextLong()
-      (next, acc :+ (v & Long.MaxValue))
-    }.last._2
-    RunContext(seed = seed, biome = biome, laneChoices = lanes, loadout = setup.loadout, talents = setup.talents,
-      relics = setup.relics, augments = setup.augment.toVector)
+    val run =
+      if setup.rolled then RunGen.roll(seed, setup.talents)
+      else
+        val lanes = Vector.iterate((Rng(seed), Vector.empty[Long]), 512) { case (rng, acc) =>
+          val (v, next) = rng.nextLong()
+          (next, acc :+ (v & Long.MaxValue))
+        }.last._2
+        val b = Config.biomes.find(_.id == biome)
+        RunContext(seed = seed, biome = biome, laneChoices = lanes, talents = setup.talents,
+          resistTheme = b.fold(RunContext(seed).resistTheme)(_.resistTheme), roster = b.fold(Vector.empty)(_.roster))
+    run.copy(loadout = setup.loadout, relics = setup.relics, augments = setup.augment.toVector)
 
   /** The world a replay starts from. The config must already be the recorded one. */
   def initialWorld(r: Replay): World =
@@ -75,7 +84,7 @@ object Replay:
     */
   def scenarioWorld(seed: Long, biome: String, level: Int, setup: Setup = Setup()): World =
     val w = Sim.initial(scenarioRun(seed, biome, setup))
-    w.copy(level = level, gold = Config.withBiome(biome)(Config.levelStartGold(level)), pendingAugment = setup.augment,
+    w.copy(level = level, gold = Sim.startGold(w.run, level), pendingAugment = setup.augment,
       lives = math.max(1, w.lives - setup.livesLost))
 
   /** The end state as one line, identical for identical games. */
@@ -116,6 +125,7 @@ object Replay:
       "relics"  -> arr(r.setup.relics.map(JsonValue(_))),
       "augment" -> r.setup.augment.fold(JsonValue(JsonValue.ValueType.nullValue))(JsonValue(_)),
       "livesLost" -> JsonValue(r.setup.livesLost.toLong),
+      "rolled"  -> JsonValue(r.setup.rolled),
       "commands" -> arr(r.commands.map { case (step, cmds) =>
         obj("step" -> JsonValue(step.toLong), "do" -> arr(cmds.map(encode)))
       })
@@ -142,7 +152,8 @@ object Replay:
             if l == null then Vector.empty else (0 until l.size).map(i => l.get(i).asString()).toVector
           val aug = root.get("augment")
           Setup(strings("loadout"), strings("talents"), strings("relics"),
-            if aug == null || aug.isNull then None else Some(aug.asString()), root.getInt("livesLost", 0))
+            if aug == null || aug.isNull then None else Some(aug.asString()), root.getInt("livesLost", 0),
+            root.getBoolean("rolled", false))
         },
         commands = (0 until cmds.size).map { i =>
           val entry = cmds.get(i)

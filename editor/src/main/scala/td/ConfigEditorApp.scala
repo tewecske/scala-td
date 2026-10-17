@@ -96,6 +96,7 @@ final class ConfigEditorFrame extends JFrame:
   private var talentsFs: Vector[(Vector[Field], Vector[String])] = Vector.empty
   private var loadoutCfg: LoadoutConfig = Config.Loadout
   private var loadedEnemies: Vector[EnemySpec] = Vector.empty
+  private var loadedBiomes: Vector[Biome] = Vector.empty
 
   setTitle("Config Editor")
   setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE)
@@ -123,6 +124,13 @@ final class ConfigEditorFrame extends JFrame:
       .map(o => e.copy(boss = o.boss, onDeath = o.onDeath, promotesTo = o.promotesTo, leakCost = o.leakCost))
       .getOrElse(e)
 
+  /** Biome fields the form doesn't show (board, levels, colors) come from the loaded config. */
+  private def keepUneditedBiomeFields(b: Biome): Biome =
+    loadedBiomes.find(_.id == b.id)
+      .map(o => b.copy(gridSize = o.gridSize, levels = o.levels, background = o.background, path = o.path,
+        build = o.build, gridLine = o.gridLine))
+      .getOrElse(b)
+
   private def buildWith(cfg: GameConfig): Unit =
     boardFs   = buildBoard(cfg.board)
     economyFs = buildEconomy(cfg.economy)
@@ -133,6 +141,7 @@ final class ConfigEditorFrame extends JFrame:
     towersFs  = cfg.towers.map(buildTower)
     enemiesFs = cfg.enemies.map(buildEnemy)
     loadedEnemies = cfg.enemies
+    loadedBiomes = cfg.biomes
     levelsFs  = cfg.levels.map(l => (buildLevel(l), l.waves.size))
     colorsFs  = buildColors(cfg.colors)
     lightingFs = buildLighting(cfg.lighting)
@@ -219,7 +228,7 @@ final class ConfigEditorFrame extends JFrame:
        colors  <- readColors(colorsFs)
       lighting <- readLighting(lightingFs)
       effects  <- readEffects(effectsFs)
-      biomes  <- sequence(biomesFs.map { (fs, keys) => readBiome(fs, keys) })
+      biomes  <- sequence(biomesFs.map { (fs, keys) => readBiome(fs, keys) }).map(_.map(keepUneditedBiomeFields))
       twists  <- sequence(twistsFs.map { (fs, keys) => readTwist(fs, keys) })
       relics  <- sequence(relicsFs.map { (fs, keys) => readRelic(fs, keys) })
       augments <- sequence(augmentsFs.map { (fs, keys) => readAugment(fs, keys) })
@@ -600,7 +609,8 @@ final class ConfigEditorFrame extends JFrame:
         FloatField("resistTheme.primaryAmount", 0f, 1f, b.resistTheme.primaryAmount),
         EnumField("resistTheme.secondary", DamageKind.values.map(_.toString).toVector,
                   b.resistTheme.secondary.toString),
-        FloatField("resistTheme.secondaryAmount", 0f, 1f, b.resistTheme.secondaryAmount)
+        FloatField("resistTheme.secondaryAmount", 0f, 1f, b.resistTheme.secondaryAmount),
+        BoolField("starter", b.starter)
       )
 
   private def readBiome(fs: Vector[Field], envKeys: Vector[String]): Either[String, Biome] =
@@ -617,13 +627,14 @@ final class ConfigEditorFrame extends JFrame:
       priAmt <- fs(resist + 1).asInstanceOf[FloatField].read
       sec    <- fs(resist + 2).asInstanceOf[EnumField].read
       secAmt <- fs(resist + 3).asInstanceOf[FloatField].read
+      starter <- fs(resist + 4).asInstanceOf[BoolField].read
     yield
       val env =
         if kind.trim.isEmpty || kind.trim == NoneName then None
         else Some(Effect(kind, params))
       Biome(id, name, roster, env, ResistTheme(
         DamageKind.values.find(_.toString == pri).get, priAmt,
-        DamageKind.values.find(_.toString == sec).get, secAmt))
+        DamageKind.values.find(_.toString == sec).get, secAmt), starter = starter)
 
   private def buildTwist(t: Twist): Vector[Field] =
     Vector[Field](

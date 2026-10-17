@@ -34,10 +34,10 @@ class JournalTest extends TestBase:
     assertEquals(d3.entries.head.tier, Precision.Studied)
   }
 
-  test("applyRun dedups biome and twist ids") {
+  test("applyRun dedups biome and twist ids, and records the starter biome the run opens in") {
     val run = RunContext(seed = 1L, biome = "cube-farm", twists = Vector("brittle"))
     val d   = JournalData.empty.applyRun(run).applyRun(run)
-    assertEquals(d.biomes, Vector("cube-farm"))
+    assertEquals(d.biomes, Vector(Config.starterBiome.get, "cube-farm"))
     assertEquals(d.twists, Vector("brittle"))
   }
 

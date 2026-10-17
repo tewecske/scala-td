@@ -202,10 +202,10 @@ object HeadlessMain:
     val began = System.nanoTime()
     while !done do
       if opts.bot != "none" && world.level != playerLevel then
-        player = Some(bootPlayer(opts.bot, world.run.biome, world.level, opts.seed))
+        player = Some(bootPlayer(opts.bot, world.biome, world.level, opts.seed))
         playerLevel = world.level
       val cmds = player match
-        case Some(p) if steps % think == 0 => Config.withContext(world.run.biome, world.level)(p.decide(world))
+        case Some(p) if steps % think == 0 => Config.withContext(world.biome, world.level)(p.decide(world))
         case _                             => Vector.empty
       if cmds.nonEmpty then log += (steps.toInt -> cmds)
       val before = world
@@ -250,12 +250,12 @@ object HeadlessMain:
     Players.create(bot, knowledge, seed).fold(err => sys.error(err), identity)
 
   private def summary(w: World, steps: Long): String =
-    Config.setActiveBiome(w.run.biome)
+    Config.setActiveBiome(w.biome)
     val levelsCleared = if w.won then Config.levelCount else w.level
     val state = if w.won then "WON" else if w.isOver then "LOST" else "STOPPED"
     List(
       s"seed=${w.run.seed}",
-      s"biome=${w.run.biome}",
+      s"biome=${w.biome}",
       s"levels_cleared=$levelsCleared",
       s"waves_reached=${w.wave}",
       s"lives=${w.lives}",

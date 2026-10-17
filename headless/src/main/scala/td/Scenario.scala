@@ -60,7 +60,7 @@ object Scenario:
     val began = System.nanoTime()
     while !finished(w, level) && steps < maxSteps do
       val cmds =
-        if steps % think == 0 then Config.withContext(biome, level)(player.decide(w))
+        if steps % think == 0 then Config.withContext(w.biome, level)(player.decide(w))
         else Vector.empty
       if cmds.nonEmpty then log += (steps -> cmds)
       val next  = Sim.step(w, Config.MaxStepDt, cmds)

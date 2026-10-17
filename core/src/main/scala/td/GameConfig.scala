@@ -230,7 +230,8 @@ case class Biome(
     background: Option[Color] = None,
     path: Option[Color] = None,
     build: Option[Color] = None,
-    gridLine: Option[Color] = None
+    gridLine: Option[Color] = None,
+    starter: Boolean = false
 )
 
 /** A twist that reroutes one tower kind: a nerf plus a silver-lining buff,

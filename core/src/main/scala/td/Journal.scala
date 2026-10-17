@@ -26,7 +26,7 @@ case class JournalData(entries: Vector[JournalEntry], biomes: Vector[String], tw
       copy(entries = entries.updated(idx, next))
 
   def applyRun(run: RunContext): JournalData =
-    copy(biomes = (biomes :+ run.biome).distinct, twists = (twists ++ run.twists).distinct)
+    copy(biomes = (biomes :+ Config.biomeAt(run.biome, 0) :+ run.biome).distinct, twists = (twists ++ run.twists).distinct)
 
 object JournalData:
   val empty: JournalData = JournalData(Vector.empty, Vector.empty, Vector.empty)

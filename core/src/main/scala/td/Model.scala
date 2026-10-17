@@ -184,6 +184,15 @@ case class World(
   def isOver: Boolean   = lives <= 0
   def inBreak: Boolean  = breakTimer > 0f
 
+  /** The biome this level is played in: every real run's first level is in the
+    * starter biome, the rest in the biome the run rolled.
+    */
+  def biome: String = Config.biomeAt(run.biome, level)
+
+  /** The resist layer enemies spawn with on this level. */
+  def resistTheme: ResistTheme =
+    if biome == run.biome then run.resistTheme else Config.biome(biome).resistTheme
+
 /** Player intent for one step. Kept as data so the simulation stays pure and
   * later roguelite choices (pick an upgrade, sell a tower) are just new cases.
   */
@@ -207,6 +216,8 @@ enum Phase:
   case Replaying(playback: Playback)
   case Playing(w: World)
   case Paused(w: World)
+  /** Display settings being edited; `back` is the screen to return to. */
+  case Settings(draft: DisplaySettings, back: Phase)
   case Recap(
       won: Boolean,
       level: Int,

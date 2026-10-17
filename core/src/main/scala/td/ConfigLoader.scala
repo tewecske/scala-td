@@ -99,6 +99,17 @@ object ConfigLoader:
     if biomes.isEmpty then throw IllegalArgumentException("at least one biome is required")
     if !biomes.exists(_.id == "tutorial") then
       throw IllegalArgumentException("a biome with id 'tutorial' is required")
+    // The starter biome hosts every run's first level, so it must be plain.
+    val starters = biomes.filter(_.starter)
+    if starters.size > 1 then
+      throw IllegalArgumentException(s"only one biome may be the starter, got ${starters.map(_.id).mkString(", ")}")
+    starters.foreach { b =>
+      if b.id == "tutorial" then throw IllegalArgumentException("the tutorial biome cannot be the starter")
+      if b.environment.isDefined then
+        throw IllegalArgumentException(s"starter biome '${b.id}' must not have an environment rule")
+      if b.resistTheme.primaryAmount != 0f || b.resistTheme.secondaryAmount != 0f then
+        throw IllegalArgumentException(s"starter biome '${b.id}' must not have resistances")
+    }
 
     val twists = arr(root, "twists").map(parseTwist(_, towerNames))
     requireUnique(twists.map(_.id), "twist")
@@ -450,7 +461,8 @@ object ConfigLoader:
       background = colorOpt("background"),
       path = colorOpt("path"),
       build = colorOpt("build"),
-      gridLine = colorOpt("gridLine")
+      gridLine = colorOpt("gridLine"),
+      starter = v.getBoolean("starter", false)
     )
 
   private def parseTwist(v: JsonValue, towerNames: Set[String]): Twist =

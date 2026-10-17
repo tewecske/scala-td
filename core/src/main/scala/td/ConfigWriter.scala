@@ -243,7 +243,8 @@ object ConfigWriter:
       b.background.map(c => "background" -> str(colorHex(c))) ++
       b.path.map(c => "path" -> str(colorHex(c))) ++
       b.build.map(c => "build" -> str(colorHex(c))) ++
-      b.gridLine.map(c => "gridLine" -> str(colorHex(c)))
+      b.gridLine.map(c => "gridLine" -> str(colorHex(c))) ++
+      (if b.starter then Seq("starter" -> JsonValue(true)) else Seq.empty)
     obj(fields*)
 
   private def twist(t: Twist): JsonValue =

@@ -126,6 +126,15 @@ object Config:
   def biome(id: String): Biome =
     current.biomes.find(_.id == id).getOrElse(sys.error(s"unknown biome '$id'"))
 
+  /** The plain biome every real run's first level is played in, if the config has one. */
+  def starterBiome: Option[String] = current.biomes.find(_.starter).map(_.id)
+
+  /** The biome level `level` (0-based) of a run in `runBiome` is played in. The
+    * tutorial keeps its own biome throughout.
+    */
+  def biomeAt(runBiome: String, level: Int): String =
+    if level == 0 && runBiome != "tutorial" then starterBiome.getOrElse(runBiome) else runBiome
+
   // -- twists -----------------------------------------------------------------
   def twists: Vector[Twist] = current.twists
   def twist(id: String): Twist =
@@ -220,79 +229,3 @@ object Config:
 
   def ShakeMagnitude: Float = current.effects.shake.magnitude
   def ShakeDuration: Float  = current.effects.shake.duration
-
-/** Axis-aligned rectangle in world units, y-up like the rest of libGDX. */
-case class Rect(x: Float, y: Float, w: Float, h: Float):
-  def contains(px: Float, py: Float): Boolean =
-    px >= x && px <= x + w && py >= y && py <= y + h
-  def centerX: Float = x + w / 2
-  def centerY: Float = y + h / 2
-
-/** Button rectangles, shared by the renderer and the click handler so the thing
-  * you see is always the thing you hit.
-  */
-object Ui:
-  private def bw = 220f
-  private def bh = 52f
-  private def cx = Config.WorldW / 2 - bw / 2
-
-  def Play  = Rect(cx, 320f, bw, bh)
-  def Tutorial = Rect(cx, 262f, bw, bh)
-  def Talents = Rect(cx, 204f, bw, bh)
-  def Retry = Rect(cx, 250f, bw, bh)
-  def Menu  = Rect(cx, 180f, bw, bh)
-  def PlayAgain = Rect(cx, 250f, bw, bh)
-  def Resume = Rect(cx, 250f, bw, bh)
-  def Exit   = Rect(cx, 180f, bw, bh)
-
-  /** Saved-replay list: eight rows per page, with paging and a back button. */
-  def Replays = Rect(cx, 146f, bw, bh)
-  def Progress = Rect(cx, 88f, bw, bh)
-  def ReplayRow(i: Int): Rect = Rect(cx - 220f, 470f - i * 48f, 440f, 40f)
-  def ReplayPrev: Rect = Rect(cx - 240f, 56f, 140f, bh)
-  def ReplayBack: Rect = Rect(cx - 70f, 56f, 140f, bh)
-  def ReplayNext: Rect = Rect(cx + 100f, 56f, 140f, bh)
-  val ReplaysPerPage: Int = 8
-  def replayPages(count: Int): Int = math.max(1, (count + ReplaysPerPage - 1) / ReplaysPerPage)
-
-  /** Pre-run briefing: a BEGIN button and a back-to-menu escape. */
-  def BriefingBegin = Rect(cx, 120f, bw, bh)
-  def BriefingBack  = Rect(cx, 56f, bw, bh)
-
-  /** Between-level draft: three offer rows plus a reroll button. */
-  def DraftOffer(i: Int): Rect = Rect(cx, 420f - i * 80f, bw, 60f)
-  def DraftReroll: Rect        = Rect(cx, 120f, bw, bh)
-
-  /** Pre-run loadout picker: one row per tower plus confirm/back buttons. */
-  def LoadoutRow(i: Int): Rect = Rect(cx - 200f, 456f - i * 58f, 400f, 50f)
-  def LoadoutConfirm: Rect     = Rect(cx, 110f, bw, bh)
-  def LoadoutBack: Rect        = Rect(cx, 56f, bw, bh)
-
-  /** Talent screen: fillers / cores / deeps laid out in three columns, ordered
-    * by layer. A row is clickable only when it is unlocked and affordable.
-    */
-  def talentOrder: Vector[Talent] =
-    Vector(TalentLayer.Filler, TalentLayer.Core, TalentLayer.Deep)
-      .flatMap(l => Config.talents.filter(_.layer == l))
-
-  def TalentRow(i: Int): Rect =
-    val t   = talentOrder(i)
-    val col = t.layer match
-      case TalentLayer.Filler => 0
-      case TalentLayer.Core   => 1
-      case TalentLayer.Deep   => 2
-    val inLayer = talentOrder.zipWithIndex.take(i).count((t2, _) => t2.layer == t.layer)
-    val x = 20f + col * 290f
-    val y = 470f - inLayer * 64f
-    Rect(x, y, 260f, 54f)
-
-  def TalentsBack: Rect = Rect(cx, 56f, bw, bh)
-
-  /** Developer overlay: a column of cheat buttons on the right panel, toggled
-    * with the back-quote key. Drawn on every screen while dev mode is on.
-    */
-  def DevGold100      = Rect(Config.BoardPx + 18f, 540f, Config.PanelPx - 36f, 38f)
-  def DevGold1000     = Rect(Config.BoardPx + 18f, 492f, Config.PanelPx - 36f, 38f)
-  def DevMeta100      = Rect(Config.BoardPx + 18f, 444f, Config.PanelPx - 36f, 38f)
-  def DevUnlockTowers = Rect(Config.BoardPx + 18f, 396f, Config.PanelPx - 36f, 38f)
-  def DevUnlockTalents= Rect(Config.BoardPx + 18f, 348f, Config.PanelPx - 36f, 38f)

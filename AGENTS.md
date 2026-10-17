@@ -12,7 +12,10 @@ Scala 3 tower-defense game on libGDX (LWJGL3 desktop backend). Multi-project sbt
 
 - All game rules live in `Sim` (`src/main/scala/td/Sim.scala`). `Sim.step(world, dt, cmds)` is a pure function of (state, time, input) and never touches libGDX — test it headlessly.
 - State is an immutable `World` case class (`Model.scala`); player intent is the `Command` enum, screens are the `Phase` enum.
-- `Main.scala` (`TdGame`) only wires input/screen selection; `Render.scala` only draws. Renderer uses ShapeRenderer + the built-in BitmapFont — no asset files, no asset pipeline.
+- `Main.scala` (`TdGame`) only wires input/screen selection; `Render.scala` only draws. Shapes via ShapeRenderer; text via TrueType fonts (`game/src/main/resources/fonts`, OFL-licensed Orbitron + Inter) rasterized by gdx-freetype at the window's pixel size (`Fonts.scala`). No other assets.
+- Screen layout lives in `Layout.scala` (game): every rectangle in UI units on a canvas of at least 1920x1080 that extends with the window's aspect ratio. Renderer and click handling share those rectangles. The board keeps one tile size on every map (the largest map just fits) and is centered; it is drawn in simulation coordinates through a transform (`Layout.toUi` / `Layout.toSim`), so changing the look never changes the sim.
+- Display settings (windowed / fullscreen / borderless, resolution) are saved in `data/settings.json` (`DisplaySettings`, core) and applied by `Display.scala` (game).
+- Screenshots: F12 in game saves to `data/screenshots`. `TD_TOUR=<dir> sbt game/run` visits every screen, saves a PNG of each and exits (`Tour.scala`); `TD_WINDOW=WxH` forces the window size.
 - Tuning constants are centralized: `Config.scala` (board/economy/combat), `Waves.scala` (difficulty curve), `Grid.scala` (route + path derivation).
 
 ## Gotchas

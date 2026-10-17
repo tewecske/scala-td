@@ -35,8 +35,9 @@ object RunGen:
       (acc :+ (v & Long.MaxValue), r2)
     }._1
 
-  /** Roll a real run: a non-tutorial biome (its resist theme + roster) and one
-    * twist. Deterministic: same seed => identical RunContext.
+  /** Roll a real run: the biome it moves on to after the starter level (its
+    * resist theme + roster) and one twist. Deterministic: same seed => identical
+    * RunContext.
     */
   def roll(seed: Long, talents: Vector[String] = Vector.empty): RunContext =
     val (biomeRng, twistRng) = Rng(seed).split()
@@ -71,9 +72,12 @@ object RunGen:
       laneChoices = rollLaneChoices(Rng(DraftGen.TutorialPoolSeed), biome.id)
     )
 
+  /** Any biome but the tutorial and the starter (which only hosts first levels);
+    * the starter itself when it is the only real one.
+    */
   private def pickBiome(rng: Rng): Biome =
-    val real = Config.biomes.filter(_.id != "tutorial")
-    if real.isEmpty then Config.biome("tutorial")
+    val real = Config.biomes.filter(b => b.id != "tutorial" && !b.starter)
+    if real.isEmpty then Config.biome(Config.starterBiome.getOrElse("tutorial"))
     else
       val (idx, _) = rng.nextInt(real.size)
       real(idx)

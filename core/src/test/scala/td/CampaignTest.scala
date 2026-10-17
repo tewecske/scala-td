@@ -97,6 +97,20 @@ class CampaignTest extends TestBase:
     assertEquals(next.gold, Config.levelStartGold(1))
   }
 
+  test("the start-gold talent adds its bonus to every level's start gold, not just the first") {
+    val bonus = Config.talents.find(_.id == "filler-start-gold").get.effect.params("gold").toInt
+    assert(bonus > 0)
+    val run   = RunContext(seed = 1L, talents = Vector("filler-start-gold"))
+    val w0    = Sim.initial(run)
+    assertEquals(w0.gold, Config.levelStartGold(0) + bonus)
+    val relic = Config.relics.head.id
+    val next  = Sim.step(w0.copy(gold = 0, draft = Some(Draft(Vector(DraftOffer.Relic(relic)), Config.RerollCost))),
+      Config.MaxStepDt, Vector(Command.PickRelic(relic)))
+    assertEquals(next.gold, Config.levelStartGold(1) + bonus)
+    assertEquals(Replay.scenarioWorld(1L, "front-lawn", 2, Setup(talents = Vector("filler-start-gold"))).gold,
+      Config.levelStartGold(2) + bonus)
+  }
+
   test("every level's first wave is its smallest and waves never shrink") {
     campaign.foreach { l =>
       val counts = l.waves.map(_.count)

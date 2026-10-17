@@ -35,7 +35,10 @@ lazy val game = (project in file("game"))
     run / baseDirectory := (ThisBuild / baseDirectory).value,
     libraryDependencies ++= Seq(
       "com.badlogicgames.gdx" % "gdx-backend-lwjgl3" % gdxVersion,
-      "com.badlogicgames.gdx" % "gdx-platform"       % gdxVersion classifier "natives-desktop"
+      "com.badlogicgames.gdx" % "gdx-platform"       % gdxVersion classifier "natives-desktop",
+      // Crisp text: TrueType fonts rasterized at the window's real pixel size.
+      "com.badlogicgames.gdx" % "gdx-freetype"          % gdxVersion,
+      "com.badlogicgames.gdx" % "gdx-freetype-platform" % gdxVersion classifier "natives-desktop"
     )
   )
 

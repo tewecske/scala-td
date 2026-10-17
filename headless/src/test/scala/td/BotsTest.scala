@@ -200,6 +200,24 @@ class BotsTest extends FunSuite:
     assertEquals(Replay.verify(loaded), game.result)
   }
 
+  test("a rolled game plays the run the game rolls from its seed and replays exactly") {
+    val dir   = Files.createTempDirectory("replays").toString
+    val setup = Setup(loadout = Vector("Cuboid"), rolled = true)
+    val seed  = (1L to 50L).find(s => RunGen.roll(s).biome != biome).get
+    val game  = Scenario.play(spender(seed), biome, 0, seed, 5, setup = setup)
+    val start = Replay.scenarioWorld(seed, biome, 0, setup)
+    assertEquals(start.run.biome, RunGen.roll(seed).biome)
+    assertEquals(start.run.twists, RunGen.roll(seed).twists)
+    val replay = Replay(
+      kind = "scenario", bot = "spender", seed = seed, biome = start.run.biome, level = 0, think = 5,
+      config = ReplayStore.saveConfig(dir, Config.game), result = game.result, steps = game.outcome.steps,
+      commands = game.commands, setup = setup
+    )
+    val loaded = Replay.parse(Files.readString(Paths.get(ReplayStore.write(dir, "r", replay)))).toOption.get
+    assertEquals(loaded, replay)
+    assertEquals(Replay.verify(loaded), game.result)
+  }
+
   test("level 1 is judged by lives lost: a clean sweep is too easy, a costly win is fine, a loss is too hard") {
     val s = Stages.Settings(1, 1, 1, firstLow = 0.6, livesLow = 1.0, livesHigh = 3.0, goodShare = 0.3, winBar = 0.5,
       Balance.Steps(0.25, 0.1), 1L, 5, biome)

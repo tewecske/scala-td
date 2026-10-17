@@ -1,6 +1,9 @@
 # Balance levels 1 and 2 against the spender, then record games to watch in the GUI.
 # Run with:  scripts/td.sh batch scripts/stage-pipeline.txt
+# Level 1 is always in the starter biome (front-lawn); level 2 on is in the biome the run rolled.
 stage --level 1,2
 bench --config data/balance/config.json --bot spender --level 1 --games 50 --record 2
-bench --config data/balance/config.json --bot spender --level 2 --games 50 --record 2
+bench --config data/balance/config.json --bot spender --level 2 --games 50 --record 2 --biome cube-farm
+bench --config data/balance/config.json --bot spender --level 2 --games 50 --record 2 --biome shipping-yard
+bench --config data/balance/config.json --bot spender --level 2 --games 50 --record 2 --biome cardboard-wastes
 run --config data/balance/config.json --bot spender --record

@@ -36,6 +36,8 @@ object Experiments:
       |  --biome <id>         biome to play in (default front-lawn)
       |  --record <n>         save the n best and n worst games as replays (default 0)
       |  --towers <a,b,..>    towers the bot may use (default all)
+      |  --rolled             play the runs the game rolls (random biome, twist and enemy
+      |                       speeds) instead of the plain biome
       |  --config <path>      load config from JSON file (default bundled)""".stripMargin
 
   private val TrainUsage =
@@ -94,6 +96,9 @@ object Experiments:
       |  --biome <id>         biome to play in (default front-lawn)
       |  --out <path>         balanced config (default data/balance/config.json); per-option
       |                       results go next to it as stage-L<n>.csv
+      |  --record <n>         replays saved per balanced level (default 2; 0 = none): level 1
+      |                       keeps the n best and worst games, later levels the best game
+      |                       of each unlock and the worst with no unlock
       |  --config <path>      start from this config JSON (default bundled)""".stripMargin
 
   private val GenUsage =
@@ -122,7 +127,8 @@ object Experiments:
   def bench(args: List[String]): Unit =
     val o = Opts.parse(args, BenchUsage,
       valued = Set("--bot", "--level", "--games", "--seed", "--think", "--biome", "--record", "--config", "--towers",
-        "--learn", "--learn-size"))
+        "--learn", "--learn-size"),
+      flagged = Set("--rolled"))
     loadConfig(o)
     val bot     = o.str("--bot", "explorer")
     val biome   = o.str("--biome", Scenario.DefaultBiome)
@@ -150,7 +156,7 @@ object Experiments:
       val played = (0 until games).toVector.map { i =>
         val s = seed + i
         val p = Players.create(bot, knowledge, s).getOrElse(Opts.fail(bot, BenchUsage))
-        Scenario.play(p, biome, level, s, think, setup = Setup(loadout = towers))
+        Scenario.play(p, biome, level, s, think, setup = Setup(loadout = towers, rolled = o.flag("--rolled")))
       }
       val enemies = Scenario.enemyCount(biome, level)
       played.foreach(g => recordGame("bench", bot, biome, level, g))
@@ -225,7 +231,7 @@ object Experiments:
   def stage(args: List[String]): Unit =
     val o = Opts.parse(args, StageUsage,
       valued = Set("--level", "--rounds", "--games", "--combo-games", "--first-low", "--lives-low", "--lives-high", "--win-bar",
-        "--good-share", "--promote", "--resize", "--seed", "--think", "--biome", "--out", "--config"))
+        "--good-share", "--promote", "--resize", "--seed", "--think", "--biome", "--out", "--config", "--record"))
     loadConfig(o)
     val s = Stages.Settings(
       rounds = o.int("--rounds", 12),
@@ -254,12 +260,46 @@ object Experiments:
       Stages.writeCsv(csv, level, results)
       println(s"level ${level + 1}  kept waves ${kept.levels(level).waves.map(_.count).mkString("/")}; " +
         s"per-option results in $csv")
+      recordStage(kept, level, s, results, o.int("--record", 2))
       kept
     }
     Option(out.getParent).foreach(Files.createDirectories(_))
     ConfigWriter.write(tuned, out.toString) match
       case Left(err) => Opts.fail(s"could not write $out: $err", StageUsage)
       case Right(_)  => println(s"wrote balanced config to $out")
+
+  /** Saves replays of a balanced level, played on the kept config: the `n` best
+    * and worst plain runs on level 1; on later levels the best game of the best
+    * pick for each unlock, and the worst game with no unlock.
+    */
+  private def recordStage(cfg: GameConfig, level: Int, s: Stages.Settings, results: Vector[Stages.Result], n: Int): Unit =
+    if n > 0 then
+      Config.use(cfg)
+      val hash    = ReplayStore.saveConfig(ReplayStore.DefaultDir, cfg)
+      val count   = if level == 0 then s.games else s.comboGames
+      val enemies = Scenario.enemyCount(s.biome, level)
+      def save(g: Scenario.Game, name: String): Unit =
+        ReplayStore.write(ReplayStore.DefaultDir, name, Replay(
+          kind = "scenario", bot = "spender", seed = g.seed, biome = s.biome, level = level, think = s.think,
+          setup = g.setup, config = hash, result = g.result, steps = g.outcome.steps, commands = g.commands))
+      val ranked = (o: Stages.Entry) =>
+        Stages.games(o, level, count, s).sortBy(g => -Training.score(g.outcome, enemies))
+      val prefix = s"stage-L${level + 1}"
+      if level == 0 then
+        val games = ranked(results.head.option)
+        games.take(n).zipWithIndex.foreach((g, i) => save(g, s"$prefix-best-${i + 1}"))
+        games.takeRight(n).reverse.zipWithIndex.foreach((g, i) => save(g, s"$prefix-worst-${i + 1}"))
+      else
+        def slug(t: String) = t.toLowerCase.replaceAll("[^a-z0-9]+", "-")
+        results.groupBy(_.option.unlock).foreach { (unlock, rs) =>
+          val top = rs.maxBy(r => (r.stats.winRate, -r.stats.livesLostWon))
+          val tag = slug(unlock.getOrElse("no-unlock") + "-" + Stages.pickLabel(top.option))
+          ranked(top.option).headOption.foreach(save(_, s"$prefix-$tag-best"))
+        }
+        results.filter(_.option.unlock.isEmpty).minByOption(_.stats.winRate)
+          .flatMap(r => ranked(r.option).lastOption)
+          .foreach(save(_, s"$prefix-no-unlock-worst"))
+      println(s"  saved replays of level ${level + 1} to ${ReplayStore.DefaultDir} ($prefix-*)")
 
   def genLevels(args: List[String]): Unit =
     val o = Opts.parse(args, GenUsage, valued = Set("--count", "--size", "--shape", "--biome", "--biome-name", "--seed", "--into"))
@@ -315,11 +355,13 @@ object Experiments:
     val best   = ranked.take(n).zipWithIndex
     val worst  = ranked.takeRight(n).reverse.zipWithIndex
     def save(g: Scenario.Game, tag: String, rank: Int): Unit =
+      val played = if g.setup.rolled then RunGen.roll(g.seed).biome else biome
       val r = Replay(
-        kind = "scenario", bot = bot, seed = g.seed, biome = biome, level = level, think = think, setup = g.setup,
+        kind = "scenario", bot = bot, seed = g.seed, biome = played, level = level, think = think, setup = g.setup,
         config = hash, result = g.result, steps = g.outcome.steps, commands = g.commands
       )
-      ReplayStore.write(ReplayStore.DefaultDir, s"$bot-$biome-L${level + 1}-$tag-${rank + 1}", r)
+      val where = if g.setup.rolled then "rolled" else biome
+      ReplayStore.write(ReplayStore.DefaultDir, s"$bot-$where-L${level + 1}-$tag-${rank + 1}", r)
     best.foreach { case (g, i) => save(g, "best", i) }
     worst.foreach { case (g, i) => save(g, "worst", i) }
     println(s"  saved ${best.size} best and ${worst.size} worst replays to ${ReplayStore.DefaultDir}")

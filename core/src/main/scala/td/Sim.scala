@@ -17,7 +17,7 @@ object Sim:
     towers = Vector.empty,
     enemies = Vector.empty,
     shots = Vector.empty,
-    gold = Config.withBiome(run.biome)(Config.levelStartGold(0)),
+    gold = startGold(run, 0),
     lives = Config.StartLives + Meta.effects(run.talents).extraLives,
     wave = 0,
     spawnQueue = Vector.empty,
@@ -27,11 +27,18 @@ object Sim:
     run = run
   )
 
+  /** Gold a level starts with: the level's own start gold plus the run's talent
+    * bonus. Gold never carries over between levels.
+    */
+  def startGold(run: RunContext, level: Int): Int =
+    Config.withBiome(Config.biomeAt(run.biome, level))(Config.levelStartGold(level)) +
+      Meta.effects(run.talents).startGold
+
   def step(w0: World, dt: Float, cmds: Vector[Command]): World =
     // Resolve the run's biome so route/level/palette lookups inside the step
     // (and downstream callers) see the right board. Cleared afterwards so the
     // global state never carries a stale biome between steps/runs.
-    Config.setActive(w0.run.biome, w0.level)
+    Config.setActive(w0.biome, w0.level)
     try
       if w0.isOver || w0.won then w0
       else if w0.draft.isDefined then cmds.foldLeft(w0)(applyCommand)
@@ -133,7 +140,7 @@ object Sim:
   // -- environment rules -------------------------------------------------------
 
   private def biomeEnv(w: World): Option[Effect] =
-    Config.biomes.find(_.id == w.run.biome).flatMap(_.environment)
+    Config.biomes.find(_.id == w.biome).flatMap(_.environment)
 
   private def envParam(w: World, kind: String, key: String): Float =
     biomeEnv(w) match
@@ -287,7 +294,7 @@ object Sim:
           speed = spec.baseSpeed * Config.CellPx * w.run.speedMults.getOrElse(spec.name, 1f),
           tpe = spec.name,
           level = w.level,
-          resist = spec.resist.layered(w.run.resistTheme)
+          resist = spec.resist.layered(w.resistTheme)
         )
         val (ex, ey) = e.pos
         val meet     = if w.seen.contains(spec.name) then Vector.empty else Vector(NameEvent(spec.name, ex, ey, reveal = false))
@@ -379,7 +386,7 @@ object Sim:
       spawnQueue = Vector.empty,
       spawnTimer = 0f,
       breakTimer = Waves.breakTime,
-      gold = Config.levelStartGold(w.level + 1),
+      gold = startGold(w.run, w.level + 1),
       hazards = Vector.empty,
       draft = None
     )
@@ -574,7 +581,7 @@ object Sim:
           speed = spec.baseSpeed * Config.CellPx,
           tpe = spec.name,
           level = d.level,
-          resist = spec.resist.layered(w.run.resistTheme),
+          resist = spec.resist.layered(w.resistTheme),
           lane = d.lane
         )
         (id + 1, acc :+ e)

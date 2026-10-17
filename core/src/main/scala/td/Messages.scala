@@ -32,5 +32,5 @@ object Messages:
     if in == null then Map.empty
     else
       val p = Properties()
-      p.load(in)
+      p.load(java.io.InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8))
       p.stringPropertyNames().asScala.map(k => k -> p.getProperty(k)).toMap

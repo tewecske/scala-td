@@ -89,12 +89,18 @@ object Stages:
 
   // -- measuring -------------------------------------------------------------------
 
-  def play(o: Entry, level: Int, games: Int, s: Settings, sink: Training.Sink): Result =
-    val played = (0 until games).toVector.map { i =>
+  /** The spender's games with option `o`, one per seed; deterministic, so the
+    * games behind a [[Result]] can be played again to record them.
+    */
+  def games(o: Entry, level: Int, games: Int, s: Settings): Vector[Scenario.Game] =
+    (0 until games).toVector.map { i =>
       val seed = s.seed + i
       val p    = new SpenderPlayer(new scala.util.Random(seed))
       Scenario.play(p, s.biome, level, seed, s.think, setup = o.setup)
     }
+
+  def play(o: Entry, level: Int, games: Int, s: Settings, sink: Training.Sink): Result =
+    val played = this.games(o, level, games, s)
     played.foreach(g => sink("stage", level, g))
     Result(o, Stats.of(played.map(_.outcome)))
 

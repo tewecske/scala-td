@@ -20,7 +20,8 @@ case class TalentEffects(
     goldMult: Float,
     loadoutSlots: Int,
     rerollUnlocked: Boolean,
-    extraLives: Int = 0
+    extraLives: Int = 0,
+    startGold: Int = 0
 ):
   def owns(id: String): Boolean = owned.contains(id)
   def activeCores: Set[String] = layerIds(TalentLayer.Core)
@@ -107,6 +108,7 @@ object Meta:
       case "loadoutSlots" => acc.copy(owned = owned, loadoutSlots = acc.loadoutSlots + p.getOrElse("slots", 0f).toInt)
       case "reroll"       => acc.copy(owned = owned, rerollUnlocked = true)
       case "extraLives"   => acc.copy(owned = owned, extraLives = acc.extraLives + p.getOrElse("lives", 0f).toInt)
+      case "startGold"    => acc.copy(owned = owned, startGold = acc.startGold + p.getOrElse("gold", 0f).toInt)
       case _              => acc.copy(owned = owned)
 
   /** Pure purchase: validates id, duplicates, prereqs (layer gating), cost. */

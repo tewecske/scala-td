@@ -2011,7 +2011,8 @@
 			"primaryAmount": 0.0,
 			"secondary": "Fire",
 			"secondaryAmount": 0.0
-		}
+		},
+		"starter": true
 	},
 	{
 		"id": "cube-farm",
@@ -2303,6 +2304,19 @@
 			"kind": "extraLives",
 			"params": {
 				"lives": 1.0
+			}
+		}
+	},
+	{
+		"id": "filler-start-gold",
+		"name": "Petty Cash",
+		"layer": "Filler",
+		"cost": 1,
+		"prereqs": [],
+		"effect": {
+			"kind": "startGold",
+			"params": {
+				"gold": 30.0
 			}
 		}
 	},
