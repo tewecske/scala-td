@@ -488,6 +488,34 @@ class Render:
         text(Messages.t(key), Layout.talentColumnX(col) + 4f, Layout.talentHeaderY, TextStyle.Button, muted)
       }
 
+    // the tree's lines first, so the cards sit on top: from the right edge of a talent
+    // to the left edge of each talent it unlocks, bending in the gap between columns
+    val rectOf = order.zipWithIndex.map((t, i) => t.id -> Layout.talentRow(i)).toMap
+    val colOf  = order.map(t => t.id -> TalentTree.column(t.layer)).toMap
+    TalentTree.edges(Config.talents).sortBy(e => owned.contains(e.from)).foreach { e =>
+      (rectOf.get(e.from), rectOf.get(e.to)) match
+        case (Some(a), Some(b)) =>
+          val c =
+            if owned.contains(e.from) && owned.contains(e.to) then accent
+            else if owned.contains(e.from) then mix(text0, surface, 0.35f)
+            else mix(muted, surface, 0.45f)
+          shapes.setColor(c)
+          if colOf(e.from) == colOf(e.to) then
+            // same column: a bracket on the left side
+            val x = a.x - 14f
+            shapes.rectLine(a.x, a.centerY, x, a.centerY, 3f)
+            shapes.rectLine(x, a.centerY, x, b.centerY, 3f)
+            shapes.rectLine(x, b.centerY, b.x, b.centerY, 3f)
+          else
+            val mid = Layout.talentGapX(colOf(e.to) - 1)
+            shapes.rectLine(a.right, a.centerY, mid, a.centerY, 3f)
+            shapes.rectLine(mid, a.centerY, mid, b.centerY, 3f)
+            shapes.rectLine(mid, b.centerY, b.x, b.centerY, 3f)
+            shapes.circle(mid, a.centerY, 1.5f, 8)
+            shapes.circle(mid, b.centerY, 1.5f, 8)
+        case _ =>
+    }
+
     order.zipWithIndex.foreach { case (t, i) =>
       val r          = Layout.talentRow(i)
       val isOwned    = owned.contains(t.id)
@@ -1004,7 +1032,7 @@ class Render:
     * smoothly through corners and is smaller for enemies that fill the road.
     */
   private def scatter(e: Enemy): (Float, Float) =
-    val room = math.max(0f, (Config.CellPx * 0.84f - e.spec.size) / 2f)
+    val room = math.max(0f, (Config.CellPx * 0.84f - e.spec.size * Config.EnemyScale) / 2f)
     if room <= 0f then (0f, 0f)
     else
       val h = java.lang.Long.hashCode(e.id * 0x9E3779B97F4A7C15L)
@@ -1041,29 +1069,31 @@ class Render:
   /** Enemies as their type's polygon, turned to face along the road. */
   private def drawEnemies(w: World): Unit =
     w.enemies.foreach { e =>
-      val size  = e.spec.size
+      // sizes are in tile units, so enemies keep their size relative to a tile on any map
+      val k     = Config.EnemyScale
+      val size  = e.spec.size * k
       val shape = e.spec.shape
       val (ex, ey) = drawnPos(e)
       val (dx, dy) = roadDir(e)
       val heading  = math.toDegrees(math.atan2(dy, dx)).toFloat
       if e.slowed then
         shapes.setColor(Config.SlowTint)
-        polygon(ex, ey, shape.corners(size + 7f, heading))
+        polygon(ex, ey, shape.corners(size + 7f * k, heading))
       if e.burning then
         shapes.setColor(Config.BurnTint)
-        polygon(ex, ey, shape.corners(size + 3.5f, heading))
+        polygon(ex, ey, shape.corners(size + 3.5f * k, heading))
       shapes.setColor(e.spec.color)
       polygon(ex, ey, shape.corners(size, heading))
       if e.buffed then
         shapes.setColor(Config.BuffTint)
-        shapes.rect(ex - size / 2 - 3f, ey - size / 2 - 3f, 5f, 5f)
+        shapes.rect(ex - size / 2 - 3f * k, ey - size / 2 - 3f * k, 5f * k, 5f * k)
 
-      val barW = math.max(20f, size * 1.1f)
+      val barW = math.max(20f * k, size * 1.1f)
       val frac = math.max(0f, math.min(1f, e.hp / e.maxHp))
       shapes.setColor(Config.HpBarBack)
-      shapes.rect(ex - barW / 2, ey + size / 2 + 3f, barW, 3.5f)
+      shapes.rect(ex - barW / 2, ey + size / 2 + 3f * k, barW, 3.5f * k)
       shapes.setColor(Config.HpBarFill)
-      shapes.rect(ex - barW / 2, ey + size / 2 + 3f, barW * frac, 3.5f)
+      shapes.rect(ex - barW / 2, ey + size / 2 + 3f * k, barW * frac, 3.5f * k)
     }
 
   /** Ring around each aura carrier so its buff radius is legible. */

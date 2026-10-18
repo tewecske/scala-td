@@ -82,6 +82,13 @@ object Config:
       activeBiome.flatMap(_.gridSize).orElse(levels.headOption.flatMap(_.gridSize)).getOrElse(current.board.gridSize))
   def BoardPx: Float = current.board.boardPx
   def CellPx: Float  = BoardPx / GridSize
+
+  /** Enemy sizes count a tile as this many units, so an enemy covers the same share
+    * of a tile on every map, whatever its grid size.
+    */
+  val EnemyTileUnits: Float = 64f
+  /** Board units per enemy-size unit on the active map. */
+  def EnemyScale: Float = CellPx / EnemyTileUnits
   def cellPxOf(level: Int): Float = BoardPx / gridSizeOf(level)
   def PanelPx: Float = current.board.panelPx
   def WorldW: Float  = BoardPx + PanelPx

@@ -209,7 +209,7 @@ object EnemyArt:
     def paintIcon(c: java.awt.Component, g: Graphics, x: Int, y: Int): Unit =
       paint(g.asInstanceOf[Graphics2D], e, x + px / 2.0, y + px / 2.0, px * 0.8 / math.max(1f, e.size))
 
-/** Shows an enemy on a 10x10-map tile and a 14x14-map tile, at the size the game draws it. */
+/** Shows an enemy on a road tile, at its size relative to the tile (the same on every map). */
 final class EnemyPreview(enemy: () => Option[EnemySpec]) extends JComponent:
   setPreferredSize(Dimension(300, 150))
   override def paintComponent(g0: Graphics): Unit =
@@ -217,15 +217,15 @@ final class EnemyPreview(enemy: () => Option[EnemySpec]) extends JComponent:
     g.setColor(AwtColor(2, 26, 1))
     g.fillRect(0, 0, getWidth, getHeight)
     enemy().foreach { e =>
-      Vector((10, 20), (14, 160)).foreach { (grid, x) =>
-        val tile = 110
-        val cellPx = Config.game.board.boardPx / grid
-        g.setColor(AwtColor(50, 138, 46))
-        g.fillRect(x, 12, tile, tile)
-        EnemyArt.paint(g, e, x + tile / 2.0, 12 + tile / 2.0, tile / cellPx)
-        g.setColor(AwtColor(255, 230, 165))
-        g.drawString(s"on a ${grid}x$grid map", x + 4, 12 + tile + 16)
-      }
+      val tile = 110
+      val x    = 20
+      g.setColor(AwtColor(50, 138, 46))
+      g.fillRect(x, 12, tile, tile)
+      g.setColor(AwtColor(46, 111, 181))
+      g.fillRect(x, 12 + tile / 4, tile, tile / 2)
+      EnemyArt.paint(g, e, x + tile / 2.0, 12 + tile / 2.0, tile / Config.EnemyTileUnits)
+      g.setColor(AwtColor(255, 230, 165))
+      g.drawString(f"one tile · ${e.size / Config.EnemyTileUnits * 100}%.0f%% of a tile wide", x + tile + 16, 12 + tile / 2)
     }
 
 final class EnemiesTab(state: EditorState) extends JPanel(BorderLayout()):
@@ -307,8 +307,8 @@ final class EnemiesTab(state: EditorState) extends JPanel(BorderLayout()):
       f.field("Name", Controls.text(e.name, rename), "Renaming updates every wave and reference that uses it")
       f.field("Shape", Controls.dropdown(EnemyShape.values.toVector, e.shape, s => edit(_.copy(shape = s))))
       f.field("Color", Controls.color(e.color, c => edit(_.copy(color = c))))
-      f.field("Size", Controls.slider(4, 64, 1, e.size, v => edit(_.copy(size = v.toFloat)), "px"),
-        "In game units: a tile is 64 wide on a 10x10 map and about 46 on a 14x14 map")
+      f.field("Size", Controls.slider(4, 64, 0.5, e.size, v => edit(_.copy(size = v.toFloat)), "/ 64 of a tile"),
+        "A tile counts as 64, on every map size")
       f.full(preview)
 
       f.section("Stats")
@@ -890,14 +890,22 @@ final class TalentsTab(state: EditorState) extends JPanel(BorderLayout()):
     Controls.button("New", "Add a new talent")(add(None)),
     Controls.button("Duplicate", "Copy the selected talent")(selected.foreach(id => add(Some(id)))),
     Controls.button("Delete", "Remove the selected talent (only when nothing needs it)")(delete())), BorderLayout.SOUTH)
-  left.setPreferredSize(Dimension(260, 600))
-  add(left, BorderLayout.WEST)
-  add(right, BorderLayout.CENTER)
+  left.setPreferredSize(Dimension(260, 400))
+  // the tree across the top (click a talent to edit it), the list and form below
+  private val tree = TalentTreeView(() => state.cfg.talents, () => Set.empty, () => selected, id =>
+    selected = Some(id)
+    rebuild())
+  private val treeScroll = JScrollPane(tree)
+  private val below = JPanel(BorderLayout())
+  below.add(left, BorderLayout.WEST)
+  below.add(right, BorderLayout.CENTER)
+  private val split = JSplitPane(JSplitPane.VERTICAL_SPLIT, treeScroll, below)
+  split.setDividerLocation(420)
+  add(split, BorderLayout.CENTER)
   rebuild()
 
-  /** In the order the game shows them: by column, then config order. */
-  private def ordered: Vector[Talent] =
-    TalentLayer.values.toVector.flatMap(l => state.cfg.talents.filter(_.layer == l))
+  /** In the order the game shows them: the tree's columns, top to bottom. */
+  private def ordered: Vector[Talent] = TalentTree.layout(state.cfg.talents).map(_.talent)
 
   private def label(t: Talent): String = s"${t.layer.toString.toLowerCase} · ${t.name}  (${t.cost})"
 
@@ -907,9 +915,13 @@ final class TalentsTab(state: EditorState) extends JPanel(BorderLayout()):
     ordered.foreach(t => model.addElement(label(t)))
     if !selected.exists(id => state.cfg.talents.exists(_.id == id)) then selected = ordered.headOption.map(_.id)
     val i = ordered.indexWhere(t => selected.contains(t.id))
-    if i >= 0 then list.setSelectedIndex(i)
+    if i >= 0 then
+      list.setSelectedIndex(i)
+      list.ensureIndexIsVisible(i)
     listing = false
     showForm()
+    tree.revalidate()
+    tree.repaint()
 
   private def current: Option[Talent] = selected.flatMap(id => state.cfg.talents.find(_.id == id))
 
@@ -919,6 +931,7 @@ final class TalentsTab(state: EditorState) extends JPanel(BorderLayout()):
     else
       val i = ordered.indexWhere(t => selected.contains(t.id))
       current.foreach(t => if i >= 0 then model.set(i, label(t)))
+      tree.repaint()
 
   private def add(copyOf: Option[String]): Unit =
     val base = copyOf.flatMap(id => state.cfg.talents.find(_.id == id)).getOrElse(
@@ -948,9 +961,9 @@ final class TalentsTab(state: EditorState) extends JPanel(BorderLayout()):
       f.full(JLabel(s"id: ${t.id}  (saved progress refers to talents by id, so it does not change)"))
       f.field("Column", Controls.dropdown(TalentLayer.values.toVector, t.layer, l => edit(_.copy(layer = l), structural = true),
         _.toString.toLowerCase))
-      val inColumn = state.cfg.talents.count(_.layer == t.layer)
-      if inColumn > MaxPerColumn then
-        f.full(JLabel(s"<html><font color='#B00020'>This column has $inColumn talents; the game screen fits $MaxPerColumn.</font></html>"))
+      val rows = TalentTree.rows(state.cfg.talents)
+      if rows > MaxPerColumn then
+        f.full(JLabel(s"<html><font color='#B00020'>The tree needs $rows rows; the game screen fits $MaxPerColumn.</font></html>"))
       f.field("Cost", Controls.stepper(0, 99, t.cost, v => edit(_.copy(cost = v))), "Meta currency")
 
       f.section("Needs")
@@ -958,7 +971,8 @@ final class TalentsTab(state: EditorState) extends JPanel(BorderLayout()):
       if others.isEmpty then f.full(JLabel("no other talents"))
       others.foreach { o =>
         f.full(Controls.checkbox(t.prereqs.contains(o.id), on =>
-          edit(x => x.copy(prereqs = if on then (x.prereqs :+ o.id).distinct else x.prereqs.filterNot(_ == o.id))),
+          edit(x => x.copy(prereqs = if on then (x.prereqs :+ o.id).distinct else x.prereqs.filterNot(_ == o.id)),
+            structural = true),
           s"${o.name}  (${o.layer.toString.toLowerCase})"))
       }
 
@@ -984,7 +998,7 @@ final class TalentsTab(state: EditorState) extends JPanel(BorderLayout()):
     right.repaint()
 
 object TalentsTab:
-  /** How many talents one column of the game's talent screen fits. */
+  /** How many rows of talents the game's talent screen fits. */
   val MaxPerColumn = 9
 
   def known(kind: String): Boolean = ConfigEdits.TalentEffectKinds.exists(_.kind == kind)

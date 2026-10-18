@@ -67,7 +67,7 @@ final class SimulatorFrame(start: Option[File]) extends JFrame:
   command.setColumns(60)
 
   private val split = JSplitPane(JSplitPane.HORIZONTAL_SPLIT, form, right)
-  split.setDividerLocation(560)
+  split.setDividerLocation(600)
   getContentPane.add(bar, BorderLayout.NORTH)
   getContentPane.add(split, BorderLayout.CENTER)
   addWindowListener(new WindowAdapter:
@@ -193,14 +193,14 @@ final class SimulatorFrame(start: Option[File]) extends JFrame:
       if setup.unlocked.isEmpty then f.full(JLabel(s"none ticked: the run brings ${cfg.loadout.defaultSelected.mkString(", ")}"))
       SimSetup.warnings(cfg, setup).foreach(w => f.full(JLabel(s"<html><font color='#B00020'>$w</font></html>")))
 
-      f.section("Talents owned  (prerequisites are added automatically)")
-      TalentLayer.values.foreach { layer =>
-        cfg.talents.filter(_.layer == layer).foreach { t =>
-          f.full(Controls.checkbox(setup.talents.contains(t.id), on =>
-            change(x => x.copy(talents = if on then (x.talents :+ t.id).distinct else x.talents.filterNot(_ == t.id))),
-            s"${t.name}  (${layer.toString.toLowerCase}: ${TalentsTab.describe(t)})"))
-        }
-      }
+      f.section("Talents owned  (click to own; what a talent needs comes with it)")
+      val owned = SimSetup.withPrereqs(cfg, setup.talents)
+      f.full(TalentTreeView(() => cfg.talents, () => owned.toSet, () => None, id => toggleTalent(cfg, id),
+        BoxW = 150, ColGap = 26))
+      f.full(Controls.row(
+        JLabel(if owned.isEmpty then "no talents" else
+          s"${owned.size} talents, ${owned.flatMap(id => cfg.talents.find(_.id == id)).map(_.cost).sum} meta currency"),
+        Controls.button("Clear", "Own no talents")(change(_.copy(talents = Vector.empty), rebuild = true))))
 
       f.section("Draft picks so far")
       cfg.relics.foreach { r =>
@@ -223,6 +223,14 @@ final class SimulatorFrame(start: Option[File]) extends JFrame:
     form.add(scroll, BorderLayout.CENTER)
     form.revalidate()
     form.repaint()
+
+  /** Owns `id` (with what it needs), or drops it and every owned talent that needs it. */
+  private def toggleTalent(cfg: GameConfig, id: String): Unit =
+    val owned = SimSetup.withPrereqs(cfg, setup.talents)
+    if !owned.contains(id) then change(x => x.copy(talents = (x.talents :+ id).distinct), rebuild = true)
+    else
+      def needs(t: String): Boolean = SimSetup.withPrereqs(cfg, Vector(t)).contains(id)
+      change(x => x.copy(talents = x.talents.filterNot(needs)), rebuild = true)
 
   private def chooseConfig(): Unit =
     val c = JFileChooser(File(".").getAbsoluteFile)

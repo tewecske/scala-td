@@ -77,26 +77,25 @@ object Layout:
   private def talentX(col: Int): Float = cx - (4 * TalentColW + 3 * TalentGap) / 2 + col * (TalentColW + TalentGap)
   def talentHeaderY: Float = H - 250f
 
-  /** Talents in three columns (filler / core / deep); the fourth holds the effects. */
-  def talentOrder: Vector[Talent] =
-    Vector(TalentLayer.Filler, TalentLayer.Core, TalentLayer.Deep)
-      .flatMap(l => Config.talents.filter(_.layer == l))
+  /** The talent tree ([[TalentTree.layout]]): three columns (filler / core / deep),
+    * each talent near the ones it needs; the fourth column holds the effects.
+    */
+  private def talentNodes: Vector[TalentTree.Node] = TalentTree.layout(Config.talents)
 
-  def talentColumn(layer: TalentLayer): Int = layer match
-    case TalentLayer.Filler => 0
-    case TalentLayer.Core   => 1
-    case TalentLayer.Deep   => 2
+  def talentOrder: Vector[Talent] = talentNodes.map(_.talent)
 
   /** Rows get closer together when a column holds more talents than fit at full spacing. */
   private def talentStep: Float =
-    val rows = talentOrder.groupBy(_.layer).values.map(_.size).maxOption.getOrElse(1)
+    val rows = TalentTree.rows(Config.talents)
     if rows <= 1 then 84f else math.min(84f, (talentHeaderY - 110f - 150f) / (rows - 1))
 
   def talentRow(i: Int): Rect =
-    val t       = talentOrder(i)
-    val inLayer = talentOrder.take(i).count(_.layer == t.layer)
-    val step    = talentStep
-    Rect(talentX(talentColumn(t.layer)), talentHeaderY - 110f - inLayer * step, TalentColW, math.min(72f, step - 8f))
+    val n    = talentNodes(i)
+    val step = talentStep
+    Rect(talentX(n.column), talentHeaderY - 110f - n.row * step, TalentColW, math.min(72f, step - 8f))
+
+  /** The gap between two talent columns, where the tree's lines bend. */
+  def talentGapX(col: Int): Float = talentX(col) + TalentColW + TalentGap / 2
 
   def talentEffects: Rect =
     val top = talentHeaderY - 38f
